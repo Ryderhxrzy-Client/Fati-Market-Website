@@ -19,17 +19,17 @@ class AdminAuthMiddleware
     {
         // Check if admin is logged in via session
         if (!Session::has('admin_token') || !Session::has('admin_data')) {
-            return redirect()->route('admin.login');
+            return redirect('/');
         }
-        
-        // Optional: Check if session is expired (24 hours)
+
+        // Check if session is expired (24 hours)
         $loginTimestamp = Session::get('login_timestamp');
         if ($loginTimestamp && (time() - $loginTimestamp) > 86400) { // 24 hours
             Session::forget(['admin_token', 'admin_data', 'login_timestamp']);
-            return redirect()->route('admin.login')
+            return redirect('/')
                 ->with('error', 'Session expired. Please login again.');
         }
-        
+
         return $next($request);
     }
 }
