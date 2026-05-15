@@ -1,235 +1,165 @@
-@extends('layouts.admin')
+@extends('layouts.admin-dashboard')
 
 @section('title', 'Dashboard')
 
-@section('header-title', 'Dashboard')
-
-@section('header-actions')
-<a href="{{ route('admin.products.create') }}" class="btn btn-secondary btn-sm">
-    <i class="fas fa-plus"></i>
-    Add Product
-</a>
-@endsection
-
 @section('content')
-<!-- Stats Cards -->
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 24px; margin-bottom: 32px;">
-    <div class="admin-card text-center">
-        <h3 style="font-size: 16px; color: var(--muted-text); margin-bottom: 8px;">Total Products</h3>
-        <h2 style="font-size: 36px; color: var(--dark-green); margin: 16px 0;">248</h2>
-        <p style="color: var(--muted-text); font-size: 14px;">Active products in store</p>
-    </div>
-    
-    <div class="admin-card text-center">
-        <h3 style="font-size: 16px; color: var(--muted-text); margin-bottom: 8px;">Total Orders</h3>
-        <h2 style="font-size: 36px; color: var(--gold); margin: 16px 0;">1,429</h2>
-        <p style="color: var(--muted-text); font-size: 14px;">Orders this month</p>
-    </div>
-    
-    <div class="admin-card text-center">
-        <h3 style="font-size: 16px; color: var(--muted-text); margin-bottom: 8px;">Revenue</h3>
-        <h2 style="font-size: 36px; color: var(--dark-green); margin: 16px 0;">$28,492</h2>
-        <p style="color: var(--muted-text); font-size: 14px;">This month</p>
-    </div>
-    
-    <div class="admin-card text-center">
-        <h3 style="font-size: 16px; color: var(--muted-text); margin-bottom: 8px;">Customers</h3>
-        <h2 style="font-size: 36px; color: var(--dark-green); margin: 16px 0;">3,847</h2>
-        <p style="color: var(--muted-text); font-size: 14px;">Total registered</p>
-    </div>
-</div>
+<div class="space-y-6">
+    <!-- Stats Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="stat-card">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-600 text-sm font-medium">Total Products</p>
+                    <div class="stat-value">{{ $stats['total_products'] ?? 248 }}</div>
+                    <p class="text-gray-500 text-xs">Active in store</p>
+                </div>
+                <div class="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
+                    <i class="fas fa-box text-green-600 text-xl"></i>
+                </div>
+            </div>
+        </div>
 
-<!-- Recent Orders Table -->
-<div class="admin-card">
-    <div class="admin-card-header">
-        <h3>Recent Orders</h3>
-        <p>Latest orders from customers</p>
-    </div>
-    <div class="admin-table">
-        <table>
-            <thead>
-                <tr>
-                    <th>Order ID</th>
-                    <th>Customer</th>
-                    <th>Product</th>
-                    <th>Amount</th>
-                    <th>Status</th>
-                    <th>Date</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>#1234</td>
-                    <td>Alice Johnson</td>
-                    <td>Organic Tomatoes</td>
-                    <td>$24.99</td>
-                    <td><span style="background: var(--dark-green); color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">Completed</span></td>
-                    <td>2024-01-15</td>
-                    <td>
-                        <div class="btn-group">
-                            <button class="btn btn-outline btn-sm">View</button>
-                            <button class="btn btn-ghost btn-sm">Edit</button>
-                        </div>
-                    </td>
-                </tr>
-                <tr>
-                    <td>#1235</td>
-                    <td>Bob Smith</td>
-                    <td>Fresh Lettuce</td>
-                    <td>$12.50</td>
-                    <td><span style="background: var(--gold); color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">Processing</span></td>
-                    <td>2024-01-15</td>
-                    <td>
-                        <div class="btn-group">
-                            <button class="btn btn-outline btn-sm">View</button>
-                            <button class="btn btn-ghost btn-sm">Edit</button>
-                        </div>
-                    </td>
-                </tr>
-                <tr>
-                    <td>#1236</td>
-                    <td>Carol White</td>
-                    <td>Green Peppers</td>
-                    <td>$18.75</td>
-                    <td><span style="background: var(--muted-text); color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">Pending</span></td>
-                    <td>2024-01-14</td>
-                    <td>
-                        <div class="btn-group">
-                            <button class="btn btn-outline btn-sm">View</button>
-                            <button class="btn btn-ghost btn-sm">Edit</button>
-                        </div>
-                    </td>
-                </tr>
-                <tr>
-                    <td>#1237</td>
-                    <td>David Brown</td>
-                    <td>Carrots</td>
-                    <td>$15.00</td>
-                    <td><span style="background: var(--dark-green); color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">Completed</span></td>
-                    <td>2024-01-14</td>
-                    <td>
-                        <div class="btn-group">
-                            <button class="btn btn-outline btn-sm">View</button>
-                            <button class="btn btn-ghost btn-sm">Edit</button>
-                        </div>
-                    </td>
-                </tr>
-                <tr>
-                    <td>#1238</td>
-                    <td>Eve Davis</td>
-                    <td>Cucumbers</td>
-                    <td>$22.25</td>
-                    <td><span style="background: var(--gold); color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">Processing</span></td>
-                    <td>2024-01-13</td>
-                    <td>
-                        <div class="btn-group">
-                            <button class="btn btn-outline btn-sm">View</button>
-                            <button class="btn btn-ghost btn-sm">Edit</button>
-                        </div>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
+        <div class="stat-card">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-600 text-sm font-medium">Total Orders</p>
+                    <div class="stat-value">{{ $stats['total_orders'] ?? 1429 }}</div>
+                    <p class="text-gray-500 text-xs">This month</p>
+                </div>
+                <div class="w-12 h-12 rounded-lg bg-yellow-100 flex items-center justify-center">
+                    <i class="fas fa-shopping-cart text-yellow-600 text-xl"></i>
+                </div>
+            </div>
+        </div>
 
-<!-- Button Examples -->
-<div class="admin-card">
-    <div class="admin-card-header">
-        <h3>Button Examples</h3>
-        <p>Different button styles with the Fati Market theme</p>
-    </div>
-    
-    <div style="display: grid; gap: 24px;">
-        <div>
-            <h4 style="margin-bottom: 16px; color: var(--dark-text);">Primary Buttons</h4>
-            <div class="btn-group">
-                <button class="btn btn-primary">Default</button>
-                <button class="btn btn-primary btn-sm">Small</button>
-                <button class="btn btn-primary btn-lg">Large</button>
-                <button class="btn btn-primary" disabled>Disabled</button>
+        <div class="stat-card">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-600 text-sm font-medium">Revenue</p>
+                    <div class="stat-value">${{ number_format($stats['revenue'] ?? 28492, 0) }}</div>
+                    <p class="text-gray-500 text-xs">This month</p>
+                </div>
+                <div class="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
+                    <i class="fas fa-dollar-sign text-blue-600 text-xl"></i>
+                </div>
             </div>
         </div>
-        
-        <div>
-            <h4 style="margin-bottom: 16px; color: var(--dark-text);">Secondary Buttons</h4>
-            <div class="btn-group">
-                <button class="btn btn-secondary">Default</button>
-                <button class="btn btn-secondary btn-sm">Small</button>
-                <button class="btn btn-secondary btn-lg">Large</button>
-            </div>
-        </div>
-        
-        <div>
-            <h4 style="margin-bottom: 16px; color: var(--dark-text);">Outline Buttons</h4>
-            <div class="btn-group">
-                <button class="btn btn-outline">Default</button>
-                <button class="btn btn-outline btn-sm">Small</button>
-                <button class="btn btn-outline btn-lg">Large</button>
-            </div>
-        </div>
-        
-        <div>
-            <h4 style="margin-bottom: 16px; color: var(--dark-text);">Ghost Buttons</h4>
-            <div class="btn-group">
-                <button class="btn btn-ghost">Default</button>
-                <button class="btn btn-ghost btn-sm">Small</button>
-                <button class="btn btn-ghost btn-lg">Large</button>
-            </div>
-        </div>
-        
-        <div>
-            <h4 style="margin-bottom: 16px; color: var(--dark-text);">Icon Buttons</h4>
-            <div class="btn-group">
-                <button class="btn btn-primary"><i class="fas fa-plus"></i> Add New</button>
-                <button class="btn btn-secondary"><i class="fas fa-edit"></i> Edit</button>
-                <button class="btn btn-outline"><i class="fas fa-trash"></i> Delete</button>
-                <button class="btn btn-ghost"><i class="fas fa-download"></i> Download</button>
-            </div>
-        </div>
-    </div>
-</div>
 
-<!-- Form Example -->
-<div class="admin-card">
-    <div class="admin-card-header">
-        <h3>Add New Product</h3>
-        <p>Fill in the product details</p>
+        <div class="stat-card">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-600 text-sm font-medium">Total Customers</p>
+                    <div class="stat-value">{{ $stats['total_customers'] ?? 3847 }}</div>
+                    <p class="text-gray-500 text-xs">Registered users</p>
+                </div>
+                <div class="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center">
+                    <i class="fas fa-users text-purple-600 text-xl"></i>
+                </div>
+            </div>
+        </div>
     </div>
-    
-    <form>
-        <div class="form-group">
-            <label class="form-label" for="product-name">Product Name <span style="color: var(--gold);">*</span></label>
-            <input type="text" id="product-name" class="form-input" placeholder="Enter product name" required>
+
+    <!-- Recent Orders Section -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <div>
+                <h3 class="text-lg font-bold text-gray-900">Recent Orders</h3>
+                <p class="text-sm text-gray-500">Latest orders from customers</p>
+            </div>
+            <a href="{{ route('admin.transactions') }}" class="text-green-600 hover:text-green-700 text-sm font-medium">View All</a>
         </div>
-        
-        <div class="form-group">
-            <label class="form-label" for="category">Category <span style="color: var(--gold);">*</span></label>
-            <select id="category" class="form-select" required>
-                <option value="">Select a category</option>
-                <option value="vegetables">Vegetables</option>
-                <option value="fruits">Fruits</option>
-                <option value="dairy">Dairy</option>
-                <option value="grains">Grains</option>
-            </select>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Order ID</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Customer</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Product</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Amount</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Date</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    @forelse($recentOrders ?? [] as $order)
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 text-sm font-medium text-gray-900">#{{ $order['id'] ?? 'N/A' }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-700">{{ $order['customer'] ?? 'N/A' }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-700">{{ $order['product'] ?? 'N/A' }}</td>
+                            <td class="px-6 py-4 text-sm font-medium text-gray-900">${{ $order['amount'] ?? 0 }}</td>
+                            <td class="px-6 py-4 text-sm">
+                                @php
+                                    $status = strtolower($order['status'] ?? 'pending');
+                                    $statusColors = [
+                                        'completed' => 'bg-green-100 text-green-800',
+                                        'processing' => 'bg-yellow-100 text-yellow-800',
+                                        'pending' => 'bg-gray-100 text-gray-800',
+                                        'cancelled' => 'bg-red-100 text-red-800',
+                                    ];
+                                    $color = $statusColors[$status] ?? 'bg-gray-100 text-gray-800';
+                                @endphp
+                                <span class="px-3 py-1 rounded-full text-xs font-semibold {{ $color }}">
+                                    {{ ucfirst($status) }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-700">{{ $order['date'] ?? 'N/A' }}</td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                                <i class="fas fa-inbox text-3xl mb-2 opacity-50"></i>
+                                <p class="mt-2">No recent orders</p>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
         </div>
-        
-        <div class="form-group">
-            <label class="form-label" for="price">Price ($) <span style="color: var(--gold);">*</span></label>
-            <input type="number" id="price" class="form-input" placeholder="0.00" step="0.01" required>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold text-gray-900">Quick Actions</h3>
+                <i class="fas fa-bolt text-yellow-500"></i>
+            </div>
+            <div class="space-y-2">
+                <a href="{{ route('admin.users') }}" class="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition">
+                    <span class="text-gray-700">Manage Users</span>
+                    <i class="fas fa-arrow-right text-gray-400"></i>
+                </a>
+                <a href="{{ route('admin.items') }}" class="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition">
+                    <span class="text-gray-700">Manage Items</span>
+                    <i class="fas fa-arrow-right text-gray-400"></i>
+                </a>
+                <a href="{{ route('admin.chat') }}" class="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition">
+                    <span class="text-gray-700">View Messages</span>
+                    <i class="fas fa-arrow-right text-gray-400"></i>
+                </a>
+            </div>
         </div>
-        
-        <div class="form-group">
-            <label class="form-label" for="description">Description</label>
-            <textarea id="description" class="form-textarea" placeholder="Enter product description"></textarea>
-            <small style="color: var(--muted-text); margin-top: 4px; display: block;">Provide a detailed description of the product</small>
+
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold text-gray-900">System Status</h3>
+                <i class="fas fa-heartbeat text-green-500"></i>
+            </div>
+            <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-gray-700">API Connection</span>
+                    <span class="w-3 h-3 rounded-full bg-green-500"></span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-gray-700">Database</span>
+                    <span class="w-3 h-3 rounded-full bg-green-500"></span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-gray-700">Cache</span>
+                    <span class="w-3 h-3 rounded-full bg-green-500"></span>
+                </div>
+            </div>
         </div>
-        
-        <div class="btn-group" style="margin-top: 24px;">
-            <button type="submit" class="btn btn-primary">Save Product</button>
-            <button type="button" class="btn btn-ghost">Cancel</button>
-        </div>
-    </form>
+    </div>
 </div>
 @endsection
