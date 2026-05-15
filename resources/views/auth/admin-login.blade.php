@@ -259,6 +259,14 @@
                 if (data.csrf_token) {
                     document.querySelector('input[name="_token"]').value = data.csrf_token;
                 }
+                // Redirect to dashboard
+                setTimeout(() => {
+                    if (data.redirect) {
+                        window.location.href = data.redirect;
+                    } else {
+                        window.location.href = '/dashboard';
+                    }
+                }, 1500);
             } else if (data.errors) {
                 // Show validation errors
                 Object.values(data.errors).forEach(error => {
