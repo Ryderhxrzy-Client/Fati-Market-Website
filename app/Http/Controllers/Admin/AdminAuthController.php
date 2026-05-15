@@ -78,6 +78,7 @@ class AdminAuthController extends Controller
                     return response()->json([
                         'success' => true,
                         'message' => 'Login successful! Admin access granted.',
+                        'redirect' => route('admin.dashboard'),
                         'csrf_token' => csrf_token()
                     ]);
                 }
@@ -140,32 +141,350 @@ class AdminAuthController extends Controller
     public function dashboard(Request $request)
     {
         if (!Session::has('admin_token')) {
-            // return redirect('/');
-            // For testing: just show message
-            return view('auth.admin-login')->with('error', 'Please login to access dashboard.');
+            return redirect('/');
         }
-        
+
         $token = Session::get('admin_token');
         $adminData = Session::get('admin_data');
-        
+
         try {
-            // Fetch dashboard data from API (you'll need to create these endpoints)
             $stats = $this->fetchDashboardStats($token);
             $recentOrders = $this->fetchRecentOrders($token);
-            
         } catch (\Exception $e) {
-            // Fallback to mock data if API fails
             $stats = [
                 'total_products' => 0,
                 'total_orders' => 0,
                 'revenue' => 0,
                 'total_customers' => 0,
             ];
-            
             $recentOrders = [];
         }
-        
+
         return view('admin.dashboard', compact('stats', 'recentOrders', 'adminData'));
+    }
+
+    /**
+     * Show private offers (private items).
+     */
+    public function privateOffers(Request $request)
+    {
+        if (!Session::has('admin_token')) {
+            return redirect('/');
+        }
+
+        $token = Session::get('admin_token');
+
+        try {
+            $response = Http::timeout(30)
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'Authorization' => 'Bearer ' . $token,
+                ])
+                ->get('https://fati-api.alertaraqc.com/api/admin/items', [
+                    'status' => 'private',
+                ]);
+
+            $items = $response->successful() ? $response->json()['data'] ?? [] : [];
+        } catch (\Exception $e) {
+            $items = [];
+        }
+
+        return view('admin.private-offers', compact('items'));
+    }
+
+    /**
+     * Show acquired items.
+     */
+    public function acquiredItems(Request $request)
+    {
+        if (!Session::has('admin_token')) {
+            return redirect('/');
+        }
+
+        $token = Session::get('admin_token');
+
+        try {
+            $response = Http::timeout(30)
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'Authorization' => 'Bearer ' . $token,
+                ])
+                ->get('https://fati-api.alertaraqc.com/api/admin/items', [
+                    'status' => 'acquired',
+                ]);
+
+            $items = $response->successful() ? $response->json()['data'] ?? [] : [];
+        } catch (\Exception $e) {
+            $items = [];
+        }
+
+        return view('admin.acquired-items', compact('items'));
+    }
+
+    /**
+     * Show public listings.
+     */
+    public function publicListings(Request $request)
+    {
+        if (!Session::has('admin_token')) {
+            return redirect('/');
+        }
+
+        $token = Session::get('admin_token');
+
+        try {
+            $response = Http::timeout(30)
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'Authorization' => 'Bearer ' . $token,
+                ])
+                ->get('https://fati-api.alertaraqc.com/api/admin/items', [
+                    'status' => 'public',
+                ]);
+
+            $items = $response->successful() ? $response->json()['data'] ?? [] : [];
+        } catch (\Exception $e) {
+            $items = [];
+        }
+
+        return view('admin.public-listings', compact('items'));
+    }
+
+    /**
+     * Show reserved items.
+     */
+    public function reservedItems(Request $request)
+    {
+        if (!Session::has('admin_token')) {
+            return redirect('/');
+        }
+
+        $token = Session::get('admin_token');
+
+        try {
+            $response = Http::timeout(30)
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'Authorization' => 'Bearer ' . $token,
+                ])
+                ->get('https://fati-api.alertaraqc.com/api/admin/items', [
+                    'status' => 'reserved',
+                ]);
+
+            $items = $response->successful() ? $response->json()['data'] ?? [] : [];
+        } catch (\Exception $e) {
+            $items = [];
+        }
+
+        return view('admin.reserved-items', compact('items'));
+    }
+
+    /**
+     * Show sold items.
+     */
+    public function soldItems(Request $request)
+    {
+        if (!Session::has('admin_token')) {
+            return redirect('/');
+        }
+
+        $token = Session::get('admin_token');
+
+        try {
+            $response = Http::timeout(30)
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'Authorization' => 'Bearer ' . $token,
+                ])
+                ->get('https://fati-api.alertaraqc.com/api/admin/items', [
+                    'status' => 'sold',
+                ]);
+
+            $items = $response->successful() ? $response->json()['data'] ?? [] : [];
+        } catch (\Exception $e) {
+            $items = [];
+        }
+
+        return view('admin.sold-items', compact('items'));
+    }
+
+    /**
+     * Show student/user management page.
+     */
+    public function students(Request $request)
+    {
+        if (!Session::has('admin_token')) {
+            return redirect('/');
+        }
+
+        $token = Session::get('admin_token');
+
+        try {
+            $response = Http::timeout(30)
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'Authorization' => 'Bearer ' . $token,
+                ])
+                ->get('https://fati-api.alertaraqc.com/api/admin/students');
+
+            $students = $response->successful() ? $response->json()['data'] ?? [] : [];
+        } catch (\Exception $e) {
+            $students = [];
+        }
+
+        return view('admin.students', compact('students'));
+    }
+
+    /**
+     * Show conversations/messaging page.
+     */
+    public function conversations(Request $request)
+    {
+        if (!Session::has('admin_token')) {
+            return redirect('/');
+        }
+
+        return view('admin.conversations');
+    }
+
+    /**
+     * Show transactions page.
+     */
+    public function transactions(Request $request)
+    {
+        if (!Session::has('admin_token')) {
+            return redirect('/');
+        }
+
+        $token = Session::get('admin_token');
+        $filter = $request->query('filter', '');
+
+        try {
+            $params = [];
+            if ($filter) {
+                $params['status'] = $filter;
+            }
+
+            $response = Http::timeout(30)
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'Authorization' => 'Bearer ' . $token,
+                ])
+                ->get('https://fati-api.alertaraqc.com/api/admin/transactions', $params);
+
+            $transactions = $response->successful() ? $response->json()['data'] ?? [] : [];
+        } catch (\Exception $e) {
+            $transactions = [];
+        }
+
+        return view('admin.transactions', compact('transactions'));
+    }
+
+    /**
+     * Show reports and analytics page.
+     */
+    public function reports(Request $request)
+    {
+        if (!Session::has('admin_token')) {
+            return redirect('/');
+        }
+
+        $token = Session::get('admin_token');
+
+        try {
+            $response = Http::timeout(30)
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'Authorization' => 'Bearer ' . $token,
+                ])
+                ->get('https://fati-api.alertaraqc.com/api/admin/reports');
+
+            $reports = $response->successful() ? $response->json()['data'] ?? [] : [];
+        } catch (\Exception $e) {
+            $reports = [];
+        }
+
+        return view('admin.reports', compact('reports'));
+    }
+
+    /**
+     * Show categories management page.
+     */
+    public function categories(Request $request)
+    {
+        if (!Session::has('admin_token')) {
+            return redirect('/');
+        }
+
+        $token = Session::get('admin_token');
+
+        try {
+            $response = Http::timeout(30)
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'Authorization' => 'Bearer ' . $token,
+                ])
+                ->get('https://fati-api.alertaraqc.com/api/admin/categories');
+
+            $categories = $response->successful() ? $response->json()['data'] ?? [] : [];
+        } catch (\Exception $e) {
+            $categories = [];
+        }
+
+        return view('admin.categories', compact('categories'));
+    }
+
+    /**
+     * Show activity logs page.
+     */
+    public function activity(Request $request)
+    {
+        if (!Session::has('admin_token')) {
+            return redirect('/');
+        }
+
+        $token = Session::get('admin_token');
+
+        try {
+            $response = Http::timeout(30)
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'Authorization' => 'Bearer ' . $token,
+                ])
+                ->get('https://fati-api.alertaraqc.com/api/admin/activity');
+
+            $activities = $response->successful() ? $response->json()['data'] ?? [] : [];
+        } catch (\Exception $e) {
+            $activities = [];
+        }
+
+        return view('admin.activity', compact('activities'));
+    }
+
+    /**
+     * Show admin profile page.
+     */
+    public function profile(Request $request)
+    {
+        if (!Session::has('admin_token')) {
+            return redirect('/');
+        }
+
+        $adminData = Session::get('admin_data');
+
+        return view('admin.profile', compact('adminData'));
+    }
+
+    /**
+     * Show settings page.
+     */
+    public function settings(Request $request)
+    {
+        if (!Session::has('admin_token')) {
+            return redirect('/');
+        }
+
+        return view('admin.settings');
     }
     
     /**
