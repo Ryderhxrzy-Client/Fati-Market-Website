@@ -130,6 +130,10 @@
                     <i class="fas fa-arrow-right text-gray-400"></i>
                 </a>
                 <a href="{{ route('admin.private-offers') }}" class="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition">
+                    <span class="text-gray-700">Manage Private Offers</span>
+                    <i class="fas fa-arrow-right text-gray-400"></i>
+                </a>
+                <a href="{{ route('admin.acquired-items') }}" class="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition">
                     <span class="text-gray-700">Manage Items</span>
                     <i class="fas fa-arrow-right text-gray-400"></i>
                 </a>
