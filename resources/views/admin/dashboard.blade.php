@@ -125,15 +125,15 @@
                 <i class="fas fa-bolt text-yellow-500"></i>
             </div>
             <div class="space-y-2">
-                <a href="{{ route('admin.users') }}" class="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition">
+                <a href="{{ route('admin.students') }}" class="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition">
                     <span class="text-gray-700">Manage Users</span>
                     <i class="fas fa-arrow-right text-gray-400"></i>
                 </a>
-                <a href="{{ route('admin.items') }}" class="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition">
+                <a href="{{ route('admin.private-offers') }}" class="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition">
                     <span class="text-gray-700">Manage Items</span>
                     <i class="fas fa-arrow-right text-gray-400"></i>
                 </a>
-                <a href="{{ route('admin.chat') }}" class="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition">
+                <a href="{{ route('admin.conversations') }}" class="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition">
                     <span class="text-gray-700">View Messages</span>
                     <i class="fas fa-arrow-right text-gray-400"></i>
                 </a>
