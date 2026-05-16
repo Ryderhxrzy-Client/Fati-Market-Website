@@ -19,10 +19,20 @@ Route::middleware('admin.auth')->group(function () {
     Route::get('/inventory/sold-items', [AdminAuthController::class, 'soldItems'])->name('admin.sold-items');
 
     // Transactions
-    Route::get('/transactions', [AdminAuthController::class, 'transactions'])->name('admin.transactions');
+    Route::get('/transactions/history', [AdminAuthController::class, 'transactionHistory'])->name('admin.transactions.history');
+    Route::get('/transactions/points-given', [AdminAuthController::class, 'pointsGiven'])->name('admin.transactions.points-given');
+    Route::get('/transactions/points-received', [AdminAuthController::class, 'pointsReceived'])->name('admin.transactions.points-received');
+    Route::get('/transactions/cash', [AdminAuthController::class, 'cashTransactions'])->name('admin.transactions.cash');
+    Route::get('/transactions/trade', [AdminAuthController::class, 'tradeTransactions'])->name('admin.transactions.trade');
+    Route::get('/transactions/profit', [AdminAuthController::class, 'profitSummary'])->name('admin.transactions.profit');
+    Route::get('/transactions', [AdminAuthController::class, 'transactionHistory'])->name('admin.transactions');
 
     // Reports & Analytics
-    Route::get('/reports', [AdminAuthController::class, 'reports'])->name('admin.reports');
+    Route::get('/reports/sales', [AdminAuthController::class, 'salesReport'])->name('admin.reports.sales');
+    Route::get('/reports/profit', [AdminAuthController::class, 'profitReport'])->name('admin.reports.profit');
+    Route::get('/reports/categories', [AdminAuthController::class, 'categoriesReport'])->name('admin.reports.categories');
+    Route::get('/reports/users', [AdminAuthController::class, 'usersReport'])->name('admin.reports.users');
+    Route::get('/reports', [AdminAuthController::class, 'salesReport'])->name('admin.reports');
 
     // Categories
     Route::get('/categories', [AdminAuthController::class, 'categories'])->name('admin.categories');
