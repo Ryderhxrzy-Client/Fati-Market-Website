@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php artisan *)",
+      "Bash(Test-Path *)",
+      "Bash(Select-String \"transactions\")",
+      "Bash(Get-ChildItem -Recurse -Filter \"*transaction*\" -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object -First 20)",
+      "Bash(Find-ChildItem -Path \"C:\\\\web\\\\Fati-Market-Website\\\\app\\\\Http\\\\Controllers\" -Name \"*Auth*\" -o -Name \"*Login*\")",
+      "Bash(Select-Object -First 10)"
+    ]
+  }
+}
