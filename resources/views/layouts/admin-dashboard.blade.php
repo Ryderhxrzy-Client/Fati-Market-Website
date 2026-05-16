@@ -7,6 +7,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="api-token" content="{{ session('admin_token', '') }}">
+    <meta name="current-route" content="{{ Route::currentRouteName() }}">
     <style>
         :root {
             --primary-green: #1A5C38;
@@ -196,10 +198,22 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-full bg-gray-300"></div>
+                    @php
+                        $profilePic = session('admin_profile_picture');
+                        $firstName = session('admin_first_name', 'Admin');
+                        $lastName = session('admin_last_name', 'User');
+                        $email = session('admin_data.email', 'admin@fatimarket.com');
+                    @endphp
+                    @if($profilePic)
+                        <img src="{{ $profilePic }}" alt="Profile" class="w-8 h-8 rounded-full object-cover">
+                    @else
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center text-white text-sm font-bold">
+                            {{ substr($firstName, 0, 1) }}
+                        </div>
+                    @endif
                     <div class="flex-1 min-w-0">
-                        <p class="text-sm font-semibold text-gray-900 truncate">{{ session('admin_data.name') ?? 'Admin' }}</p>
-                        <p class="text-xs text-gray-500 truncate">{{ session('admin_data.email') ?? 'admin@fatimarket.com' }}</p>
+                        <p class="text-sm font-semibold text-gray-900 truncate">{{ $firstName }} {{ $lastName }}</p>
+                        <p class="text-xs text-gray-500 truncate">{{ $email }}</p>
                     </div>
                 </div>
             </div>
@@ -208,39 +222,39 @@
             <div class="p-4">
                 <!-- Dashboard -->
                 <div class="mb-6">
-                    <a href="{{ route('admin.dashboard') }}" class="sidebar-link active" data-page="dashboard">
+                    <a href="{{ route('admin.dashboard') }}" class="sidebar-link" data-route="admin.dashboard">
                         <i class="fas fa-chart-line"></i>
                         <span>Dashboard</span>
                     </a>
                 </div>
 
                 <!-- Inventory Management Dropdown -->
-                <div class="mb-6">
-                    <button class="sidebar-link w-full text-left flex justify-between items-center" onclick="toggleMenu(this)">
+                <div class="mb-6 inventory-dropdown">
+                    <button class="sidebar-link w-full text-left flex justify-between items-center inventory-toggle" onclick="toggleMenu(this)">
                         <span class="flex items-center gap-3">
                             <i class="fas fa-box"></i>
                             <span>Inventory Management</span>
                         </span>
                         <i class="fas fa-chevron-down text-xs transition-transform"></i>
                     </button>
-                    <div class="submenu hidden pl-8 space-y-1 mt-2">
-                        <a href="{{ route('admin.private-offers') }}" class="sidebar-link text-sm" data-page="private-offers">
+                    <div class="submenu hidden pl-8 space-y-1 mt-2 inventory-submenu">
+                        <a href="{{ route('admin.private-offers') }}" class="sidebar-link text-sm" data-route="admin.private-offers">
                             <i class="fas fa-lock text-xs"></i>
                             <span>Private Offers</span>
                         </a>
-                        <a href="{{ route('admin.acquired-items') }}" class="sidebar-link text-sm" data-page="acquired-items">
+                        <a href="{{ route('admin.acquired-items') }}" class="sidebar-link text-sm" data-route="admin.acquired-items">
                             <i class="fas fa-shopping-bag text-xs"></i>
                             <span>Acquired Items</span>
                         </a>
-                        <a href="{{ route('admin.public-listings') }}" class="sidebar-link text-sm" data-page="public-listings">
+                        <a href="{{ route('admin.public-listings') }}" class="sidebar-link text-sm" data-route="admin.public-listings">
                             <i class="fas fa-globe text-xs"></i>
                             <span>Public Listings</span>
                         </a>
-                        <a href="{{ route('admin.reserved-items') }}" class="sidebar-link text-sm" data-page="reserved-items">
+                        <a href="{{ route('admin.reserved-items') }}" class="sidebar-link text-sm" data-route="admin.reserved-items">
                             <i class="fas fa-clock text-xs"></i>
                             <span>Reserved Items</span>
                         </a>
-                        <a href="{{ route('admin.sold-items') }}" class="sidebar-link text-sm" data-page="sold-items">
+                        <a href="{{ route('admin.sold-items') }}" class="sidebar-link text-sm" data-route="admin.sold-items">
                             <i class="fas fa-check-circle text-xs"></i>
                             <span>Sold Items</span>
                         </a>
@@ -248,45 +262,78 @@
                 </div>
 
                 <!-- Transactions Dropdown -->
-                <div class="mb-6">
-                    <button class="sidebar-link w-full text-left flex justify-between items-center" onclick="toggleMenu(this)">
+                <div class="mb-6 transactions-dropdown">
+                    <button class="sidebar-link w-full text-left flex justify-between items-center transactions-toggle" onclick="toggleMenu(this)">
                         <span class="flex items-center gap-3">
                             <i class="fas fa-exchange-alt"></i>
                             <span>Transactions</span>
                         </span>
                         <i class="fas fa-chevron-down text-xs transition-transform"></i>
                     </button>
-                    <div class="submenu hidden pl-8 space-y-1 mt-2">
-                        <a href="{{ route('admin.transactions') }}" class="sidebar-link text-sm" data-page="transactions">
-                            <i class="fas fa-list text-xs"></i>
-                            <span>All Transactions</span>
+                    <div class="submenu hidden pl-8 space-y-1 mt-2 transactions-submenu">
+                        <a href="{{ route('admin.transactions.history') }}" class="sidebar-link text-sm" data-route="admin.transactions.history">
+                            <i class="fas fa-history text-xs"></i>
+                            <span>Transaction History</span>
                         </a>
-                        <a href="{{ route('admin.transactions') }}?filter=completed" class="sidebar-link text-sm" data-page="transactions-completed">
-                            <i class="fas fa-check text-xs"></i>
-                            <span>Completed</span>
+                        <a href="{{ route('admin.transactions.points-given') }}" class="sidebar-link text-sm" data-route="admin.transactions.points-given">
+                            <i class="fas fa-arrow-up text-xs"></i>
+                            <span>Points Given</span>
                         </a>
-                        <a href="{{ route('admin.transactions') }}?filter=pending" class="sidebar-link text-sm" data-page="transactions-pending">
-                            <i class="fas fa-hourglass text-xs"></i>
-                            <span>Pending</span>
+                        <a href="{{ route('admin.transactions.points-received') }}" class="sidebar-link text-sm" data-route="admin.transactions.points-received">
+                            <i class="fas fa-arrow-down text-xs"></i>
+                            <span>Points Received</span>
                         </a>
-                        <a href="{{ route('admin.transactions') }}?filter=failed" class="sidebar-link text-sm" data-page="transactions-failed">
-                            <i class="fas fa-times text-xs"></i>
-                            <span>Failed</span>
+                        <a href="{{ route('admin.transactions.cash') }}" class="sidebar-link text-sm" data-route="admin.transactions.cash">
+                            <i class="fas fa-dollar-sign text-xs"></i>
+                            <span>Cash Transactions</span>
+                        </a>
+                        <a href="{{ route('admin.transactions.trade') }}" class="sidebar-link text-sm" data-route="admin.transactions.trade">
+                            <i class="fas fa-exchange-alt text-xs"></i>
+                            <span>Trade Transactions</span>
+                        </a>
+                        <a href="{{ route('admin.transactions.profit') }}" class="sidebar-link text-sm" data-route="admin.transactions.profit">
+                            <i class="fas fa-chart-line text-xs"></i>
+                            <span>Profit Summary</span>
                         </a>
                     </div>
                 </div>
 
                 <!-- Report & Analytics -->
                 <div class="mb-6">
-                    <a href="{{ route('admin.reports') }}" class="sidebar-link" data-page="reports">
-                        <i class="fas fa-chart-bar"></i>
-                        <span>Report & Analytics</span>
-                    </a>
+                    <button class="sidebar-link w-full text-left flex justify-between items-center reports-toggle" onclick="toggleMenu(this)">
+                        <span class="flex items-center gap-3">
+                            <i class="fas fa-chart-bar"></i>
+                            <span>Report & Analytics</span>
+                        </span>
+                        <i class="fas fa-chevron-down text-xs transition-transform"></i>
+                    </button>
+                    <div class="submenu hidden pl-8 space-y-1 mt-2 reports-submenu">
+                        <a href="{{ route('admin.reports.sales') }}" class="sidebar-link text-sm" data-route="admin.reports.sales">
+                            <i class="fas fa-shopping-cart text-xs"></i>
+                            <span>Total Item Acquired</span>
+                        </a>
+                        <a href="{{ route('admin.reports.sales') }}" class="sidebar-link text-sm" data-route="admin.reports.sales">
+                            <i class="fas fa-boxes text-xs"></i>
+                            <span>Total Item Sold</span>
+                        </a>
+                        <a href="{{ route('admin.reports.profit') }}" class="sidebar-link text-sm" data-route="admin.reports.profit">
+                            <i class="fas fa-money-bill-wave text-xs"></i>
+                            <span>Total Profit</span>
+                        </a>
+                        <a href="{{ route('admin.reports.categories') }}" class="sidebar-link text-sm" data-route="admin.reports.categories">
+                            <i class="fas fa-list text-xs"></i>
+                            <span>Most Sold Category</span>
+                        </a>
+                        <a href="{{ route('admin.reports.users') }}" class="sidebar-link text-sm" data-route="admin.reports.users">
+                            <i class="fas fa-user-check text-xs"></i>
+                            <span>Active Users</span>
+                        </a>
+                    </div>
                 </div>
 
                 <!-- Categories -->
                 <div class="mb-6">
-                    <a href="{{ route('admin.categories') }}" class="sidebar-link" data-page="categories">
+                    <a href="{{ route('admin.categories') }}" class="sidebar-link" data-route="admin.categories">
                         <i class="fas fa-tags"></i>
                         <span>Categories</span>
                     </a>
@@ -294,7 +341,7 @@
 
                 <!-- Activity Logs -->
                 <div class="mb-6">
-                    <a href="{{ route('admin.activity') }}" class="sidebar-link" data-page="activity">
+                    <a href="{{ route('admin.activity') }}" class="sidebar-link" data-route="admin.activity">
                         <i class="fas fa-history"></i>
                         <span>Activity Logs</span>
                     </a>
@@ -302,7 +349,7 @@
 
                 <!-- Chat -->
                 <div class="mb-6">
-                    <a href="{{ route('admin.conversations') }}" class="sidebar-link" data-page="conversations">
+                    <a href="{{ route('admin.conversations') }}" class="sidebar-link" data-route="admin.conversations">
                         <i class="fas fa-comments"></i>
                         <span>Chat</span>
                         <span class="ml-auto text-xs bg-red-500 text-white px-2 py-1 rounded" id="unreadCount" style="display: none;">0</span>
@@ -311,7 +358,7 @@
 
                 <!-- User Management -->
                 <div class="mb-6">
-                    <a href="{{ route('admin.students') }}" class="sidebar-link" data-page="students">
+                    <a href="{{ route('admin.students') }}" class="sidebar-link" data-route="admin.students">
                         <i class="fas fa-users"></i>
                         <span>User Management</span>
                     </a>
@@ -319,7 +366,7 @@
 
                 <!-- Profile -->
                 <div class="mb-6">
-                    <a href="{{ route('admin.profile') }}" class="sidebar-link" data-page="profile">
+                    <a href="{{ route('admin.profile') }}" class="sidebar-link" data-route="admin.profile">
                         <i class="fas fa-user-circle"></i>
                         <span>Profile</span>
                     </a>
@@ -327,7 +374,7 @@
 
                 <!-- Settings -->
                 <div class="mb-6">
-                    <a href="{{ route('admin.settings') }}" class="sidebar-link" data-page="settings">
+                    <a href="{{ route('admin.settings') }}" class="sidebar-link" data-route="admin.settings">
                         <i class="fas fa-cog"></i>
                         <span>Settings</span>
                     </a>
@@ -363,7 +410,17 @@
                         <i class="fas fa-bell text-xl text-gray-600"></i>
                         <span class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
                     </button>
-                    <div class="w-10 h-10 rounded-full bg-gray-300"></div>
+                    @php
+                        $profilePic = session('admin_profile_picture');
+                        $firstName = session('admin_first_name', 'A');
+                    @endphp
+                    @if($profilePic)
+                        <img src="{{ $profilePic }}" alt="Profile" class="w-10 h-10 rounded-full object-cover">
+                    @else
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center text-white font-bold">
+                            {{ substr($firstName, 0, 1) }}
+                        </div>
+                    @endif
                 </div>
             </header>
 
@@ -406,23 +463,35 @@
             }, 3000);
         }
 
-        // Update active link based on current page
+        // Update active link based on current route
         document.addEventListener('DOMContentLoaded', function() {
-            const currentPath = window.location.pathname;
+            const currentRoute = document.querySelector('meta[name="current-route"]')?.getAttribute('content') || '';
+
+            // Mark active link
             document.querySelectorAll('.sidebar-link').forEach(link => {
                 link.classList.remove('active');
-                if (link.getAttribute('href') === currentPath) {
+                const route = link.getAttribute('data-route');
+                if (route && currentRoute.includes(route)) {
                     link.classList.add('active');
                 }
             });
 
-            // Keep inventory menu open if a submenu item is active
-            const activeSubmenuLink = document.querySelector('.inventory-submenu .sidebar-link.active');
-            if (activeSubmenuLink) {
-                const submenu = activeSubmenuLink.closest('.inventory-submenu');
-                submenu.classList.remove('hidden');
-                const icon = submenu.previousElementSibling.querySelector('.fa-chevron-down');
-                if (icon) icon.style.transform = 'rotate(180deg)';
+            // Open dropdown if child is active
+            const activeLink = document.querySelector('.sidebar-link.active');
+            if (activeLink) {
+                const inventorySubmenu = activeLink.closest('.inventory-submenu');
+                const transactionsSubmenu = activeLink.closest('.transactions-submenu');
+
+                if (inventorySubmenu) {
+                    inventorySubmenu.classList.remove('hidden');
+                    const icon = document.querySelector('.inventory-toggle .fa-chevron-down');
+                    if (icon) icon.style.transform = 'rotate(180deg)';
+                }
+                if (transactionsSubmenu) {
+                    transactionsSubmenu.classList.remove('hidden');
+                    const icon = document.querySelector('.transactions-toggle .fa-chevron-down');
+                    if (icon) icon.style.transform = 'rotate(180deg)';
+                }
             }
         });
 
