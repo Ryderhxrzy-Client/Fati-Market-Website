@@ -204,7 +204,13 @@
 
 @push('scripts')
 <script>
-    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+const token = document.querySelector('meta[name="api-token"]')?.getAttribute('content') ||
+    sessionStorage.getItem('admin_token') ||
+    localStorage.getItem('admin_token') ||
+    '';
+
+
+
 
     document.getElementById('searchInput').addEventListener('keyup', function(e) {
         const searchTerm = e.target.value.toLowerCase();
@@ -364,16 +370,17 @@
         const itemId = window.currentMessageItem.item_id;
 
         try {
-            const response = fetch(`https://fati-api.alertaraqc.com/api/messages`, {
+            const receiverId = window.currentMessageItem.seller_id;
+
+            const response = fetch(`https://fati-api.alertaraqc.com/api/messages/${itemId}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${sessionStorage.getItem('admin_token') || ''}`,
+                    'Authorization': `Bearer ${token}`,
                     'Accept': 'application/json'
                 },
                 body: JSON.stringify({
-                    seller_id: sellerId,
-                    item_id: itemId,
+                    receiver_id: receiverId,
                     message: message
                 })
             });
@@ -403,7 +410,7 @@
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${sessionStorage.getItem('admin_token') || ''}`,
+                    'Authorization': `Bearer ${token}`,
                     'Accept': 'application/json'
                 },
                 body: JSON.stringify({
