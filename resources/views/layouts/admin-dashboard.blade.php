@@ -185,7 +185,8 @@
 <body class="bg-gray-50">
     <div class="flex h-screen">
         <!-- Sidebar/Drawer -->
-        <div class="drawer-container bg-white shadow-lg w-64 overflow-y-auto">
+        <div class="drawer-container bg-white shadow-lg w-72 overflow-y-auto">
+
             <!-- Logo Section -->
             <div class="p-6 border-b border-gray-200">
                 <div class="flex items-center gap-3 mb-4">
@@ -407,24 +408,24 @@
                     <h2 class="text-2xl font-bold text-gray-900">@yield('title', 'Dashboard')</h2>
                 </div>
                 <div class="flex items-center gap-4">
-                    <div class="relative">
-                        <input type="search" placeholder="Search..." class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
-                    </div>
-                    <button class="relative">
-                        <i class="fas fa-bell text-xl text-gray-600"></i>
-                        <span class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
-                    </button>
+                    <!-- top bar search/notification removed -->
+
                     @php
                         $profilePic = session('admin_profile_picture');
                         $firstName = session('admin_first_name', 'A');
                     @endphp
                     @if($profilePic)
-                        <img src="{{ $profilePic }}" alt="Profile" class="w-10 h-10 rounded-full object-cover">
+                        <a href="{{ route('admin.profile') }}" class="cursor-pointer">
+                            <img src="{{ $profilePic }}" alt="Profile" class="w-10 h-10 rounded-full object-cover">
+                        </a>
                     @else
-                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center text-white font-bold">
-                            {{ substr($firstName, 0, 1) }}
-                        </div>
+                        <a href="{{ route('admin.profile') }}" class="cursor-pointer">
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center text-white font-bold">
+                                {{ substr($firstName, 0, 1) }}
+                            </div>
+                        </a>
                     @endif
+
                 </div>
             </header>
 
