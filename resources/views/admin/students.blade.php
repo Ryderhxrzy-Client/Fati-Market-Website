@@ -69,6 +69,45 @@
     </div>
 </div>
 
+<!-- Approve/Decline/Block Modal -->
+<div id="verificationActionModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg shadow-lg max-w-2xl w-full mx-4">
+        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+            <h3 id="verificationActionModalTitle" class="text-lg font-bold text-gray-900">Action</h3>
+            <button onclick="closeVerificationActionModal()" class="text-gray-500 hover:text-gray-700">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+
+        <div class="p-6 space-y-4">
+            <div class="grid grid-cols-1 gap-2">
+                <p><span class="font-semibold">User:</span> <span id="actionModalUserName"></span></p>
+                <p><span class="font-semibold">Email:</span> <span id="actionModalUserEmail"></span></p>
+                <p><span class="font-semibold">Status:</span> <span id="actionModalUserStatus"></span></p>
+                <p class="text-xs text-gray-500">User ID: <span id="actionModalStudentId"></span></p>
+                <p class="text-xs text-gray-500 break-all">API: <span id="actionModalEndpoint"></span></p>
+
+            </div>
+
+
+
+            <div id="actionReasonWrapper" class="hidden">
+                <label class="block text-sm font-medium text-gray-900 mb-1">Reason</label>
+                <textarea id="actionReasonInput" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Enter reason..." rows="4"></textarea>
+                <p id="actionReasonError" class="hidden text-sm text-red-600 mt-1">Reason is required.</p>
+            </div>
+
+            <div class="flex gap-3 justify-end pt-2">
+                <button type="button" onclick="closeVerificationActionModal()" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition font-medium">
+                    Cancel
+                </button>
+                <button type="button" onclick="submitVerificationAction()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
+                    Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 @push('scripts')
 <script>
 let token = null;
@@ -151,7 +190,7 @@ function renderStudents(students) {
                         }
                         <div>
                             <p class="font-medium text-gray-900">${fullName}</p>
-                            <p class="text-xs text-gray-500">ID: ${student.user_id}</p>
+                            <p class="text-xs text-gray-500">Verification ID: ${student.student_verification_id}</p>
                         </div>
                     </div>
                 </td>
@@ -180,15 +219,15 @@ function renderStudents(students) {
                 <td class="px-6 py-4">
                     <div class="flex gap-2">
                         ${status === 'pending' ? `
-                            <button class="px-3 py-1 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded transition approve-btn" title="Approve" onclick="approveStudent('${student.student_verification_id}')">
+                            <button class="px-3 py-1 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded transition approve-btn" title="Approve" onclick="openActionModal('${student.student_verification_id}', 'approve')">
                                 <i class="fas fa-check"></i> Approve
                             </button>
-                            <button class="px-3 py-1 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded transition decline-btn" title="Decline" onclick="declineStudent('${student.student_verification_id}')">
+                            <button class="px-3 py-1 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded transition decline-btn" title="Decline" onclick="openActionModal('${student.student_verification_id}', 'decline')">
                                 <i class="fas fa-times"></i> Decline
                             </button>
                         ` : ''}
                         ${status !== 'blocked' ? `
-                            <button class="px-3 py-1 text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 rounded transition block-btn" title="Block" onclick="blockStudent('${student.student_verification_id}')">
+                            <button class="px-3 py-1 text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 rounded transition block-btn" title="Block" onclick="openActionModal('${student.student_verification_id}', 'block')">
                                 <i class="fas fa-ban"></i> Block
                             </button>
                         ` : ''}
@@ -202,8 +241,9 @@ function renderStudents(students) {
 }
 
 function showVerificationModal(studentId) {
-    const student = allStudents.find(s => s.student_verification_id == studentId);
+    const student = allStudents.find(s => String(s.student_verification_id) === String(studentId));
     if (!student) return;
+
 
     document.getElementById('verificationImage').src = student.verification_document;
     document.getElementById('modalUserName').textContent = `${student.first_name} ${student.last_name}`;
@@ -216,72 +256,110 @@ function closeVerificationModal() {
     document.getElementById('verificationModal').classList.add('hidden');
 }
 
-async function approveStudent(studentId) {
-    if (!confirm('Approve this student?')) return;
+let currentAction = null;
 
-    try {
-        const response = await fetch(`https://fati-api.alertaraqc.com/api/admin/students/${studentId}/approve`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            }
-        });
+function openActionModal(studentId, action) {
+    const student = allStudents.find(s => String(s.student_verification_id) === String(studentId));
+    if (!student) return;
 
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-        showToast('Student approved successfully', 'success');
-        await loadStudents();
-    } catch (error) {
-        console.error('Error approving student:', error);
-        showToast('Error approving student: ' + error.message, 'error');
+    currentAction = action;
+
+    document.getElementById('actionModalUserName').textContent = `${student.first_name} ${student.last_name}`;
+    document.getElementById('actionModalUserEmail').textContent = student.email;
+    document.getElementById('actionModalUserStatus').textContent = student.status || 'pending';
+    document.getElementById('actionModalStudentId').textContent = student.user_id;
+    document.getElementById('actionModalEndpoint').textContent = `https://fati-api.alertaraqc.com/api/admin/students/${student.student_verification_id}/${action}`;
+
+
+
+    document.getElementById('actionReasonError').classList.add('hidden');
+
+    document.getElementById('actionReasonInput').value = '';
+
+    const titleMap = {
+        approve: 'Approve Student',
+        decline: 'Decline Student',
+        block: 'Block Student'
+    };
+
+    document.getElementById('verificationActionModalTitle').textContent = titleMap[action] || 'Action';
+
+    const reasonWrapper = document.getElementById('actionReasonWrapper');
+    if (action === 'decline' || action === 'block') {
+        reasonWrapper.classList.remove('hidden');
+    } else {
+        reasonWrapper.classList.add('hidden');
     }
+
+    document.getElementById('verificationActionModal').classList.remove('hidden');
 }
 
-async function declineStudent(studentId) {
-    if (!confirm('Decline this student?')) return;
-
-    try {
-        const response = await fetch(`https://fati-api.alertaraqc.com/api/admin/students/${studentId}/decline`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            }
-        });
-
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-        showToast('Student declined', 'info');
-        await loadStudents();
-    } catch (error) {
-        console.error('Error declining student:', error);
-        showToast('Error declining student: ' + error.message, 'error');
-    }
+function closeVerificationActionModal() {
+    document.getElementById('verificationActionModal').classList.add('hidden');
 }
 
-async function blockStudent(studentId) {
-    if (!confirm('Block this student?')) return;
+async function submitVerificationAction() {
+    const action = currentAction;
+    const studentId = document.getElementById('actionModalStudentId').textContent;
+
+    const reason = document.getElementById('actionReasonInput').value?.trim() || '';
+
+    if ((action === 'decline' || action === 'block') && !reason) {
+        document.getElementById('actionReasonError').classList.remove('hidden');
+        return;
+    }
 
     try {
-        const response = await fetch(`https://fati-api.alertaraqc.com/api/admin/students/${studentId}/block`, {
-            method: 'POST',
+        let endpoint = `https://fati-api.alertaraqc.com/api/admin/students/${studentId}/${action}`;
+        let body = undefined;
+
+        if (action === 'decline' || action === 'block') {
+            body = JSON.stringify({ reason });
+        }
+
+        const response = await fetch(endpoint, {
+            method: 'PUT',
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Accept': 'application/json',
                 'Content-Type': 'application/json'
-            }
+            },
+            ...(body ? { body } : {})
         });
 
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const contentType = response.headers.get('content-type') || '';
+        const payload = contentType.includes('application/json') ? await response.json().catch(() => null) : null;
 
-        showToast('Student blocked', 'error');
+        if (!response.ok) {
+            const apiMsg = payload?.message || payload?.error || `HTTP ${response.status}`;
+            throw new Error(apiMsg);
+        }
+
+        if (action === 'approve') showToast('Student approved successfully', 'success');
+        if (action === 'decline') showToast('Student declined', 'info');
+        if (action === 'block') showToast('Student blocked', 'error');
+
+// Optimistically update local list so UI updates immediately
+        if (payload?.status) {
+            const idx = allStudents.findIndex(s => String(s.student_verification_id) === String(studentId));
+            if (idx !== -1) {
+                allStudents[idx].status = payload.status;
+                if (typeof payload.is_verified !== 'undefined') {
+                    allStudents[idx].is_verified = payload.is_verified;
+                }
+            }
+        }
+
+        closeVerificationActionModal();
         await loadStudents();
+
+        // Debug/log the latest state
+        console.log('Action success payload:', payload);
+
     } catch (error) {
-        console.error('Error blocking student:', error);
-        showToast('Error blocking student: ' + error.message, 'error');
+        console.error('Error submitting action:', error);
+        showToast('Error: ' + error.message, 'error');
     }
 }
 
