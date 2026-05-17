@@ -25,6 +25,7 @@
                         <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Item</th>
                         <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Buyer / Seller</th>
                         <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Payment Method</th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Points Used</th>
                         <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Status</th>
                     </tr>
                 </thead>
@@ -51,6 +52,9 @@
                                 <p class="text-sm text-gray-900">{{ $transaction['payment_method'] ?? 'N/A' }}</p>
                             </td>
                             <td class="px-6 py-4">
+                                <p class="text-sm font-semibold text-blue-600">{{ $transaction['points_used'] ?? '0' }}</p>
+                            </td>
+                            <td class="px-6 py-4">
                                 @php
                                     $status = $transaction['status'] ?? 'pending';
                                     $statusColors = [
@@ -67,7 +71,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-6 py-12 text-center">
+                            <td colspan="6" class="px-6 py-12 text-center">
                                 <i class="fas fa-inbox text-4xl text-gray-300 mb-3 block"></i>
                                 <p class="text-gray-500">No transactions found</p>
                             </td>
