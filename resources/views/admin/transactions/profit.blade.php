@@ -8,70 +8,103 @@
     <div class="flex justify-between items-center">
         <div>
             <h3 class="text-lg font-bold text-gray-900">Profit Summary</h3>
-            <p class="text-sm text-gray-600">View profit summaries and reports</p>
-        </div>
-        <div class="flex gap-3">
-            <input type="search" placeholder="Search summaries..." id="searchInput" class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+            <p class="text-sm text-gray-600">View profit metrics and transaction statistics</p>
         </div>
     </div>
 
-    <!-- Profit Summary Table -->
+    <!-- Profit Metrics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- Total Profit -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-start justify-between">
+                <div>
+                    <p class="text-sm text-gray-600 font-medium">Total Profit</p>
+                    <p class="text-3xl font-bold text-green-600 mt-2">{{ $transactions['total_profit'] ?? '0' }}</p>
+                </div>
+                <div class="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
+                    <i class="fas fa-money-bill-wave text-green-600"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Monthly Profit -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-start justify-between">
+                <div>
+                    <p class="text-sm text-gray-600 font-medium">Monthly Profit</p>
+                    <p class="text-3xl font-bold text-blue-600 mt-2">{{ $transactions['monthly_profit'] ?? '0' }}</p>
+                </div>
+                <div class="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
+                    <i class="fas fa-chart-line text-blue-600"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Completed Transactions -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-start justify-between">
+                <div>
+                    <p class="text-sm text-gray-600 font-medium">Completed Transactions</p>
+                    <p class="text-3xl font-bold text-purple-600 mt-2">{{ $transactions['completed_transactions'] ?? '0' }}</p>
+                </div>
+                <div class="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center">
+                    <i class="fas fa-check-circle text-purple-600"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Average Per Transaction -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-start justify-between">
+                <div>
+                    <p class="text-sm text-gray-600 font-medium">Avg Per Transaction</p>
+                    <p class="text-3xl font-bold text-orange-600 mt-2">{{ $transactions['avg_per_transaction'] ?? '0' }}</p>
+                </div>
+                <div class="w-12 h-12 rounded-lg bg-orange-100 flex items-center justify-center">
+                    <i class="fas fa-calculator text-orange-600"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Per Card Breakdown -->
+    @if(isset($transactions['per_card']) && !empty($transactions['per_card']))
     <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h4 class="text-lg font-semibold text-gray-900">Profit Per Card</h4>
+        </div>
         <div class="overflow-x-auto">
             <table class="w-full">
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Summary Type</th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Card</th>
                         <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Total Profit</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Period</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Actions</th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Completed Txns</th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Avg Per Txn</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200">
-                    @forelse($transactions as $transaction)
+                    @foreach($transactions['per_card'] as $card)
                         <tr class="hover:bg-gray-50 transition">
                             <td class="px-6 py-4">
-                                <p class="text-sm font-medium text-gray-900">{{ $transaction['type'] ?? 'Summary' }}</p>
+                                <p class="text-sm font-medium text-gray-900">{{ $card['card_name'] ?? 'N/A' }}</p>
                             </td>
                             <td class="px-6 py-4">
-                                <p class="text-sm font-semibold text-green-600">{{ $transaction['total_profit'] ?? '0' }}</p>
+                                <p class="text-sm font-semibold text-green-600">{{ $card['total_profit'] ?? '0' }}</p>
                             </td>
                             <td class="px-6 py-4">
-                                <p class="text-sm text-gray-600">{{ $transaction['period'] ?? 'N/A' }}</p>
+                                <p class="text-sm text-gray-600">{{ $card['completed_transactions'] ?? '0' }}</p>
                             </td>
                             <td class="px-6 py-4">
-                                <div class="flex gap-2">
-                                    <button class="px-3 py-1 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded transition" title="View details">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                </div>
+                                <p class="text-sm font-semibold text-orange-600">{{ $card['avg_per_transaction'] ?? '0' }}</p>
                             </td>
                         </tr>
-                    @empty
-                        <tr>
-                            <td colspan="4" class="px-6 py-12 text-center">
-                                <i class="fas fa-inbox text-4xl text-gray-300 mb-3 block"></i>
-                                <p class="text-gray-500">No profit summaries found</p>
-                            </td>
-                        </tr>
-                    @endforelse
+                    @endforeach
                 </tbody>
             </table>
         </div>
     </div>
+    @endif
 </div>
 
-@push('scripts')
-<script>
-    document.getElementById('searchInput').addEventListener('keyup', function(e) {
-        const searchTerm = e.target.value.toLowerCase();
-        document.querySelectorAll('tbody tr').forEach(row => {
-            if (row.querySelector('td')) {
-                const text = row.textContent.toLowerCase();
-                row.style.display = text.includes(searchTerm) ? '' : 'none';
-            }
-        });
-    });
-</script>
-@endpush
 @endsection
