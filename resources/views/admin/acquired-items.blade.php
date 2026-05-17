@@ -243,7 +243,10 @@
 
 @push('scripts')
 <script>
-    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    const token = document.querySelector('meta[name="api-token"]')?.getAttribute('content') ||
+        sessionStorage.getItem('admin_token') ||
+        localStorage.getItem('admin_token') ||
+        '';
 
     document.getElementById('searchInput').addEventListener('keyup', function(e) {
         const searchTerm = e.target.value.toLowerCase();
@@ -329,10 +332,9 @@
         const imageUrl = !Array.isArray(item.photos) || item.photos.length === 0 ? null : item.photos[0];
 
         document.getElementById('editItemId').value = item.item_id;
-        document.getElementById('editStatus').value = item.status || 'acquired';
+        document.getElementById('editStatus').value = item.status || 'private';
         document.getElementById('editMarkupPoints').value = item.markup_points || 0;
 
-        // Populate item details
         const detailsHtml = `
             <div>
                 ${imageUrl ? `<img src="${imageUrl}" alt="${item.title}" class="w-full h-48 rounded object-cover mb-4">` : ''}
@@ -364,10 +366,7 @@
         `;
 
         document.getElementById('editItemDetails').innerHTML = detailsHtml;
-
-        // Store current item for messaging
         window.currentEditItem = item;
-
         document.getElementById('editModal').classList.add('active');
     }
 
@@ -379,14 +378,6 @@
         document.getElementById('messageSellerId').textContent = item.seller_email;
         document.getElementById('messageContent').value = '';
         window.currentMessageItem = item;
-        document.getElementById('messageModal').classList.add('active');
-    }
-
-    function openMessageModal() {
-        if (!window.currentEditItem) return;
-        document.getElementById('messageSellerId').textContent = window.currentEditItem.seller_email;
-        document.getElementById('messageContent').value = '';
-        window.currentMessageItem = window.currentEditItem;
         document.getElementById('messageModal').classList.add('active');
     }
 
@@ -403,20 +394,19 @@
             return;
         }
 
-        const sellerId = window.currentMessageItem.seller_id;
+        const receiverId = window.currentMessageItem.seller_id;
         const itemId = window.currentMessageItem.item_id;
 
         try {
-            const response = fetch(`https://fati-api.alertaraqc.com/api/messages`, {
+            const response = fetch(`https://fati-api.alertaraqc.com/api/messages/${itemId}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${sessionStorage.getItem('admin_token') || ''}`,
+                    'Authorization': `Bearer ${token}`,
                     'Accept': 'application/json'
                 },
                 body: JSON.stringify({
-                    seller_id: sellerId,
-                    item_id: itemId,
+                    receiver_id: receiverId,
                     message: message
                 })
             });
@@ -460,16 +450,18 @@
         const itemId = window.currentSendPointsItem.item_id;
 
         try {
-            const response = fetch(`https://fati-api.alertaraqc.com/api/admin/items/${itemId}/send-points`, {
+            const response = fetch(`https://fati-api.alertaraqc.com/api/admin/send-points`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${sessionStorage.getItem('admin_token') || ''}`,
+                    'Authorization': `Bearer ${token}`,
                     'Accept': 'application/json'
                 },
                 body: JSON.stringify({
-                    seller_id: sellerId,
-                    points: points
+                    user_id: sellerId,
+                    points: points,
+                    reason: 'sale',
+                    related_item_id: itemId
                 })
             });
 
@@ -499,7 +491,7 @@
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${sessionStorage.getItem('admin_token') || ''}`,
+                    'Authorization': `Bearer ${token}`,
                     'Accept': 'application/json'
                 },
                 body: JSON.stringify({
@@ -540,3 +532,4 @@
 </script>
 @endpush
 @endsection
+
