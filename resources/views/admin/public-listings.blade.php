@@ -23,7 +23,7 @@
                     <tr>
                         <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Item</th>
                         <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Seller</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Points</th>
+                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Markup Points</th>
                         <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Listed Date</th>
                         <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Actions</th>
                     </tr>
@@ -56,7 +56,7 @@
                                 <p class="text-sm text-gray-900">{{ $sellerEmail }}</p>
                             </td>
                             <td class="px-6 py-4">
-                                <p class="text-sm font-medium text-green-600">{{ $points }} pts</p>
+                                <p class="text-sm font-medium text-green-600">{{ $item['markup_points'] ?? 0 }} pts</p>
                             </td>
                             <td class="px-6 py-4">
                                 <p class="text-sm text-gray-600">{{ isset($item['created_at']) ? date('M d, Y', strtotime($item['created_at'])) : 'N/A' }}</p>
