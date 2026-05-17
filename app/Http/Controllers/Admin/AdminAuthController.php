@@ -390,7 +390,23 @@ class AdminAuthController extends Controller
                 ])
                 ->get('https://fati-api.alertaraqc.com/api/admin/transactions');
 
-            $transactions = $response->successful() ? $response->json()['data'] ?? [] : [];
+            if ($response->successful()) {
+                $apiTransactions = $response->json()['data'] ?? [];
+                
+                // Transform API data to match view expectations
+                $transactions = array_map(function ($txn) {
+                    return [
+                        'transaction_id' => $txn['transaction_id'] ?? null,
+                        'item_title' => $txn['item']['title'] ?? 'N/A',
+                        'buyer_email' => $txn['buyer']['email'] ?? 'N/A',
+                        'seller_email' => $txn['seller']['email'] ?? 'N/A',
+                        'payment_method' => $txn['payment_method'] ?? 'N/A',
+                        'status' => $txn['status'] ?? 'pending',
+                        'points_used' => $txn['points_used'] ?? 0,
+                        'transaction_date' => $txn['transaction_date'] ?? null,
+                    ];
+                }, $apiTransactions);
+            }
         } catch (\Exception $e) {
             \Log::error('Transaction history fetch error: ' . $e->getMessage());
             $transactions = [];
@@ -535,26 +551,41 @@ class AdminAuthController extends Controller
                 ])
                 ->get('https://fati-api.alertaraqc.com/api/admin/transactions/profit-summary');
 
-            $transactions = $response->successful() ? $response->json()['data'] ?? [] : [];
+            if ($response->successful()) {
+                $data = $response->json()['data'] ?? [];
+                
+                // Map API data to view field names
+                $transactions = [
+                    'total_profit' => (int)($data['total_profit_points'] ?? 0),
+                    'monthly_profit' => (int)($data['monthly_profit_points'] ?? 0),
+                    'completed_transactions' => (int)($data['completed_transactions'] ?? 0),
+                    'avg_per_transaction' => (float)($data['average_profit_per_transaction'] ?? 0),
+                ];
+            }
         } catch (\Exception $e) {
             \Log::error('Profit summary fetch error: ' . $e->getMessage());
-            $transactions = [];
+            $transactions = [
+                'total_profit' => 0,
+                'monthly_profit' => 0,
+                'completed_transactions' => 0,
+                'avg_per_transaction' => 0,
+            ];
         }
 
         return view('admin.transactions.profit', compact('transactions'));
     }
 
     /**
-     * Show sales report.
+     * Show items acquired report.
      */
-    public function salesReport(Request $request)
+    public function itemsAcquiredReport(Request $request)
     {
         if (!Session::has('admin_token')) {
             return redirect('/');
         }
 
         $token = Session::get('admin_token');
-        $reportData = [];
+        $reportData = ['total_acquired' => 0, 'sales' => []];
 
         try {
             $response = Http::timeout(30)
@@ -564,13 +595,124 @@ class AdminAuthController extends Controller
                 ])
                 ->get('https://fati-api.alertaraqc.com/api/admin/reports/sales');
 
-            $reportData = $response->successful() ? $response->json()['data'] ?? [] : [];
+            if ($response->successful()) {
+                $data = $response->json()['data'] ?? [];
+                
+                $reportData['total_acquired'] = $data['total_items_acquired'] ?? 0;
+                
+                // Sales table
+                $recentSales = $data['recent_sales'] ?? [];
+                $reportData['sales'] = array_map(function ($sale) {
+                    return [
+                        'transaction_id' => $sale['transaction_id'] ?? null,
+                        'item_name' => $sale['item']['title'] ?? 'N/A',
+                        'buyer_email' => $sale['buyer']['email'] ?? 'N/A',
+                        'seller_email' => $sale['seller']['email'] ?? 'N/A',
+                        'points_used' => $sale['points_used'] ?? 0,
+                        'status' => $sale['status'] ?? 'pending',
+                    ];
+                }, $recentSales);
+            }
         } catch (\Exception $e) {
-            \Log::error('Sales report fetch error: ' . $e->getMessage());
-            $reportData = [];
+            \Log::error('Items acquired report fetch error: ' . $e->getMessage());
+            $reportData = ['total_acquired' => 0, 'sales' => []];
         }
 
-        return view('admin.reports.sales', compact('reportData'));
+        return view('admin.reports.items-acquired', compact('reportData'));
+    }
+
+    /**
+     * Show items sold report.
+     */
+    public function itemsSoldReport(Request $request)
+    {
+        if (!Session::has('admin_token')) {
+            return redirect('/');
+        }
+
+        $token = Session::get('admin_token');
+        $reportData = ['total_sold' => 0, 'sales' => []];
+
+        try {
+            $response = Http::timeout(30)
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'Authorization' => 'Bearer ' . $token,
+                ])
+                ->get('https://fati-api.alertaraqc.com/api/admin/reports/sales');
+
+            if ($response->successful()) {
+                $data = $response->json()['data'] ?? [];
+                
+                $reportData['total_sold'] = $data['total_items_sold'] ?? 0;
+                
+                // Sales table
+                $recentSales = $data['recent_sales'] ?? [];
+                $reportData['sales'] = array_map(function ($sale) {
+                    return [
+                        'transaction_id' => $sale['transaction_id'] ?? null,
+                        'item_name' => $sale['item']['title'] ?? 'N/A',
+                        'buyer_email' => $sale['buyer']['email'] ?? 'N/A',
+                        'seller_email' => $sale['seller']['email'] ?? 'N/A',
+                        'points_used' => $sale['points_used'] ?? 0,
+                        'status' => $sale['status'] ?? 'pending',
+                    ];
+                }, $recentSales);
+            }
+        } catch (\Exception $e) {
+            \Log::error('Items sold report fetch error: ' . $e->getMessage());
+            $reportData = ['total_sold' => 0, 'sales' => []];
+        }
+
+        return view('admin.reports.items-sold', compact('reportData'));
+    }
+
+    /**
+     * Show total profit report.
+     */
+    public function totalProfitReport(Request $request)
+    {
+        if (!Session::has('admin_token')) {
+            return redirect('/');
+        }
+
+        $token = Session::get('admin_token');
+        $reportData = [
+            'total_profit_points' => 0,
+            'monthly_profit_points' => 0,
+            'completed_transactions' => 0,
+            'average_profit_per_transaction' => 0,
+        ];
+
+        try {
+            $response = Http::timeout(30)
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'Authorization' => 'Bearer ' . $token,
+                ])
+                ->get('https://fati-api.alertaraqc.com/api/admin/transactions/profit-summary');
+
+            if ($response->successful()) {
+                $data = $response->json()['data'] ?? [];
+                
+                $reportData = [
+                    'total_profit_points' => (int)($data['total_profit_points'] ?? 0),
+                    'monthly_profit_points' => (int)($data['monthly_profit_points'] ?? 0),
+                    'completed_transactions' => (int)($data['completed_transactions'] ?? 0),
+                    'average_profit_per_transaction' => (float)($data['average_profit_per_transaction'] ?? 0),
+                ];
+            }
+        } catch (\Exception $e) {
+            \Log::error('Total profit report fetch error: ' . $e->getMessage());
+            $reportData = [
+                'total_profit_points' => 0,
+                'monthly_profit_points' => 0,
+                'completed_transactions' => 0,
+                'average_profit_per_transaction' => 0,
+            ];
+        }
+
+        return view('admin.reports.total-profit', compact('reportData'));
     }
 
     /**
@@ -583,20 +725,54 @@ class AdminAuthController extends Controller
         }
 
         $token = Session::get('admin_token');
-        $reportData = [];
+        $reportData = ['total_markup' => 0, 'monthly_profit' => [], 'top_items' => []];
 
         try {
-            $response = Http::timeout(30)
+            // Fetch profit summary
+            $profitResponse = Http::timeout(30)
                 ->withHeaders([
                     'Accept' => 'application/json',
                     'Authorization' => 'Bearer ' . $token,
                 ])
-                ->get('https://fati-api.alertaraqc.com/api/admin/reports/profit');
+                ->get('https://fati-api.alertaraqc.com/api/admin/transactions/profit-summary');
 
-            $reportData = $response->successful() ? $response->json()['data'] ?? [] : [];
+            if ($profitResponse->successful()) {
+                $profitData = $profitResponse->json()['data'] ?? [];
+                $reportData['total_markup'] = (int)($profitData['total_profit_points'] ?? 0);
+            }
+
+            // Fetch sales report for monthly profit
+            $salesResponse = Http::timeout(30)
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'Authorization' => 'Bearer ' . $token,
+                ])
+                ->get('https://fati-api.alertaraqc.com/api/admin/reports/sales');
+
+            if ($salesResponse->successful()) {
+                $salesData = $salesResponse->json()['data'] ?? [];
+                
+                // Map monthly sales data
+                $reportData['monthly_profit'] = array_map(function ($sale) {
+                    return [
+                        'month' => $sale['month'] ?? 'N/A',
+                        'count' => $sale['count'] ?? 0,
+                    ];
+                }, $salesData['sales_by_month'] ?? []);
+
+                // Map recent sales as top profitable items
+                $recentSales = $salesData['recent_sales'] ?? [];
+                $reportData['top_items'] = array_map(function ($sale) {
+                    return [
+                        'item_name' => $sale['item']['title'] ?? 'N/A',
+                        'markup_points' => $sale['item']['markup_points'] ?? 0,
+                        'seller_email' => $sale['seller']['email'] ?? 'N/A',
+                    ];
+                }, $recentSales);
+            }
         } catch (\Exception $e) {
             \Log::error('Profit report fetch error: ' . $e->getMessage());
-            $reportData = [];
+            $reportData = ['total_markup' => 0, 'monthly_profit' => [], 'top_items' => []];
         }
 
         return view('admin.reports.profit', compact('reportData'));
@@ -612,7 +788,7 @@ class AdminAuthController extends Controller
         }
 
         $token = Session::get('admin_token');
-        $reportData = [];
+        $reportData = ['most_sold' => [], 'categories' => []];
 
         try {
             $response = Http::timeout(30)
@@ -622,10 +798,30 @@ class AdminAuthController extends Controller
                 ])
                 ->get('https://fati-api.alertaraqc.com/api/admin/reports/categories');
 
-            $reportData = $response->successful() ? $response->json()['data'] ?? [] : [];
+            if ($response->successful()) {
+                $data = $response->json()['data'] ?? [];
+                
+                // Most sold category
+                $mosSold = $data['most_sold_category'] ?? [];
+                $reportData['most_sold'] = [
+                    'category_name' => $mosSold['category_name'] ?? 'N/A',
+                    'items_sold' => $mosSold['items_sold'] ?? 0,
+                    'total_markup_profit' => $mosSold['total_markup_profit'] ?? 0,
+                ];
+                
+                // All categories
+                $reportData['categories'] = array_map(function ($cat) {
+                    return [
+                        'category_name' => $cat['category_name'] ?? 'N/A',
+                        'items_sold' => $cat['items_sold'] ?? 0,
+                        'total_markup_profit' => $cat['total_markup_profit'] ?? 0,
+                        'average_markup_per_item' => $cat['average_markup_per_item'] ?? 0,
+                    ];
+                }, $data['category_sales'] ?? []);
+            }
         } catch (\Exception $e) {
             \Log::error('Categories report fetch error: ' . $e->getMessage());
-            $reportData = [];
+            $reportData = ['most_sold' => [], 'categories' => []];
         }
 
         return view('admin.reports.categories', compact('reportData'));
@@ -641,7 +837,12 @@ class AdminAuthController extends Controller
         }
 
         $token = Session::get('admin_token');
-        $reportData = [];
+        $reportData = [
+            'active_users' => 0,
+            'total_students' => 0,
+            'top_buyers' => [],
+            'top_sellers' => [],
+        ];
 
         try {
             $response = Http::timeout(30)
@@ -651,10 +852,40 @@ class AdminAuthController extends Controller
                 ])
                 ->get('https://fati-api.alertaraqc.com/api/admin/reports/users');
 
-            $reportData = $response->successful() ? $response->json()['data'] ?? [] : [];
+            if ($response->successful()) {
+                $data = $response->json()['data'] ?? [];
+                
+                $reportData['active_users'] = $data['active_users'] ?? 0;
+                $reportData['total_students'] = $data['total_students'] ?? 0;
+                
+                // Map top buyers
+                $reportData['top_buyers'] = array_slice(array_map(function ($buyer) {
+                    return [
+                        'user_id' => $buyer['user_id'] ?? null,
+                        'email' => $buyer['email'] ?? 'N/A',
+                        'wallet_points' => $buyer['wallet_points'] ?? 0,
+                        'transaction_count' => $buyer['transactions_as_buyer_count'] ?? 0,
+                    ];
+                }, $data['top_buyers'] ?? []), 0, 5);
+                
+                // Map top sellers
+                $reportData['top_sellers'] = array_slice(array_map(function ($seller) {
+                    return [
+                        'user_id' => $seller['user_id'] ?? null,
+                        'email' => $seller['email'] ?? 'N/A',
+                        'wallet_points' => $seller['wallet_points'] ?? 0,
+                        'transaction_count' => $seller['transactions_as_seller_count'] ?? 0,
+                    ];
+                }, $data['top_sellers'] ?? []), 0, 5);
+            }
         } catch (\Exception $e) {
             \Log::error('Users report fetch error: ' . $e->getMessage());
-            $reportData = [];
+            $reportData = [
+                'active_users' => 0,
+                'total_students' => 0,
+                'top_buyers' => [],
+                'top_sellers' => [],
+            ];
         }
 
         return view('admin.reports.users', compact('reportData'));
