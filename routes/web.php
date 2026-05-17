@@ -28,11 +28,20 @@ Route::middleware('admin.auth')->group(function () {
     Route::get('/transactions', [AdminAuthController::class, 'transactionHistory'])->name('admin.transactions');
 
     // Reports & Analytics
-    Route::get('/reports/sales', [AdminAuthController::class, 'salesReport'])->name('admin.reports.sales');
-    Route::get('/reports/profit', [AdminAuthController::class, 'profitReport'])->name('admin.reports.profit');
+    Route::get('/reports/items-acquired', [AdminAuthController::class, 'itemsAcquiredReport'])->name('admin.reports.items-acquired');
+    Route::get('/reports/items-sold', [AdminAuthController::class, 'itemsSoldReport'])->name('admin.reports.items-sold');
+    Route::get('/reports/total-profit', [AdminAuthController::class, 'totalProfitReport'])->name('admin.reports.total-profit');
     Route::get('/reports/categories', [AdminAuthController::class, 'categoriesReport'])->name('admin.reports.categories');
     Route::get('/reports/users', [AdminAuthController::class, 'usersReport'])->name('admin.reports.users');
-    Route::get('/reports', [AdminAuthController::class, 'salesReport'])->name('admin.reports');
+    // NOTE: There is no AdminAuthController::salesReport() in this project.
+    // Use the separate pages instead:
+    // - /reports/items-acquired
+    // - /reports/items-sold
+    Route::get('/reports/profit', [AdminAuthController::class, 'profitReport'])->name('admin.reports.profit');
+    // Home reports route (optional): keep it, but do not mark it as the same as acquired/sold.
+    Route::get('/reports', [AdminAuthController::class, 'itemsAcquiredReport'])->name('admin.reports');
+
+
 
     // Categories
     Route::get('/categories', [AdminAuthController::class, 'categories'])->name('admin.categories');
