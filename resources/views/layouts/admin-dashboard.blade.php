@@ -308,26 +308,30 @@
                         <i class="fas fa-chevron-down text-xs transition-transform"></i>
                     </button>
                     <div class="submenu hidden pl-8 space-y-1 mt-2 reports-submenu">
-                        <a href="{{ route('admin.reports.sales') }}" class="sidebar-link text-sm" data-route="admin.reports.sales">
-                            <i class="fas fa-shopping-cart text-xs"></i>
+                        <a href="{{ route('admin.reports.items-acquired') }}" class="sidebar-link text-sm" data-route="admin.reports.items-acquired">
+                            <i class="fas fa-shopping-bag text-xs"></i>
                             <span>Total Item Acquired</span>
                         </a>
-                        <a href="{{ route('admin.reports.sales') }}" class="sidebar-link text-sm" data-route="admin.reports.sales">
+                        <a href="{{ route('admin.reports.items-sold') }}" class="sidebar-link text-sm" data-route="admin.reports.items-sold">
                             <i class="fas fa-boxes text-xs"></i>
                             <span>Total Item Sold</span>
                         </a>
+
                         <a href="{{ route('admin.reports.profit') }}" class="sidebar-link text-sm" data-route="admin.reports.profit">
                             <i class="fas fa-money-bill-wave text-xs"></i>
-                            <span>Total Profit</span>
+                            <span>Total Profit (from markup)</span>
                         </a>
+
                         <a href="{{ route('admin.reports.categories') }}" class="sidebar-link text-sm" data-route="admin.reports.categories">
                             <i class="fas fa-list text-xs"></i>
                             <span>Most Sold Category</span>
                         </a>
+
                         <a href="{{ route('admin.reports.users') }}" class="sidebar-link text-sm" data-route="admin.reports.users">
                             <i class="fas fa-user-check text-xs"></i>
                             <span>Active Users</span>
                         </a>
+
                     </div>
                 </div>
 
@@ -481,6 +485,7 @@
             if (activeLink) {
                 const inventorySubmenu = activeLink.closest('.inventory-submenu');
                 const transactionsSubmenu = activeLink.closest('.transactions-submenu');
+                const reportsSubmenu = activeLink.closest('.reports-submenu');
 
                 if (inventorySubmenu) {
                     inventorySubmenu.classList.remove('hidden');
@@ -492,7 +497,13 @@
                     const icon = document.querySelector('.transactions-toggle .fa-chevron-down');
                     if (icon) icon.style.transform = 'rotate(180deg)';
                 }
+                if (reportsSubmenu) {
+                    reportsSubmenu.classList.remove('hidden');
+                    const icon = document.querySelector('.reports-toggle .fa-chevron-down');
+                    if (icon) icon.style.transform = 'rotate(180deg)';
+                }
             }
+
         });
 
         // Close drawer on mobile when link is clicked
