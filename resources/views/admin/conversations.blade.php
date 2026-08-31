@@ -381,8 +381,10 @@ function paymentMethodLabel(method) {
  * its payment is still unverified, and the payment is what is being asked
  * about.
  */
-function paymentStateBadge(order) {
-    const status = order.payment_status;
+function paymentStateBadge(order, statusAt) {
+    // The thread is a history: a card keeps the state it recorded, so the
+    // order card still reads "not paid yet" after the receipt card arrives.
+    const status = statusAt || order.payment_status;
     const map = {
         verified: [order.is_full_points_checkout ? 'Paid with points' : 'Paid', '#065f46', '#d1fae5'],
         proof_submitted: ['Checking payment', '#92400e', '#fef3c7'],
@@ -465,8 +467,8 @@ function renderOrderCard(msg, isAdmin, senderName, timestamp) {
                     </div>
 
                     <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px;">
-                        ${paymentStateBadge(order)}
-                        ${orderStatusBadge(order.status)}
+                        ${paymentStateBadge(order, msg.payment_status_at)}
+                        ${orderStatusBadge(msg.order_status_at || order.status)}
                     </div>
 
                     ${order.payment_proof ? `
