@@ -6,7 +6,7 @@
 <div class="space-y-6">
     <!-- Report Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="fm-card fm-card-body">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm text-gray-600 font-medium">Total Revenue</p>
@@ -19,7 +19,7 @@
             </div>
         </div>
 
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="fm-card fm-card-body">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm text-gray-600 font-medium">Total Orders</p>
@@ -32,7 +32,7 @@
             </div>
         </div>
 
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="fm-card fm-card-body">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm text-gray-600 font-medium">Active Users</p>
@@ -45,7 +45,7 @@
             </div>
         </div>
 
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="fm-card fm-card-body">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm text-gray-600 font-medium">Conversion Rate</p>
@@ -62,16 +62,16 @@
     <!-- Charts Row -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Revenue Chart -->
-        <div class="bg-white rounded-lg shadow p-6">
-            <h3 class="text-lg font-bold text-gray-900 mb-4">Revenue Trend</h3>
+        <div class="fm-card fm-card-body">
+            <h3 class="mb-4">Revenue Trend</h3>
             <div class="h-64 bg-gray-50 rounded flex items-center justify-center">
                 <p class="text-gray-500">Chart placeholder - Revenue over time</p>
             </div>
         </div>
 
         <!-- Orders Chart -->
-        <div class="bg-white rounded-lg shadow p-6">
-            <h3 class="text-lg font-bold text-gray-900 mb-4">Orders by Category</h3>
+        <div class="fm-card fm-card-body">
+            <h3 class="mb-4">Orders by Category</h3>
             <div class="h-64 bg-gray-50 rounded flex items-center justify-center">
                 <p class="text-gray-500">Chart placeholder - Orders distribution</p>
             </div>
@@ -81,8 +81,8 @@
     <!-- Top Products & Users -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Top Products -->
-        <div class="bg-white rounded-lg shadow p-6">
-            <h3 class="text-lg font-bold text-gray-900 mb-4">Top Products</h3>
+        <div class="fm-card fm-card-body">
+            <h3 class="mb-4">Top Products</h3>
             <div class="space-y-3">
                 <div class="flex items-center justify-between p-3 bg-gray-50 rounded">
                     <span class="text-sm text-gray-900">Organic Tomatoes</span>
@@ -104,8 +104,8 @@
         </div>
 
         <!-- Top Users -->
-        <div class="bg-white rounded-lg shadow p-6">
-            <h3 class="text-lg font-bold text-gray-900 mb-4">Top Buyers</h3>
+        <div class="fm-card fm-card-body">
+            <h3 class="mb-4">Top Buyers</h3>
             <div class="space-y-3">
                 <div class="flex items-center justify-between p-3 bg-gray-50 rounded">
                     <div class="flex items-center gap-2">
@@ -140,20 +140,20 @@
     </div>
 
     <!-- Export Section -->
-    <div class="bg-white rounded-lg shadow p-6">
+    <div class="fm-card fm-card-body">
         <div class="flex items-center justify-between">
             <div>
-                <h3 class="text-lg font-bold text-gray-900">Export Reports</h3>
+                <h3>Export Reports</h3>
                 <p class="text-sm text-gray-600 mt-1">Download detailed reports in various formats</p>
             </div>
             <div class="flex gap-3">
-                <button class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition font-medium">
+                <button class="fm-btn ghost">
                     <i class="fas fa-file-csv mr-2"></i>CSV
                 </button>
-                <button class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition font-medium">
+                <button class="fm-btn ghost">
                     <i class="fas fa-file-pdf mr-2"></i>PDF
                 </button>
-                <button class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
+                <button class="fm-btn primary">
                     <i class="fas fa-download mr-2"></i>Excel
                 </button>
             </div>
