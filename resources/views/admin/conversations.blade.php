@@ -43,12 +43,24 @@
                 </div>
             </div>
 
+            <!-- Pinned offer actions: buttons only, so a long thread cannot
+                 bury the decision that thread exists for. -->
+            <div id="offerPinned"
+                 style="display: none; gap: 8px; flex-wrap: wrap; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--surface-sunk); flex-shrink: 0;"></div>
+
             <!-- Messages Area -->
             <div id="messagesArea" class="flex-1 overflow-y-auto p-6 space-y-4" style="background: #fafafa;">
                 <div class="text-center text-gray-500 mt-20">
                     <i class="fas fa-comments text-4xl mb-3 block text-gray-300"></i>
                     <p class="text-sm">Select a conversation to view messages</p>
                 </div>
+            </div>
+
+            <!-- Decision modal: replaces window.prompt / window.confirm -->
+            <div id="actionModal"
+                 onclick="if (event.target === this) actionModalDone(false)"
+                 style="display: none; position: fixed; inset: 0; background: rgba(12, 48, 33, 0.55); z-index: 80; align-items: center; justify-content: center; padding: 24px;">
+                <div id="actionModalBody" style="background: white; border-radius: 12px; max-width: 420px; width: 100%; padding: 20px; box-shadow: var(--shadow-lg);"></div>
             </div>
 
             <!-- Receipt lightbox / item panel -->
@@ -291,6 +303,11 @@ async function loadConversationMessages(element) {
 
 function renderMessages(messages) {
     const area = document.getElementById('messagesArea');
+
+    // Pin the offer's buttons under the header, so scrolling cannot lose
+    // them. The newest item_listed message carries the live listing.
+    const offerMsg = [...messages].reverse().find((m) => m.kind === 'item_listed' && m.item_card);
+    renderPinnedOffer(offerMsg ? offerMsg.item_card : null);
 
     if (messages.length === 0) {
         area.innerHTML = `
@@ -542,14 +559,25 @@ async function runOrderAction(transactionId, endpoint, label) {
     let reason = null;
 
     if (needsReason) {
-        reason = window.prompt(`${label}: give the buyer a reason.`);
+        reason = await askModal({
+            title: label,
+            body: 'The buyer is told in this chat. Give them the reason.',
+            field: { label: 'Reason', type: 'textarea', placeholder: 'Shown to the buyer' },
+            confirmLabel: label,
+            danger: true,
+        });
         if (reason === null) return;
         if (!reason.trim()) {
-            alert('A reason is required.');
+            showToast('A reason is required.', 'error');
             return;
         }
-    } else if (!window.confirm(`${label} this order?`)) {
-        return;
+    } else {
+        const confirmed = await askModal({
+            title: `${label} this order?`,
+            body: 'The buyer sees the result in this conversation right away.',
+            confirmLabel: label,
+        });
+        if (confirmed === null) return;
     }
 
     busyAction = true;
@@ -587,6 +615,55 @@ async function refreshThread() {
     const element = document.querySelector(selector);
 
     if (element) await loadConversationMessages(element);
+}
+
+// ── The decision modal ───────────────────────────────────────────────────
+
+let actionModalResolve = null;
+
+/**
+ * One modal for every decision. Resolves with the field's value on confirm
+ * (an empty string when there is no field), or null on cancel - the exact
+ * contract window.prompt had, minus the browser chrome.
+ */
+function askModal({ title, body, field, confirmLabel, danger }) {
+    return new Promise((resolve) => {
+        actionModalResolve = resolve;
+
+        const fieldHtml = !field ? '' : field.type === 'textarea'
+            ? `<textarea id="actionModalInput" rows="3" placeholder="${escapeAttr(field.placeholder || '')}"
+                        style="width: 100%; margin-top: 12px; padding: 8px 12px; border: 1px solid var(--line-strong); border-radius: 8px; font-size: 13.5px; font-family: inherit;">${escapeHtml(field.value || '')}</textarea>`
+            : `<input id="actionModalInput" type="${field.type || 'text'}" value="${escapeAttr(field.value || '')}"
+                     placeholder="${escapeAttr(field.placeholder || '')}"
+                     style="width: 100%; margin-top: 12px; padding: 8px 12px; border: 1px solid var(--line-strong); border-radius: 8px; font-size: 13.5px; font-family: inherit;">`;
+
+        document.getElementById('actionModalBody').innerHTML = `
+            <h4 style="margin: 0; font-size: 16px; font-weight: 700; color: var(--ink-900);">${escapeHtml(title)}</h4>
+            <p style="margin: 8px 0 0 0; font-size: 13px; color: var(--ink-600);">${escapeHtml(body || '')}</p>
+            ${field && field.label ? `<label style="display: block; margin-top: 12px; font-size: 12.5px; font-weight: 600; color: var(--ink-700);">${escapeHtml(field.label)}</label>` : ''}
+            ${fieldHtml}
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;">
+                <button onclick="actionModalDone(false)"
+                        style="background: white; color: var(--ink-700); border: 1px solid var(--line-strong); font-size: 13px; font-weight: 600; padding: 8px 15px; border-radius: 8px; cursor: pointer;">Cancel</button>
+                <button onclick="actionModalDone(true)"
+                        style="background: ${danger ? 'var(--danger)' : '#16a34a'}; color: white; border: none; font-size: 13px; font-weight: 600; padding: 8px 15px; border-radius: 8px; cursor: pointer;">${escapeHtml(confirmLabel || 'Confirm')}</button>
+            </div>
+        `;
+
+        document.getElementById('actionModal').style.display = 'flex';
+        setTimeout(() => document.getElementById('actionModalInput')?.focus(), 60);
+    });
+}
+
+function actionModalDone(confirmed) {
+    const input = document.getElementById('actionModalInput');
+    const value = input ? input.value : '';
+
+    document.getElementById('actionModal').style.display = 'none';
+
+    const resolve = actionModalResolve;
+    actionModalResolve = null;
+    if (resolve) resolve(confirmed ? value : null);
 }
 
 // ── Listing offers ───────────────────────────────────────────────────────
@@ -661,16 +738,54 @@ function renderItemOfferCard(msg, isAdmin, senderName, timestamp) {
 }
 
 /**
+ * Buttons only: Accept/Reject while negotiating, schedule and acquire once
+ * accepted. The card in the thread tells the whole story; this strip exists
+ * for when the story has scrolled away.
+ */
+function renderPinnedOffer(item) {
+    const bar = document.getElementById('offerPinned');
+    const pending = item && (item.status || '').toLowerCase() === 'pending';
+
+    if (!pending) {
+        bar.style.display = 'none';
+        bar.innerHTML = '';
+        return;
+    }
+
+    const pinnedButton = (onclick, label, solid, danger) => `
+        <button onclick="${onclick}"
+                style="${solid
+                    ? 'background: #16a34a; color: white; border: 1px solid #16a34a;'
+                    : danger
+                        ? 'background: white; color: var(--danger); border: 1px solid var(--danger);'
+                        : 'background: white; color: var(--brand-700); border: 1px solid var(--brand-600);'}
+                       font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 6px; cursor: pointer;">${label}</button>`;
+
+    bar.innerHTML = item.acquisition_price
+        ? pinnedButton(`scheduleMeetup(${item.item_id})`, item.meetup_schedule ? 'Change schedule' : 'Set schedule', false, false)
+            + pinnedButton(`acquireItem(${item.item_id})`, 'Mark acquired', true, false)
+        : pinnedButton(`acceptOffer(${item.item_id}, '${escapeAttr(item.seller_asking_price || '')}')`, 'Accept offer', true, false)
+            + pinnedButton(`rejectOffer(${item.item_id})`, 'Reject', false, true);
+
+    bar.style.display = 'flex';
+}
+
+/**
  * Accepting an offer is setting the acquisition price - the same first step
  * the inventory workflow takes, against the same endpoint.
  */
 async function acceptOffer(itemId, askingPrice) {
     if (busyAction) return;
 
-    const price = window.prompt('Acquisition price - what the store pays the seller:', askingPrice);
+    const price = await askModal({
+        title: 'Accept this offer',
+        body: 'Set the acquisition price - what the store pays the seller. The QR code and the meet-up come after this.',
+        field: { label: 'Acquisition price (₱)', type: 'number', value: askingPrice, placeholder: 'e.g. 300.00' },
+        confirmLabel: 'Accept offer',
+    });
     if (price === null) return;
     if (!price.trim() || isNaN(Number(price))) {
-        alert('Enter a valid peso amount, e.g. 300 or 299.50.');
+        showToast('Enter a valid peso amount, e.g. 300 or 299.50.', 'error');
         return;
     }
 
@@ -705,12 +820,23 @@ async function acceptOffer(itemId, askingPrice) {
 async function scheduleMeetup(itemId) {
     if (busyAction) return;
 
-    const raw = window.prompt('Meet-up date and time (YYYY-MM-DD HH:MM):');
+    // Tomorrow at 10:00, as a starting point the picker can adjust.
+    const suggested = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    suggested.setHours(10, 0, 0, 0);
+    const pad = (n) => String(n).padStart(2, '0');
+    const suggestedValue = `${suggested.getFullYear()}-${pad(suggested.getMonth() + 1)}-${pad(suggested.getDate())}T10:00`;
+
+    const raw = await askModal({
+        title: 'Meet-up schedule',
+        body: 'When the seller brings the item in. They are told in chat, and reminded 6 hours, 1 hour and 30 minutes before.',
+        field: { label: 'Date and time', type: 'datetime-local', value: suggestedValue },
+        confirmLabel: 'Save schedule',
+    });
     if (raw === null) return;
 
-    const when = new Date(raw.trim().replace(' ', 'T'));
+    const when = new Date(raw.trim());
     if (isNaN(when.getTime())) {
-        alert('Enter the schedule as YYYY-MM-DD HH:MM, e.g. 2026-09-02 14:30.');
+        showToast('Pick a valid date and time.', 'error');
         return;
     }
 
@@ -724,7 +850,7 @@ async function scheduleMeetup(itemId) {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ meetup_schedule: raw.trim() }),
+            body: JSON.stringify({ meetup_schedule: raw.trim().replace('T', ' ') }),
         });
         const payload = await response.json().catch(() => ({}));
 
@@ -746,7 +872,12 @@ async function scheduleMeetup(itemId) {
 async function acquireItem(itemId) {
     if (busyAction) return;
 
-    if (!window.confirm('Mark this item as received and the seller as paid?')) return;
+    const confirmed = await askModal({
+        title: 'Mark as acquired',
+        body: 'Confirm the item is physically in the store and the seller was handed their cash. Scanning their QR does the same with photos attached.',
+        confirmLabel: 'Mark acquired',
+    });
+    if (confirmed === null) return;
 
     busyAction = true;
 
@@ -783,10 +914,16 @@ async function acquireItem(itemId) {
 async function rejectOffer(itemId) {
     if (busyAction) return;
 
-    const reason = window.prompt('Reject this offer - give the seller a reason:');
+    const reason = await askModal({
+        title: 'Reject this offer',
+        body: 'The seller is told in this chat why their offer was turned down.',
+        field: { label: 'Reason', type: 'textarea', placeholder: 'Shown to the seller' },
+        confirmLabel: 'Reject offer',
+        danger: true,
+    });
     if (reason === null) return;
     if (!reason.trim()) {
-        alert('A reason is required.');
+        showToast('A reason is required.', 'error');
         return;
     }
 
