@@ -5,15 +5,15 @@
 @section('content')
 <div class="space-y-6">
     <!-- Filters -->
-    <div class="bg-white rounded-lg shadow p-4">
+    <div class="fm-card fm-card-body">
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">User</label>
-                <input type="text" placeholder="Search user..." class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                <input type="text" placeholder="Search user..." class="fm-input">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Action</label>
-                <select class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                <select class="fm-input">
                     <option value="">All Actions</option>
                     <option value="login">Login</option>
                     <option value="create">Create</option>
@@ -23,7 +23,7 @@
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Date</label>
-                <input type="date" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                <input type="date" class="fm-input">
             </div>
             <div class="flex items-end">
                 <button class="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
@@ -34,8 +34,8 @@
     </div>
 
     <!-- Activity Timeline -->
-    <div class="bg-white rounded-lg shadow overflow-hidden">
-        <div class="divide-y divide-gray-200">
+    <div class="fm-card">
+        <div class="fm-divided">
             @forelse($activities ?? [] as $activity)
                 <div class="p-6 hover:bg-gray-50 transition flex gap-4">
                     <div class="flex-shrink-0">
@@ -60,7 +60,7 @@
                             <h4 class="text-sm font-semibold text-gray-900">{{ $activity['user'] ?? 'Unknown User' }}</h4>
                             <span class="text-xs text-gray-500">{{ ucfirst($action) }}</span>
                         </div>
-                        <p class="text-sm text-gray-600">{{ $activity['description'] ?? 'No description available' }}</p>
+                        <p>{{ $activity['description'] ?? 'No description available' }}</p>
                         <p class="text-xs text-gray-500 mt-2">{{ $activity['timestamp'] ?? 'N/A' }}</p>
                     </div>
                     <div class="flex-shrink-0">
