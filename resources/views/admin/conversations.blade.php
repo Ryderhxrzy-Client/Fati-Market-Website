@@ -6,20 +6,20 @@
 <div style="display: flex; flex-direction: column; height: 100%; margin: -24px -24px -24px -24px; padding: 24px;">
     <!-- Header -->
     <div style="margin-bottom: 16px;">
-        <h3 class="text-lg font-bold text-gray-900">Conversations</h3>
-        <p class="text-sm text-gray-600">Monitor and manage user conversations</p>
+        <h3>Conversations</h3>
+        <p>Monitor and manage user conversations</p>
     </div>
 
     <!-- Search Bar -->
     <div style="margin-bottom: 16px;">
-        <input type="search" placeholder="Search conversations..." id="searchInput" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+        <span class="fm-search"><i class="fas fa-magnifying-glass"></i><input type="search" placeholder="Search conversations..." id="searchInput" class="fm-input"></span>
     </div>
 
     <!-- Main Container -->
     <div style="display: flex; gap: 16px; flex: 1; min-height: 0;">
         <!-- Conversations List (Left) -->
         <div style="width: 35%; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); display: flex; flex-direction: column; overflow: hidden;">
-            <div id="conversationsList" style="flex: 1; overflow-y: auto; border-right: 1px solid #e5e7eb;">
+            <div id="conversationsList" style="flex: 1; overflow-y: auto; border-right: 1px solid var(--line);">
                 <!-- Conversations will be loaded here -->
                 <div class="p-6 text-center text-gray-500">
                     <i class="fas fa-spinner fa-spin text-2xl mb-2 block"></i>
@@ -38,7 +38,7 @@
                     </div>
                     <div>
                         <p class="font-semibold text-gray-900 text-sm">Select a conversation</p>
-                        <p class="text-xs text-gray-500">Choose from the list to start</p>
+                        <p class="cell-sub">Choose from the list to start</p>
                     </div>
                 </div>
             </div>
@@ -54,7 +54,7 @@
             <!-- Receipt lightbox / item panel -->
             <div id="chatOverlay"
                  onclick="if (event.target === this) closeOverlay()"
-                 style="display: none; position: fixed; inset: 0; background: rgba(17,24,39,0.82); z-index: 60; align-items: center; justify-content: center; padding: 32px;">
+                 style="display: none; position: fixed; inset: 0; background: rgba(12, 48, 33, 0.55); z-index: 60; align-items: center; justify-content: center; padding: 32px;">
                 <div id="chatOverlayBody" style="background: white; border-radius: 12px; max-width: 640px; width: 100%; max-height: 88vh; overflow-y: auto; padding: 24px;"></div>
             </div>
 
@@ -62,7 +62,7 @@
             <div id="messageInput" class="px-6 py-4 border-t border-gray-200 hidden" style="flex-shrink: 0;">
                 <div class="flex gap-3">
                     <input type="text" id="messageField" placeholder="Type a message..." class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
-                    <button onclick="sendMessage()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                    <button onclick="sendMessage()" class="fm-btn primary">
                         <i class="fas fa-paper-plane"></i>
                     </button>
                 </div>
@@ -164,7 +164,7 @@ function renderConversations(conversations) {
         const userType = userEmail.includes('student.fatima') ? 'Student' : 'User';
         const statusBadgeColor = {
             'public': '#10b981',
-            'private': '#6b7280',
+            'private': 'var(--ink-500)',
             'sold': '#ef4444',
             'acquired': '#8b5cf6'
         };
@@ -179,22 +179,22 @@ function renderConversations(conversations) {
                 <div style="flex-shrink: 0;">
                     ${conv.profile_picture ?
                         `<img src="${conv.profile_picture}" alt="${userName}" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover;">` :
-                        `<div style="width: 44px; height: 44px; border-radius: 50%; background: #16a34a; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;">${initials}</div>`
+                        `<div style="width: 44px; height: 44px; border-radius: 50%; background: var(--brand-600); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;">${initials}</div>`
                     }
                 </div>
 
                 <div style="flex: 1; min-width: 0;">
                     <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
-                        <p style="font-weight: 600; color: #1f2937; margin: 0; font-size: 14px;">${userName}</p>
+                        <p style="font-weight: 600; color: var(--ink-900); margin: 0; font-size: 14px;">${userName}</p>
                         ${unreadCount > 0 ? `<span style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; background: #ef4444; color: white; font-size: 11px; border-radius: 50%; font-weight: bold;">${unreadCount}</span>` : ''}
                     </div>
                     <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 4px;">
                         <span style="background: ${statusBadgeColor[itemStatus]}; color: white; font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 600; text-transform: capitalize;">${itemStatus}</span>
-                        <span style="color: #6b7280; font-size: 11px;">•</span>
-                        <span style="color: #6b7280; font-size: 11px; font-weight: 500;">${userType}</span>
+                        <span style="color: var(--ink-500); font-size: 11px;">•</span>
+                        <span style="color: var(--ink-500); font-size: 11px; font-weight: 500;">${userType}</span>
                     </div>
-                    <p style="color: #6b7280; font-size: 12px; margin: 2px 0; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; font-weight: 500;">${itemTitle}</p>
-                    <p style="color: #9ca3af; font-size: 12px; margin: 0; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;">${lastMessage}</p>
+                    <p style="color: var(--ink-500); font-size: 12px; margin: 2px 0; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; font-weight: 500;">${itemTitle}</p>
+                    <p style="color: var(--ink-400); font-size: 12px; margin: 0; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;">${lastMessage}</p>
                 </div>
 
                 ${conv.item_photo ? `
@@ -217,7 +217,7 @@ async function loadConversationMessages(element) {
     document.querySelectorAll('.conversation-item').forEach(i => {
         i.style.backgroundColor = '';
     });
-    element.style.backgroundColor = '#f3f4f6';
+    element.style.backgroundColor = 'var(--surface-sunk)';
 
     const convIndex = element.dataset.convIndex;
     const itemId = element.dataset.itemId;
@@ -234,7 +234,7 @@ async function loadConversationMessages(element) {
     const userType = selectedConversation.other_user_email.includes('student.fatima') ? 'Student' : 'User';
     const statusBadgeColor = {
         'public': '#10b981',
-        'private': '#6b7280',
+        'private': 'var(--ink-500)',
         'sold': '#ef4444',
         'acquired': '#8b5cf6'
     };
@@ -243,16 +243,16 @@ async function loadConversationMessages(element) {
         <div style="display: flex; gap: 12px; align-items: center; width: 100%;">
             ${selectedConversation.profile_picture ?
                 `<img src="${selectedConversation.profile_picture}" alt="${userName}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover;">` :
-                `<div style="width: 48px; height: 48px; border-radius: 50%; background: #16a34a; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">${initials}</div>`
+                `<div style="width: 48px; height: 48px; border-radius: 50%; background: var(--brand-600); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">${initials}</div>`
             }
             <div style="flex: 1;">
-                <p style="font-weight: 600; color: #1f2937; margin: 0; font-size: 14px;">${userName}</p>
+                <p style="font-weight: 600; color: var(--ink-900); margin: 0; font-size: 14px;">${userName}</p>
                 <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px;">
                     <span style="background: ${statusBadgeColor[itemStatus]}; color: white; font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 600; text-transform: capitalize;">${itemStatus}</span>
-                    <span style="color: #6b7280; font-size: 11px;">•</span>
-                    <span style="color: #6b7280; font-size: 11px; font-weight: 500;">${userType}</span>
+                    <span style="color: var(--ink-500); font-size: 11px;">•</span>
+                    <span style="color: var(--ink-500); font-size: 11px; font-weight: 500;">${userType}</span>
                 </div>
-                <p style="color: #6b7280; font-size: 12px; margin: 4px 0 0 0;">${selectedConversation.item_title || 'Item'}</p>
+                <p style="color: var(--ink-500); font-size: 12px; margin: 4px 0 0 0;">${selectedConversation.item_title || 'Item'}</p>
             </div>
             ${selectedConversation.item_photo ? `
                 <img src="${selectedConversation.item_photo}" alt="${selectedConversation.item_title}" style="width: 56px; height: 56px; border-radius: 4px; object-fit: cover; flex-shrink: 0;">
@@ -319,14 +319,14 @@ function renderMessages(messages) {
                 <div style="display: flex; gap: 8px; ${isAdmin ? 'flex-direction: row-reverse;' : ''} max-width: 70%;">
                     ${msg.sender_profile_picture ?
                         `<img src="${msg.sender_profile_picture}" alt="${senderName}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex-shrink: 0;">` :
-                        `<div style="width: 32px; height: 32px; border-radius: 50%; ${isAdmin ? 'background: #16a34a;' : 'background: #d1d5db;'} color: white; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; flex-shrink: 0;">${senderName[0]}</div>`
+                        `<div style="width: 32px; height: 32px; border-radius: 50%; ${isAdmin ? 'background: var(--brand-600);' : 'background: var(--line-strong);'} color: white; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; flex-shrink: 0;">${senderName[0]}</div>`
                     }
                     <div style="display: flex; flex-direction: column; ${isAdmin ? 'align-items: flex-end;' : 'align-items: flex-start;'}">
-                        <p style="font-size: 11px; color: #6b7280; margin-bottom: 2px;">${senderName}</p>
-                        <div style="background: ${isAdmin ? '#16a34a;' : '#e5e7eb;'} color: ${isAdmin ? 'white;' : '#1f2937;'} border-radius: 8px; padding: 8px 12px; word-wrap: break-word;">
+                        <p style="font-size: 11px; color: var(--ink-500); margin-bottom: 2px;">${senderName}</p>
+                        <div style="background: ${isAdmin ? 'var(--brand-600);' : 'var(--line);'} color: ${isAdmin ? 'white;' : 'var(--ink-900);'} border-radius: 8px; padding: 8px 12px; word-wrap: break-word;">
                             <p style="font-size: 13px; margin: 0;">${escapeHtml(msg.message)}</p>
                         </div>
-                        <p style="font-size: 11px; color: ${isAdmin ? '#16a34a;' : '#9ca3af;'} margin-top: 4px;">${timestamp}</p>
+                        <p style="font-size: 11px; color: ${isAdmin ? 'var(--brand-600);' : 'var(--ink-400);'} margin-top: 4px;">${timestamp}</p>
                     </div>
                 </div>
             </div>
@@ -378,10 +378,10 @@ function orderStatusBadge(status) {
         reserved: ['Reserved', '#1e40af', '#dbeafe'],
         ready_for_pickup: ['Ready for pickup', '#3730a3', '#e0e7ff'],
         completed: ['Completed', '#065f46', '#d1fae5'],
-        cancelled: ['Cancelled', '#374151', '#f3f4f6'],
+        cancelled: ['Cancelled', 'var(--ink-700)', 'var(--surface-sunk)'],
         rejected: ['Rejected', '#991b1b', '#fee2e2'],
     };
-    const [label, colour, background] = map[status] || [status, '#374151', '#f3f4f6'];
+    const [label, colour, background] = map[status] || [status, 'var(--ink-700)', 'var(--surface-sunk)'];
 
     return badge(label, colour, background);
 }
@@ -393,8 +393,8 @@ function badge(label, colour, background) {
 function summaryRow(label, value, strong) {
     return `
         <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 13px; padding: 3px 0;">
-            <span style="color: #6b7280;">${escapeHtml(label)}</span>
-            <span style="color: #1f2937; ${strong ? 'font-weight: 700;' : ''} text-align: right;">${escapeHtml(value)}</span>
+            <span style="color: var(--ink-500);">${escapeHtml(label)}</span>
+            <span style="color: var(--ink-900); ${strong ? 'font-weight: 700;' : ''} text-align: right;">${escapeHtml(value)}</span>
         </div>
     `;
 }
@@ -411,13 +411,13 @@ function renderOrderCard(msg, isAdmin, senderName, timestamp) {
 
     return `
         <div style="display: flex; ${isAdmin ? 'justify-content: flex-end;' : 'justify-content: flex-start;'} margin-bottom: 12px;">
-            <div style="max-width: 420px; width: 100%; background: white; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden;">
+            <div style="max-width: 420px; width: 100%; background: white; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden;">
 
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #f9fafb; border-bottom: 1px solid #e5e7eb;">
-                    <span style="font-size: 12px; font-weight: 700; color: #166534;">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--surface-sunk); border-bottom: 1px solid var(--line);">
+                    <span style="font-size: 12px; font-weight: 700; color: var(--brand-700);">
                         <i class="fas ${heading[0]}"></i> ${heading[1]}
                     </span>
-                    <span style="font-size: 11px; color: #6b7280;">${escapeHtml(order.receipt_no || ('#' + order.transaction_id))}</span>
+                    <span style="font-size: 11px; color: var(--ink-500);">${escapeHtml(order.receipt_no || ('#' + order.transaction_id))}</span>
                 </div>
 
                 <div style="padding: 14px;">
@@ -425,15 +425,15 @@ function renderOrderCard(msg, isAdmin, senderName, timestamp) {
                          style="display: flex; gap: 10px; align-items: center; cursor: pointer; margin-bottom: 12px;">
                         ${photo
                             ? `<img src="${escapeAttr(photo)}" alt="" style="width: 56px; height: 56px; border-radius: 6px; object-fit: cover; flex-shrink: 0;">`
-                            : `<div style="width: 56px; height: 56px; border-radius: 6px; background: #f3f4f6; display: flex; align-items: center; justify-content: center; color: #9ca3af; flex-shrink: 0;"><i class="fas fa-image"></i></div>`}
+                            : `<div style="width: 56px; height: 56px; border-radius: 6px; background: var(--surface-sunk); display: flex; align-items: center; justify-content: center; color: var(--ink-400); flex-shrink: 0;"><i class="fas fa-image"></i></div>`}
                         <div style="min-width: 0;">
-                            <p style="margin: 0; font-size: 13px; font-weight: 600; color: #1f2937;">${escapeHtml(item.title || ('Item #' + order.item_id))}</p>
-                            <p style="margin: 2px 0 0 0; font-size: 12px; color: #6b7280;">${peso(order.amount_due)} due</p>
-                            <p style="margin: 2px 0 0 0; font-size: 11px; color: #16a34a; font-weight: 600;">Click to view item</p>
+                            <p style="margin: 0; font-size: 13px; font-weight: 600; color: var(--ink-900);">${escapeHtml(item.title || ('Item #' + order.item_id))}</p>
+                            <p style="margin: 2px 0 0 0; font-size: 12px; color: var(--ink-500);">${peso(order.amount_due)} due</p>
+                            <p style="margin: 2px 0 0 0; font-size: 11px; color: var(--brand-600); font-weight: 600;">Click to view item</p>
                         </div>
                     </div>
 
-                    <div style="border-top: 1px solid #f3f4f6; padding-top: 8px;">
+                    <div style="border-top: 1px solid var(--surface-sunk); padding-top: 8px;">
                         ${summaryRow('Price', peso(order.subtotal))}
                         ${order.points_used > 0 ? summaryRow(order.points_used + ' point(s) used', '-' + peso(order.points_discount_amount)) : ''}
                         ${summaryRow('Amount due', peso(order.amount_due), true)}
@@ -452,16 +452,16 @@ function renderOrderCard(msg, isAdmin, senderName, timestamp) {
                              data-reference="${escapeAttr(order.payment_reference || '')}"
                              onclick="openProof(this.dataset.proof, this.dataset.reference)"
                              style="margin-top: 10px; width: 100%; height: 150px; object-fit: cover; border-radius: 8px; cursor: pointer;">
-                        <p style="margin: 4px 0 0 0; font-size: 11px; color: #6b7280;">Click the receipt to see it in full</p>
+                        <p style="margin: 4px 0 0 0; font-size: 11px; color: var(--ink-500);">Click the receipt to see it in full</p>
                     ` : ''}
 
                     ${msg.kind === 'order_update' ? `
-                        <p style="margin: 10px 0 0 0; padding: 8px 10px; background: #f3f4f6; border-radius: 6px; font-size: 12px; color: #374151; white-space: pre-line;">${escapeHtml(msg.message)}</p>
+                        <p style="margin: 10px 0 0 0; padding: 8px 10px; background: var(--surface-sunk); border-radius: 6px; font-size: 12px; color: var(--ink-700); white-space: pre-line;">${escapeHtml(msg.message)}</p>
                     ` : ''}
 
                     ${carriesActions(msg) ? orderActionsHtml(order) : ''}
 
-                    <p style="margin: 8px 0 0 0; font-size: 11px; color: #9ca3af;">${escapeHtml(senderName)} &middot; ${timestamp}</p>
+                    <p style="margin: 8px 0 0 0; font-size: 11px; color: var(--ink-400);">${escapeHtml(senderName)} &middot; ${timestamp}</p>
                 </div>
             </div>
         </div>
@@ -493,25 +493,25 @@ function orderActionsHtml(order) {
     const buttons = [];
 
     if (actions.includes('verify_payment')) {
-        buttons.push(actionButton(id, 'verify-payment', 'Approve', '#16a34a', false));
+        buttons.push(actionButton(id, 'verify-payment', 'Approve', 'var(--brand-600)', false));
     }
     if (actions.includes('complete')) {
-        buttons.push(actionButton(id, 'complete', 'Complete', '#16a34a', false));
+        buttons.push(actionButton(id, 'complete', 'Complete', 'var(--brand-600)', false));
     }
     if (actions.includes('mark_ready_for_pickup')) {
-        buttons.push(actionButton(id, 'ready-for-pickup', 'Ready for pickup', '#4f46e5', false));
+        buttons.push(actionButton(id, 'ready-for-pickup', 'Ready for pickup', 'var(--info)', false));
     }
 
     // Declining a submitted proof and cancelling an order are the same button
     // to Ofelia; which endpoint it hits depends on where the order stands.
     if (actions.includes('reject_payment')) {
-        buttons.push(actionButton(id, 'reject-payment', 'Decline', '#dc2626', true));
+        buttons.push(actionButton(id, 'reject-payment', 'Decline', 'var(--danger)', true));
     } else if (actions.includes('cancel')) {
-        buttons.push(actionButton(id, 'cancel', 'Cancel order', '#dc2626', true));
+        buttons.push(actionButton(id, 'cancel', 'Cancel order', 'var(--danger)', true));
     }
 
     return `
-        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; border-top: 1px solid #f3f4f6; padding-top: 12px;">
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; border-top: 1px solid var(--surface-sunk); padding-top: 12px;">
             ${buttons.join('')}
         </div>
     `;
@@ -598,17 +598,17 @@ function closeOverlay() {
 function openProof(url, reference) {
     showOverlay(`
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <h4 style="margin: 0; font-size: 16px; font-weight: 700; color: #1f2937;">Payment receipt</h4>
-            <button onclick="closeOverlay()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #6b7280;">&times;</button>
+            <h4 style="margin: 0; font-size: 16px; font-weight: 700; color: var(--ink-900);">Payment receipt</h4>
+            <button onclick="closeOverlay()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: var(--ink-500);">&times;</button>
         </div>
-        ${reference ? `<p style="margin: 0 0 12px 0; font-size: 13px; color: #374151;">Reference: <strong>${escapeHtml(reference)}</strong></p>` : ''}
+        ${reference ? `<p style="margin: 0 0 12px 0; font-size: 13px; color: var(--ink-700);">Reference: <strong>${escapeHtml(reference)}</strong></p>` : ''}
         <img src="${escapeAttr(url)}" alt="Payment receipt" style="width: 100%; border-radius: 8px;">
     `);
 }
 
 /** The listing behind an order, opened from the card's photo. */
 async function openItem(itemId) {
-    showOverlay('<p style="font-size: 13px; color: #6b7280;">Loading item...</p>');
+    showOverlay('<p style="font-size: 13px; color: var(--ink-500);">Loading item...</p>');
 
     try {
         const response = await fetch(`${API}/items/${itemId}`, {
@@ -623,8 +623,8 @@ async function openItem(itemId) {
 
         showOverlay(`
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-                <h4 style="margin: 0; font-size: 18px; font-weight: 700; color: #1f2937;">${escapeHtml(item.title || 'Item')}</h4>
-                <button onclick="closeOverlay()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #6b7280;">&times;</button>
+                <h4 style="margin: 0; font-size: 18px; font-weight: 700; color: var(--ink-900);">${escapeHtml(item.title || 'Item')}</h4>
+                <button onclick="closeOverlay()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: var(--ink-500);">&times;</button>
             </div>
 
             ${photos.length ? `<div style="display: flex; gap: 8px; overflow-x: auto; margin-bottom: 12px;">
@@ -632,14 +632,14 @@ async function openItem(itemId) {
             </div>` : ''}
 
             <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 12px;">
-                <span style="font-size: 20px; font-weight: 700; color: #166534;">${peso(item.public_price || item.seller_asking_price || 0)}</span>
-                ${badge(item.status || 'unknown', '#374151', '#f3f4f6')}
+                <span style="font-size: 20px; font-weight: 700; color: var(--brand-700);">${peso(item.public_price || item.seller_asking_price || 0)}</span>
+                ${badge(item.status || 'unknown', 'var(--ink-700)', 'var(--surface-sunk)')}
                 ${item.reward_points ? badge(`Earn ${item.reward_points} point(s)`, '#92400e', '#fef3c7') : ''}
             </div>
 
-            ${item.description ? `<p style="font-size: 13px; color: #374151; white-space: pre-line;">${escapeHtml(item.description)}</p>` : ''}
+            ${item.description ? `<p style="font-size: 13px; color: var(--ink-700); white-space: pre-line;">${escapeHtml(item.description)}</p>` : ''}
 
-            <div style="border-top: 1px solid #f3f4f6; margin-top: 12px; padding-top: 10px;">
+            <div style="border-top: 1px solid var(--surface-sunk); margin-top: 12px; padding-top: 10px;">
                 ${item.acquisition_price ? summaryRow('Acquisition price', peso(item.acquisition_price)) : ''}
                 ${item.markup ? summaryRow('Markup', peso(item.markup)) : ''}
                 ${item.seller_email ? summaryRow('Seller', item.seller_email) : ''}
@@ -647,8 +647,8 @@ async function openItem(itemId) {
         `);
     } catch (error) {
         showOverlay(`
-            <p style="font-size: 13px; color: #b91c1c;">Could not load the item: ${escapeHtml(error.message)}</p>
-            <button onclick="closeOverlay()" style="margin-top: 12px; background: #16a34a; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Close</button>
+            <p style="font-size: 13px; color: var(--danger);">Could not load the item: ${escapeHtml(error.message)}</p>
+            <button onclick="closeOverlay()" style="margin-top: 12px; background: var(--brand-600); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Close</button>
         `);
     }
 }
