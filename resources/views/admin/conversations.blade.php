@@ -638,9 +638,11 @@ function renderItemOfferCard(msg, isAdmin, senderName, timestamp) {
                     ${accepted ? `
                         <div style="display: flex; gap: 8px; margin-top: 12px; border-top: 1px solid var(--surface-sunk); padding-top: 12px;">
                             <button onclick="scheduleMeetup(${item.item_id})"
-                                    style="background: #16a34a; color: white; border: 1px solid #16a34a; font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 6px; cursor: pointer;">
-                                ${item.meetup_schedule ? 'Change meet-up schedule' : 'Set meet-up schedule'}
+                                    style="background: white; color: var(--brand-700); border: 1px solid var(--brand-600); font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 6px; cursor: pointer;">
+                                ${item.meetup_schedule ? 'Change schedule' : 'Set schedule'}
                             </button>
+                            <button onclick="acquireItem(${item.item_id})"
+                                    style="background: #16a34a; color: white; border: 1px solid #16a34a; font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 6px; cursor: pointer;">Mark acquired</button>
                         </div>
                     ` : pending ? `
                         <div style="display: flex; gap: 8px; margin-top: 12px; border-top: 1px solid var(--surface-sunk); padding-top: 12px;">
@@ -731,6 +733,48 @@ async function scheduleMeetup(itemId) {
         await refreshThread();
     } catch (error) {
         alert(`Could not save the schedule: ${error.message}`);
+    } finally {
+        busyAction = false;
+    }
+}
+
+/**
+ * The manual twin of the QR turnover: marks the item received and the seller
+ * paid, without the counter photographs. The scan flow remains the path that
+ * attaches proof.
+ */
+async function acquireItem(itemId) {
+    if (busyAction) return;
+
+    if (!window.confirm('Mark this item as received and the seller as paid?')) return;
+
+    busyAction = true;
+
+    try {
+        const headers = {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+        };
+
+        const response = await fetch(`${API}/admin/items/${itemId}/verify-turnover`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({}),
+        });
+        const payload = await response.json().catch(() => ({}));
+
+        if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
+
+        await fetch(`${API}/admin/items/${itemId}/seller-payout`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({}),
+        });
+
+        await refreshThread();
+    } catch (error) {
+        alert(`Could not mark the item acquired: ${error.message}`);
     } finally {
         busyAction = false;
     }
