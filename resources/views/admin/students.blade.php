@@ -1,42 +1,37 @@
 @extends('layouts.admin-dashboard')
 
 @section('title', 'User Management')
+@section('subtitle', 'Manage users and verify their profiles')
 
 @section('content')
 <div class="space-y-6">
     <!-- Header with Actions -->
-    <div class="flex justify-between items-center">
-        <div>
-            <h3 class="text-lg font-bold text-gray-900">User Management</h3>
-            <p class="text-sm text-gray-600">Manage users and verify their profiles</p>
-        </div>
-        <div class="flex gap-3">
-            <select id="statusFilter" class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
-                <option value="">All Statuses</option>
-                <option value="pending">Pending</option>
-                <option value="approved">Approved</option>
-                <option value="blocked">Blocked</option>
-            </select>
-            <input type="search" placeholder="Search users..." id="searchInput" class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
-        </div>
+    <div class="fm-toolbar">
+        <select id="statusFilter" class="fm-input">
+            <option value="">All Statuses</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="blocked">Blocked</option>
+        </select>
+        <span class="fm-search"><i class="fas fa-magnifying-glass"></i><input type="search" placeholder="Search users..." id="searchInput" class="fm-input"></span>
     </div>
 
     <!-- Students List -->
-    <div class="bg-white rounded-lg shadow overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="w-full">
-                <thead class="bg-gray-50 border-b border-gray-200">
+    <div class="fm-card">
+        <div class="fm-table-wrap">
+            <table class="fm-table">
+                <thead>
                     <tr>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">User</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Email</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Verification</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Status</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Joined</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Points</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Actions</th>
+                        <th>User</th>
+                        <th>Email</th>
+                        <th>Verification</th>
+                        <th>Status</th>
+                        <th>Joined</th>
+                        <th>Points</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-200" id="studentsList">
+                <tbody id="studentsList">
                     <tr>
                         <td colspan="7" class="px-6 py-12 text-center">
                             <i class="fas fa-spinner fa-spin text-2xl text-gray-400 mb-3 block"></i>
@@ -51,9 +46,9 @@
 
 <!-- View Verification Modal -->
 <div id="verificationModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-    <div class="bg-white rounded-lg shadow-lg max-w-2xl w-full mx-4">
+    <div class="modal modal-lg">
         <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-            <h3 class="text-lg font-bold text-gray-900">Verification Document</h3>
+            <h3>Verification Document</h3>
             <button onclick="closeVerificationModal()" class="text-gray-500 hover:text-gray-700">
                 <i class="fas fa-times text-xl"></i>
             </button>
@@ -71,9 +66,9 @@
 
 <!-- Approve/Decline/Block Modal -->
 <div id="verificationActionModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-    <div class="bg-white rounded-lg shadow-lg max-w-2xl w-full mx-4">
+    <div class="modal modal-lg">
         <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-            <h3 id="verificationActionModalTitle" class="text-lg font-bold text-gray-900">Action</h3>
+            <h3 id="verificationActionModalTitle">Action</h3>
             <button onclick="closeVerificationActionModal()" class="text-gray-500 hover:text-gray-700">
                 <i class="fas fa-times text-xl"></i>
             </button>
@@ -84,7 +79,7 @@
                 <p><span class="font-semibold">User:</span> <span id="actionModalUserName"></span></p>
                 <p><span class="font-semibold">Email:</span> <span id="actionModalUserEmail"></span></p>
                 <p><span class="font-semibold">Status:</span> <span id="actionModalUserStatus"></span></p>
-                <p class="text-xs text-gray-500">User ID: <span id="actionModalStudentId"></span></p>
+                <p class="cell-sub">User ID: <span id="actionModalStudentId"></span></p>
                 <p class="text-xs text-gray-500 break-all">API: <span id="actionModalEndpoint"></span></p>
 
             </div>
@@ -92,16 +87,16 @@
 
 
             <div id="actionReasonWrapper" class="hidden">
-                <label class="block text-sm font-medium text-gray-900 mb-1">Reason</label>
-                <textarea id="actionReasonInput" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Enter reason..." rows="4"></textarea>
+                <label class="fm-label">Reason</label>
+                <textarea id="actionReasonInput" class="fm-input" placeholder="Enter reason..." rows="4"></textarea>
                 <p id="actionReasonError" class="hidden text-sm text-red-600 mt-1">Reason is required.</p>
             </div>
 
             <div class="flex gap-3 justify-end pt-2">
-                <button type="button" onclick="closeVerificationActionModal()" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition font-medium">
+                <button type="button" onclick="closeVerificationActionModal()" class="fm-btn ghost">
                     Cancel
                 </button>
-                <button type="button" onclick="submitVerificationAction()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
+                <button type="button" onclick="submitVerificationAction()" class="fm-btn primary">
                     Confirm
                 </button>
             </div>
@@ -160,10 +155,13 @@ function renderStudents(students) {
     if (students.length === 0) {
         list.innerHTML = `
             <tr>
-                <td colspan="7" class="px-6 py-12 text-center">
-                    <i class="fas fa-inbox text-4xl text-gray-300 mb-3 block"></i>
-                    <p class="text-gray-500">No students found</p>
-                </td>
+                <td colspan="7">
+                                <div class="fm-empty">
+                                    <i class="fas fa-inbox"></i>
+                                    <p>No students found</p>
+                                    <span>Nothing to show here yet.</span>
+                                </div>
+                            </td>
             </tr>
         `;
         return;
@@ -182,22 +180,22 @@ function renderStudents(students) {
 
         return `
             <tr class="hover:bg-gray-50 transition" data-status="${status}" data-student-id="${student.student_verification_id}">
-                <td class="px-6 py-4">
+                <td>
                     <div class="flex items-center gap-3">
                         ${student.profile_picture ?
                             `<img src="${student.profile_picture}" alt="${fullName}" class="w-10 h-10 rounded-full object-cover">` :
                             `<div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white font-bold text-sm">${student.first_name[0]}${student.last_name[0]}</div>`
                         }
                         <div>
-                            <p class="font-medium text-gray-900">${fullName}</p>
-                            <p class="text-xs text-gray-500">Verification ID: ${student.student_verification_id}</p>
+                            <p class="cell-title">${fullName}</p>
+                            <p class="cell-sub">Verification ID: ${student.student_verification_id}</p>
                         </div>
                     </div>
                 </td>
-                <td class="px-6 py-4">
-                    <p class="text-sm text-gray-600">${student.email}</p>
+                <td>
+                    <p>${student.email}</p>
                 </td>
-                <td class="px-6 py-4">
+                <td>
                     <div>
                         <p class="text-sm font-medium ${verificationStatusColor}">${verificationStatus}</p>
                         <button onclick="showVerificationModal('${student.student_verification_id}')" class="text-xs text-blue-600 hover:text-blue-800 mt-1">
@@ -205,18 +203,18 @@ function renderStudents(students) {
                         </button>
                     </div>
                 </td>
-                <td class="px-6 py-4">
+                <td>
                     <span class="px-3 py-1 rounded-full text-xs font-semibold ${statusColors[status] || 'bg-gray-100 text-gray-800'}">
                         ${status.charAt(0).toUpperCase() + status.slice(1)}
                     </span>
                 </td>
-                <td class="px-6 py-4">
-                    <p class="text-sm text-gray-600">${new Date(student.registered_date).toLocaleDateString()}</p>
+                <td>
+                    <p>${new Date(student.registered_date).toLocaleDateString()}</p>
                 </td>
-                <td class="px-6 py-4">
+                <td>
                     <p class="text-sm font-medium text-green-600">${student.wallet_points} pts</p>
                 </td>
-                <td class="px-6 py-4">
+                <td>
                     <div class="flex gap-2">
                         ${status === 'pending' ? `
                             <button class="px-3 py-1 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded transition approve-btn" title="Approve" onclick="openActionModal('${student.student_verification_id}', 'approve')">
