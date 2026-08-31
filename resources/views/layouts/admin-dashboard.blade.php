@@ -3,518 +3,899 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title', 'Admin Dashboard') - Fati Market</title>
+    <title>@yield('title', 'Dashboard') · Fati Market Admin</title>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="api-token" content="{{ session('admin_token', '') }}">
     <meta name="current-route" content="{{ Route::currentRouteName() }}">
+
     <style>
+        /* ── Tokens ─────────────────────────────────────────────────────
+           One vocabulary for the whole console. Pages reach for these
+           rather than inventing another shade of grey or another shadow,
+           which is how the old screens drifted apart from each other.
+        */
         :root {
-            --primary-green: #1A5C38;
-            --light-green: #2E7D52;
-            --gold: #D4A017;
-            --dark-text: #1C1B1F;
-            --muted-text: #6B6B6B;
-            --light-bg: #F5F5F5;
-            --border-color: #EEEEE8;
+            --brand-900: #0C3021;
+            --brand-800: #10432D;
+            --brand-700: #14563A;
+            --brand-600: #1A6E49;
+            --brand-500: #22885B;
+            --brand-100: #DCEFE4;
+            --brand-50:  #F0F8F3;
+
+            --ink-900: #101513;
+            --ink-800: #1F2A25;
+            --ink-700: #33403A;
+            --ink-600: #4B5952;
+            --ink-500: #6B7A72;
+            --ink-400: #94A29B;
+
+            --surface:      #FFFFFF;
+            --surface-sunk: #F6F8F7;
+            --canvas:       #F2F5F3;
+            --line:         #E4E9E6;
+            --line-strong:  #D3DAD6;
+
+            --success: #17794A;
+            --success-bg: #DCF3E6;
+            --warning: #9A6212;
+            --warning-bg: #FDF0D5;
+            --danger: #B3261E;
+            --danger-bg: #FCE8E6;
+            --info: #1D4ED8;
+            --info-bg: #DEE9FE;
+            /* Amber always means loyalty points, as it does in the app. */
+            --reward: #A16207;
+            --reward-bg: #FEF3C7;
+
+            --radius-sm: 8px;
+            --radius: 12px;
+            --radius-lg: 16px;
+
+            --shadow-sm: 0 1px 2px rgba(16, 21, 19, 0.05);
+            --shadow: 0 1px 3px rgba(16, 21, 19, 0.07), 0 6px 16px -8px rgba(16, 21, 19, 0.12);
+            --shadow-lg: 0 12px 32px -12px rgba(16, 21, 19, 0.28);
+
+            --sidebar-w: 268px;
         }
 
-        * {
-            --tw-ring-offset-color: transparent;
-        }
+        * { --tw-ring-offset-color: transparent; }
+
+        html { -webkit-text-size-adjust: 100%; }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--light-bg);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--canvas);
+            color: var(--ink-800);
+            font-size: 14px;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
         }
+
+        h1, h2, h3, h4 { letter-spacing: -0.011em; color: var(--ink-900); }
+        /* Pages carried their own font-size on every heading; these are the
+           sizes they were all reaching for. */
+        h3 { font-size: 16px; font-weight: 650; }
+        h4 { font-size: 14px; font-weight: 650; }
+
+        /* Numbers line up down a column instead of wobbling. */
+        .tabular, .money, .stat-value { font-variant-numeric: tabular-nums; }
+
+        :focus-visible {
+            outline: 2px solid var(--brand-500);
+            outline-offset: 2px;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-thumb {
+            background: var(--line-strong);
+            border-radius: 999px;
+            border: 3px solid transparent;
+            background-clip: content-box;
+        }
+        ::-webkit-scrollbar-thumb:hover { background: var(--ink-400); background-clip: content-box; }
+
+        /* ── Shell ──────────────────────────────────────────────────── */
+        .app-shell { display: flex; height: 100vh; overflow: hidden; }
 
         .drawer-container {
-            transition: transform 0.3s ease;
+            width: var(--sidebar-w);
+            flex-shrink: 0;
+            background: linear-gradient(180deg, var(--brand-900) 0%, var(--brand-800) 100%);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: transform 0.25s ease;
         }
 
-        .drawer-container.open {
-            transform: translateX(0);
+        .drawer-scroll { flex: 1; overflow-y: auto; padding: 4px 12px 20px; }
+        .drawer-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); background-clip: content-box; }
+
+        .brand { display: flex; align-items: center; gap: 12px; padding: 20px 20px 16px; }
+
+        .brand-mark {
+            width: 40px; height: 40px;
+            border-radius: 11px;
+            background: linear-gradient(135deg, var(--brand-500), var(--brand-600));
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 15px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.22);
+            flex-shrink: 0;
         }
 
-        @media (max-width: 768px) {
-            .drawer-container {
-                position: fixed;
-                left: 0;
-                top: 0;
-                bottom: 0;
-                width: 280px;
-                transform: translateX(-100%);
-                z-index: 40;
-            }
+        .brand-name { color: #fff; font-weight: 600; font-size: 15px; line-height: 1.2; }
+        .brand-sub { color: rgba(255,255,255,0.52); font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; }
+
+        .drawer-user {
+            display: flex; align-items: center; gap: 10px;
+            margin: 0 12px 8px;
+            padding: 10px 12px;
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.09);
+            border-radius: var(--radius);
+        }
+        .drawer-user .name { color: #fff; font-size: 13px; font-weight: 500; }
+        .drawer-user .email { color: rgba(255,255,255,0.5); font-size: 11px; }
+
+        .nav-overline {
+            padding: 15px 12px 5px;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.09em;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.38);
         }
 
         .sidebar-link {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 12px 16px;
-            margin: 4px 0;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-            color: var(--muted-text);
+            gap: 11px;
+            width: 100%;
+            padding: 9px 12px;
+            margin: 1px 0;
+            border-radius: 9px;
+            font-size: 13.5px;
+            font-weight: 500;
+            color: rgba(255,255,255,0.72);
             text-decoration: none;
-            font-size: 14px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            text-align: left;
+            transition: background-color 0.15s ease, color 0.15s ease;
         }
 
-        .sidebar-link:hover,
+        .sidebar-link:hover { background: rgba(255,255,255,0.09); color: #fff; }
+
         .sidebar-link.active {
-            background-color: rgba(26, 92, 56, 0.1);
-            color: var(--primary-green);
+            background: #fff;
+            color: var(--brand-800);
+            font-weight: 600;
+            box-shadow: var(--shadow-sm);
         }
 
-        .sidebar-link i {
-            width: 20px;
-            text-align: center;
+        .sidebar-link i { width: 17px; text-align: center; font-size: 13px; opacity: 0.9; }
+        .sidebar-link.active i { color: var(--brand-600); opacity: 1; }
+
+        /* Submenus animate open on grid rows, so no fixed max-height has to
+           be guessed and nothing is clipped when a section grows. */
+        .submenu {
+            display: grid;
+            grid-template-rows: 0fr;
+            transition: grid-template-rows 0.22s ease;
+            margin-left: 14px;
+            border-left: 1px solid rgba(255,255,255,0.13);
+            padding-left: 8px;
+        }
+        .submenu > div { overflow: hidden; }
+        .submenu.open { grid-template-rows: 1fr; }
+        .submenu.hidden { grid-template-rows: 0fr; }
+        .submenu .sidebar-link { font-size: 13px; padding: 7px 11px; }
+
+        .nav-chevron { margin-left: auto; font-size: 10px; transition: transform 0.22s ease; opacity: 0.6; }
+        .sidebar-link[aria-expanded="true"] .nav-chevron { transform: rotate(180deg); }
+
+        .nav-count {
+            margin-left: auto;
+            background: var(--danger);
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            min-width: 18px; height: 18px;
+            padding: 0 5px;
+            border-radius: 999px;
+            display: inline-flex; align-items: center; justify-content: center;
         }
 
-        .admin-badge {
-            display: inline-block;
-            background-color: var(--gold);
-            color: white;
-            padding: 4px 12px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: bold;
+        .drawer-foot { padding: 12px; border-top: 1px solid rgba(255,255,255,0.1); }
+        .drawer-foot .sidebar-link { color: #FFC5C0; }
+        .drawer-foot .sidebar-link:hover { background: rgba(255,90,80,0.16); color: #fff; }
+
+        .scrim {
+            position: fixed; inset: 0;
+            background: rgba(12, 48, 33, 0.5);
+            z-index: 39;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+        .scrim.open { opacity: 1; pointer-events: auto; }
+
+        @media (max-width: 1024px) {
+            .drawer-container {
+                position: fixed; left: 0; top: 0; bottom: 0;
+                transform: translateX(-100%);
+                z-index: 40;
+                box-shadow: var(--shadow-lg);
+            }
+            .drawer-container.open { transform: translateX(0); }
         }
 
-        .stat-card {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-            transition: all 0.3s;
+        /* ── Topbar ─────────────────────────────────────────────────── */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 0 24px;
+            height: 64px;
+            background: rgba(255,255,255,0.88);
+            backdrop-filter: saturate(180%) blur(8px);
+            border-bottom: 1px solid var(--line);
+            flex-shrink: 0;
         }
 
-        .stat-card:hover {
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+        .topbar h2 { font-size: 19px; font-weight: 650; margin: 0; }
+        .topbar .crumb { font-size: 12px; color: var(--ink-500); }
+
+        .icon-btn {
+            width: 36px; height: 36px;
+            border-radius: 9px;
+            border: 1px solid var(--line);
+            background: var(--surface);
+            color: var(--ink-600);
+            display: inline-flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.15s ease, color 0.15s ease;
+        }
+        .icon-btn:hover { background: var(--surface-sunk); color: var(--ink-900); }
+
+        .avatar {
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: linear-gradient(135deg, var(--brand-500), var(--brand-700));
+            color: #fff;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 600; font-size: 13px;
+            flex-shrink: 0;
         }
 
-        .stat-value {
-            font-size: 32px;
-            font-weight: bold;
-            color: var(--primary-green);
-            margin: 12px 0;
+        .menu-pop {
+            position: absolute; right: 0; top: calc(100% + 8px);
+            min-width: 214px;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            padding: 6px;
+            z-index: 45;
+            display: none;
         }
+        .menu-pop.open { display: block; }
+        .menu-pop a, .menu-pop button {
+            display: flex; align-items: center; gap: 10px;
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            color: var(--ink-800);
+            text-decoration: none;
+            background: none; border: none; cursor: pointer; text-align: left;
+        }
+        .menu-pop a:hover, .menu-pop button:hover { background: var(--surface-sunk); }
+        .menu-pop i { width: 15px; color: var(--ink-500); }
+        .menu-pop .danger, .menu-pop .danger i { color: var(--danger); }
+
+        .app-main { flex: 1; overflow-y: auto; padding: 24px; }
+        @media (max-width: 640px) { .app-main { padding: 16px; } .topbar { padding: 0 16px; } }
+
+        /* ── Page furniture ─────────────────────────────────────────── */
+        .fm-page-head {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+        }
+        .fm-page-head h3 { font-size: 18px; font-weight: 650; margin: 0; }
+        .fm-page-head p { font-size: 13px; color: var(--ink-500); margin: 2px 0 0; }
+
+        /* The controls that used to sit beside a page heading. The heading
+           itself now lives in the topbar, so this is just the toolbar. */
+        .fm-toolbar {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+        }
+        .fm-toolbar .fm-input, .fm-toolbar .fm-select { width: auto; min-width: 190px; }
+        .fm-toolbar .fm-search { flex: 0 1 270px; }
+        .fm-toolbar .fm-search .fm-input { width: 100%; min-width: 0; }
+
+        .fm-section-title {
+            font-size: 11px;
+            font-weight: 650;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+            color: var(--ink-500);
+            margin-bottom: 10px;
+        }
+
+        /* ── Cards ──────────────────────────────────────────────────── */
+        .fm-card, .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+        }
+        .fm-card { overflow: hidden; }
+
+        /* A card you can click into. */
+        .fm-card-hover { transition: box-shadow 0.2s ease, transform 0.2s ease; }
+        .fm-card-hover:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
+
+        /* A stack of rows that are not a table - the activity log, mostly. */
+        .fm-divided > * + * { border-top: 1px solid var(--line); }
+
+        .fm-card-head {
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--line);
+        }
+        .fm-card-head h4 { font-size: 14px; font-weight: 650; margin: 0; }
+        .fm-card-body { padding: 18px; }
+
+        .stat-card { padding: 18px; transition: box-shadow 0.2s ease, transform 0.2s ease; }
+        .stat-card:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
+        .stat-card .stat-value {
+            font-size: 26px;
+            font-weight: 680;
+            color: var(--ink-900);
+            margin: 6px 0 0;
+            line-height: 1.15;
+        }
+        .stat-label { color: var(--ink-500); font-size: 12.5px; font-weight: 500; }
+        .stat-icon {
+            width: 38px; height: 38px;
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        /* ── Tables ─────────────────────────────────────────────────── */
+        .fm-table-wrap { overflow-x: auto; }
+        .fm-table { width: 100%; border-collapse: collapse; }
+        .fm-table thead th {
+            position: sticky; top: 0; z-index: 1;
+            background: var(--surface-sunk);
+            padding: 11px 18px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: var(--ink-500);
+            border-bottom: 1px solid var(--line);
+            white-space: nowrap;
+        }
+        .fm-table tbody td {
+            padding: 13px 18px;
+            border-bottom: 1px solid var(--line);
+            font-size: 13.5px;
+            vertical-align: middle;
+            color: var(--ink-700);
+        }
+        .fm-table tbody tr:last-child td { border-bottom: none; }
+        .fm-table tbody tr { transition: background-color 0.12s ease; }
+        .fm-table tbody tr:hover { background: var(--brand-50); }
+        .fm-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+        .cell-title { font-weight: 600; color: var(--ink-900); }
+        .cell-sub { font-size: 11.5px; color: var(--ink-500); }
+
+        .thumb {
+            width: 40px; height: 40px;
+            border-radius: var(--radius-sm);
+            object-fit: cover;
+            background: var(--surface-sunk);
+            border: 1px solid var(--line);
+            display: flex; align-items: center; justify-content: center;
+            color: var(--ink-400);
+            flex-shrink: 0;
+        }
+
+        /* ── Badges ─────────────────────────────────────────────────── */
+        .fm-badge {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 11.5px;
+            font-weight: 600;
+            white-space: nowrap;
+            background: var(--surface-sunk);
+            color: var(--ink-600);
+        }
+        .fm-badge.success { background: var(--success-bg); color: var(--success); }
+        .fm-badge.warning { background: var(--warning-bg); color: var(--warning); }
+        .fm-badge.danger  { background: var(--danger-bg);  color: var(--danger); }
+        .fm-badge.info    { background: var(--info-bg);    color: var(--info); }
+        .fm-badge.brand   { background: var(--brand-100);  color: var(--brand-700); }
+        .fm-badge.reward  { background: var(--reward-bg);  color: var(--reward); }
+
+        .admin-badge { display: inline-block; background: var(--reward-bg); color: var(--reward); padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 600; }
+
+        /* ── Buttons ────────────────────────────────────────────────── */
+        .fm-btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+            padding: 8px 15px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 600;
+            border: 1px solid transparent;
+            cursor: pointer;
+            white-space: nowrap;
+            text-decoration: none;
+            transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+        }
+        .fm-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+        .fm-btn.primary { background: var(--brand-600); color: #fff; }
+        .fm-btn.primary:hover:not(:disabled) { background: var(--brand-700); }
+        .fm-btn.ghost { background: var(--surface); color: var(--ink-800); border-color: var(--line-strong); }
+        .fm-btn.ghost:hover:not(:disabled) { background: var(--surface-sunk); }
+        .fm-btn.danger { background: var(--surface); color: var(--danger); border-color: var(--danger); }
+        .fm-btn.danger:hover:not(:disabled) { background: var(--danger-bg); }
+        .fm-btn.sm { padding: 6px 11px; font-size: 12px; }
+
+        /* A row action: quiet until you reach for it. */
+        .row-btn {
+            width: 32px; height: 32px;
+            border-radius: var(--radius-sm);
+            border: 1px solid transparent;
+            background: none;
+            color: var(--ink-500);
+            display: inline-flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+        }
+        .row-btn:hover { background: var(--surface-sunk); color: var(--brand-700); border-color: var(--line); }
+        .row-btn.danger:hover { background: var(--danger-bg); color: var(--danger); }
+
+        /* ── Inputs ─────────────────────────────────────────────────── */
+        .fm-input, .fm-select, .fm-textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--line-strong);
+            border-radius: var(--radius-sm);
+            font-size: 13.5px;
+            font-family: inherit;
+            color: var(--ink-900);
+            background: var(--surface);
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .fm-input:focus, .fm-select:focus, .fm-textarea:focus {
+            outline: none;
+            border-color: var(--brand-500);
+            box-shadow: 0 0 0 3px var(--brand-100);
+        }
+        .fm-input::placeholder, .fm-textarea::placeholder { color: var(--ink-400); }
+        .fm-label { display: block; font-size: 12.5px; font-weight: 600; color: var(--ink-700); margin-bottom: 5px; }
+
+        .fm-search { position: relative; display: block; }
+        .fm-search i {
+            position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+            color: var(--ink-400); font-size: 12px; pointer-events: none;
+        }
+        .fm-search input { padding-left: 32px; }
+
+        /* ── Empty & loading ────────────────────────────────────────── */
+        .fm-empty { padding: 56px 24px; text-align: center; color: var(--ink-500); }
+        .fm-empty > i { font-size: 30px; color: var(--line-strong); display: block; margin-bottom: 12px; }
+        .fm-empty p { font-size: 14px; font-weight: 600; color: var(--ink-600); margin: 0 0 2px; }
+        .fm-empty span { font-size: 12.5px; }
 
         .loading-spinner {
             display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(26, 92, 56, 0.2);
-            border-top-color: var(--primary-green);
+            width: 18px; height: 18px;
+            border: 2px solid var(--brand-100);
+            border-top-color: var(--brand-600);
             border-radius: 50%;
-            animation: spin 0.8s linear infinite;
+            animation: spin 0.7s linear infinite;
         }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        /* ── Modals ─────────────────────────────────────────────────── */
+        .modal-overlay {
+            position: fixed; inset: 0;
+            background: rgba(12, 48, 33, 0.42);
+            backdrop-filter: blur(3px);
+            display: none;
+            align-items: center; justify-content: center;
+            z-index: 50;
+            padding: 24px;
+        }
+        .modal-overlay.active { display: flex; animation: fadeIn 0.16s ease; }
+
+        .modal {
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            max-width: 520px;
+            width: 100%;
+            max-height: 88vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+            animation: popIn 0.18s ease;
+        }
+        .modal-lg { max-width: 900px; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes popIn { from { opacity: 0; transform: translateY(8px) scale(0.985); } to { opacity: 1; transform: none; } }
+
+        /* ── Toasts ─────────────────────────────────────────────────── */
+        #toastContainer {
+            position: fixed; bottom: 20px; right: 20px;
+            z-index: 9999;
+            display: flex; flex-direction: column; gap: 10px;
+            align-items: flex-end;
         }
 
         .toast {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            padding: 16px 20px;
-            border-radius: 8px;
-            color: white;
-            z-index: 9999;
-            animation: slideIn 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            min-width: 300px;
+            display: flex; align-items: center; gap: 11px;
+            padding: 12px 16px;
+            min-width: 280px; max-width: 380px;
+            border-radius: var(--radius);
+            background: var(--surface);
+            border: 1px solid var(--line);
+            box-shadow: var(--shadow-lg);
+            color: var(--ink-800);
+            font-size: 13.5px;
+            animation: slideIn 0.22s ease;
         }
+        .toast i { font-size: 15px; flex-shrink: 0; }
+        .toast.success { border-left: 3px solid var(--success); }
+        .toast.success i { color: var(--success); }
+        .toast.error { border-left: 3px solid var(--danger); }
+        .toast.error i { color: var(--danger); }
+        .toast.info { border-left: 3px solid var(--brand-600); }
+        .toast.info i { color: var(--brand-600); }
+        .toast.leaving { animation: slideOut 0.22s ease forwards; }
 
-        .toast.success {
-            background-color: #10b981;
-        }
+        @keyframes slideIn { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+        /* The old stylesheet animated to `slideOut` without ever defining it,
+           so toasts blinked out instead of leaving. */
+        @keyframes slideOut { to { transform: translateX(24px); opacity: 0; } }
 
-        .toast.error {
-            background-color: #ef4444;
-        }
-
-        .toast.info {
-            background-color: var(--primary-green);
-        }
-
-        @keyframes slideIn {
-            from {
-                transform: translateX(400px);
-                opacity: 0;
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
             }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-
-        .modal-overlay {
-            position: fixed;
-            inset: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 50;
-        }
-
-        .modal-overlay.active {
-            display: flex;
-        }
-
-        .modal {
-            background: white;
-            border-radius: 12px;
-            padding: 24px;
-            max-width: 500px;
-            width: 90%;
-            max-height: 90vh;
-            overflow-y: auto;
-            box-shadow: 0 20px 25px rgba(0, 0, 0, 0.15);
         }
     </style>
     @stack('styles')
 </head>
-<body class="bg-gray-50">
-    <div class="flex h-screen">
-        <!-- Sidebar/Drawer -->
-        <div class="drawer-container bg-white shadow-lg w-72 overflow-y-auto">
+<body>
+    @php
+        $profilePic = session('admin_profile_picture');
+        $firstName  = session('admin_first_name', 'Admin');
+        $lastName   = session('admin_last_name', 'User');
+        $email      = session('admin_data.email', 'admin@fatimarket.com');
+        $initial    = strtoupper(substr($firstName ?: 'A', 0, 1));
+    @endphp
 
-            <!-- Logo Section -->
-            <div class="p-6 border-b border-gray-200">
-                <div class="flex items-center gap-3 mb-4">
-                    <div class="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center">
-                        <i class="fas fa-shopping-cart text-white text-lg"></i>
-                    </div>
-                    <div>
-                        <h1 class="text-lg font-bold text-gray-900">Fati Market</h1>
-                        <p class="text-xs text-gray-500">Admin Panel</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2">
-                    @php
-                        $profilePic = session('admin_profile_picture');
-                        $firstName = session('admin_first_name', 'Admin');
-                        $lastName = session('admin_last_name', 'User');
-                        $email = session('admin_data.email', 'admin@fatimarket.com');
-                    @endphp
-                    @if($profilePic)
-                        <img src="{{ $profilePic }}" alt="Profile" class="w-8 h-8 rounded-full object-cover">
-                    @else
-                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center text-white text-sm font-bold">
-                            {{ substr($firstName, 0, 1) }}
-                        </div>
-                    @endif
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm font-semibold text-gray-900 truncate">{{ $firstName }} {{ $lastName }}</p>
-                        <p class="text-xs text-gray-500 truncate">{{ $email }}</p>
-                    </div>
+    <div class="app-shell">
+        <div class="scrim" id="drawerScrim" onclick="toggleDrawer(false)"></div>
+
+        <!-- ── Sidebar ──────────────────────────────────────────────── -->
+        <aside class="drawer-container" id="drawer">
+            <div class="brand">
+                <div class="brand-mark"><i class="fas fa-store"></i></div>
+                <div class="min-w-0">
+                    <div class="brand-name">Fati Market</div>
+                    <div class="brand-sub">Admin</div>
                 </div>
             </div>
 
-            <!-- Navigation Menu -->
-            <div class="p-4">
-                <!-- Dashboard -->
-                <div class="mb-6">
-                    <a href="{{ route('admin.dashboard') }}" class="sidebar-link" data-route="admin.dashboard">
-                        <i class="fas fa-chart-line"></i>
-                        <span>Dashboard</span>
-                    </a>
-                </div>
-
-                <!-- Inventory Management Dropdown -->
-                <div class="mb-6 inventory-dropdown">
-                    <button class="sidebar-link w-full text-left flex justify-between items-center inventory-toggle" onclick="toggleMenu(this)">
-                        <span class="flex items-center gap-3">
-                            <i class="fas fa-box"></i>
-                            <span>Inventory Management</span>
-                        </span>
-                        <i class="fas fa-chevron-down text-xs transition-transform"></i>
-                    </button>
-                    <div class="submenu hidden pl-8 space-y-1 mt-2 inventory-submenu">
-                        <a href="{{ route('admin.private-offers') }}" class="sidebar-link text-sm" data-route="admin.private-offers">
-                            <i class="fas fa-lock text-xs"></i>
-                            <span>Private Offers</span>
-                        </a>
-                        <a href="{{ route('admin.acquired-items') }}" class="sidebar-link text-sm" data-route="admin.acquired-items">
-                            <i class="fas fa-shopping-bag text-xs"></i>
-                            <span>Acquired Items</span>
-                        </a>
-                        <a href="{{ route('admin.public-listings') }}" class="sidebar-link text-sm" data-route="admin.public-listings">
-                            <i class="fas fa-globe text-xs"></i>
-                            <span>Public Listings</span>
-                        </a>
-                        <a href="{{ route('admin.reserved-items') }}" class="sidebar-link text-sm" data-route="admin.reserved-items">
-                            <i class="fas fa-clock text-xs"></i>
-                            <span>Reserved Items</span>
-                        </a>
-                        <a href="{{ route('admin.sold-items') }}" class="sidebar-link text-sm" data-route="admin.sold-items">
-                            <i class="fas fa-check-circle text-xs"></i>
-                            <span>Sold Items</span>
-                        </a>
-                    </div>
-                </div>
-
-                <!-- Transactions Dropdown -->
-                <div class="mb-6 transactions-dropdown">
-                    <button class="sidebar-link w-full text-left flex justify-between items-center transactions-toggle" onclick="toggleMenu(this)">
-                        <span class="flex items-center gap-3">
-                            <i class="fas fa-exchange-alt"></i>
-                            <span>Transactions</span>
-                        </span>
-                        <i class="fas fa-chevron-down text-xs transition-transform"></i>
-                    </button>
-                    <div class="submenu hidden pl-8 space-y-1 mt-2 transactions-submenu">
-                        <a href="{{ route('admin.transactions.history') }}" class="sidebar-link text-sm" data-route="admin.transactions.history">
-                            <i class="fas fa-history text-xs"></i>
-                            <span>Transaction History</span>
-                        </a>
-                        <a href="{{ route('admin.transactions.points-given') }}" class="sidebar-link text-sm" data-route="admin.transactions.points-given">
-                            <i class="fas fa-arrow-up text-xs"></i>
-                            <span>Points Given</span>
-                        </a>
-                        <a href="{{ route('admin.transactions.points-received') }}" class="sidebar-link text-sm" data-route="admin.transactions.points-received">
-                            <i class="fas fa-arrow-down text-xs"></i>
-                            <span>Points Received</span>
-                        </a>
-                        <a href="{{ route('admin.transactions.cash') }}" class="sidebar-link text-sm" data-route="admin.transactions.cash">
-                            <i class="fas fa-dollar-sign text-xs"></i>
-                            <span>Cash Transactions</span>
-                        </a>
-                        <a href="{{ route('admin.transactions.trade') }}" class="sidebar-link text-sm" data-route="admin.transactions.trade">
-                            <i class="fas fa-exchange-alt text-xs"></i>
-                            <span>Trade Transactions</span>
-                        </a>
-                        <a href="{{ route('admin.transactions.profit') }}" class="sidebar-link text-sm" data-route="admin.transactions.profit">
-                            <i class="fas fa-chart-line text-xs"></i>
-                            <span>Profit Summary</span>
-                        </a>
-                    </div>
-                </div>
-
-                <!-- Report & Analytics -->
-                <div class="mb-6">
-                    <button class="sidebar-link w-full text-left flex justify-between items-center reports-toggle" onclick="toggleMenu(this)">
-                        <span class="flex items-center gap-3">
-                            <i class="fas fa-chart-bar"></i>
-                            <span>Report & Analytics</span>
-                        </span>
-                        <i class="fas fa-chevron-down text-xs transition-transform"></i>
-                    </button>
-                    <div class="submenu hidden pl-8 space-y-1 mt-2 reports-submenu">
-                        <a href="{{ route('admin.reports.items-acquired') }}" class="sidebar-link text-sm" data-route="admin.reports.items-acquired">
-                            <i class="fas fa-shopping-bag text-xs"></i>
-                            <span>Total Item Acquired</span>
-                        </a>
-                        <a href="{{ route('admin.reports.items-sold') }}" class="sidebar-link text-sm" data-route="admin.reports.items-sold">
-                            <i class="fas fa-boxes text-xs"></i>
-                            <span>Total Item Sold</span>
-                        </a>
-
-                        <a href="{{ route('admin.reports.profit') }}" class="sidebar-link text-sm" data-route="admin.reports.profit">
-                            <i class="fas fa-money-bill-wave text-xs"></i>
-                            <span>Total Profit (from markup)</span>
-                        </a>
-
-                        <a href="{{ route('admin.reports.categories') }}" class="sidebar-link text-sm" data-route="admin.reports.categories">
-                            <i class="fas fa-list text-xs"></i>
-                            <span>Most Sold Category</span>
-                        </a>
-
-                        <a href="{{ route('admin.reports.users') }}" class="sidebar-link text-sm" data-route="admin.reports.users">
-                            <i class="fas fa-user-check text-xs"></i>
-                            <span>Active Users</span>
-                        </a>
-
-                    </div>
-                </div>
-
-                <!-- Categories -->
-                <div class="mb-6">
-                    <a href="{{ route('admin.categories') }}" class="sidebar-link" data-route="admin.categories">
-                        <i class="fas fa-tags"></i>
-                        <span>Categories</span>
-                    </a>
-                </div>
-
-                <!-- Activity Logs -->
-                <div class="mb-6">
-                    <a href="{{ route('admin.activity') }}" class="sidebar-link" data-route="admin.activity">
-                        <i class="fas fa-history"></i>
-                        <span>Activity Logs</span>
-                    </a>
-                </div>
-
-                <!-- Chat -->
-                <div class="mb-6">
-                    <a href="{{ route('admin.conversations') }}" class="sidebar-link" data-route="admin.conversations">
-                        <i class="fas fa-comments"></i>
-                        <span>Chat</span>
-                        <span class="ml-auto text-xs bg-red-500 text-white px-2 py-1 rounded" id="unreadCount" style="display: none;">0</span>
-                    </a>
-                </div>
-
-                <!-- User Management -->
-                <div class="mb-6">
-                    <a href="{{ route('admin.students') }}" class="sidebar-link" data-route="admin.students">
-                        <i class="fas fa-users"></i>
-                        <span>User Management</span>
-                    </a>
-                </div>
-
-                <!-- Profile -->
-                <div class="mb-6">
-                    <a href="{{ route('admin.profile') }}" class="sidebar-link" data-route="admin.profile">
-                        <i class="fas fa-user-circle"></i>
-                        <span>Profile</span>
-                    </a>
-                </div>
-
-                <!-- Settings -->
-                <div class="mb-6">
-                    <a href="{{ route('admin.settings') }}" class="sidebar-link" data-route="admin.settings">
-                        <i class="fas fa-cog"></i>
-                        <span>Settings</span>
-                    </a>
-                </div>
-
-                <div class="pt-4 border-t border-gray-200">
-                    <form method="POST" action="{{ route('admin.logout') }}" class="w-full">
-                        @csrf
-                        <button type="submit" class="sidebar-link w-full text-left text-red-600 hover:bg-red-50">
-                            <i class="fas fa-sign-out-alt"></i>
-                            <span>Logout</span>
-                        </button>
-                    </form>
+            <div class="drawer-user">
+                @if($profilePic)
+                    <img src="{{ $profilePic }}" alt="" class="avatar" style="width: 32px; height: 32px;">
+                @else
+                    <div class="avatar" style="width: 32px; height: 32px;">{{ $initial }}</div>
+                @endif
+                <div class="min-w-0">
+                    <div class="name truncate">{{ $firstName }} {{ $lastName }}</div>
+                    <div class="email truncate">{{ $email }}</div>
                 </div>
             </div>
-        </div>
 
-        <!-- Main Content -->
+            <nav class="drawer-scroll">
+                <a href="{{ route('admin.dashboard') }}" class="sidebar-link" data-route="admin.dashboard">
+                    <i class="fas fa-chart-line"></i><span>Dashboard</span>
+                </a>
+
+                <div class="nav-overline">Inventory</div>
+
+                <button class="sidebar-link" aria-expanded="false" onclick="toggleMenu(this)">
+                    <i class="fas fa-box"></i><span>Items</span>
+                    <i class="fas fa-chevron-down nav-chevron"></i>
+                </button>
+                <div class="submenu"><div>
+                    <a href="{{ route('admin.private-offers') }}" class="sidebar-link" data-route="admin.private-offers">
+                        <i class="fas fa-inbox"></i><span>Offers to review</span>
+                    </a>
+                    <a href="{{ route('admin.acquired-items') }}" class="sidebar-link" data-route="admin.acquired-items">
+                        <i class="fas fa-warehouse"></i><span>Acquired</span>
+                    </a>
+                    <a href="{{ route('admin.public-listings') }}" class="sidebar-link" data-route="admin.public-listings">
+                        <i class="fas fa-globe"></i><span>Published</span>
+                    </a>
+                    <a href="{{ route('admin.reserved-items') }}" class="sidebar-link" data-route="admin.reserved-items">
+                        <i class="fas fa-clock"></i><span>Reserved</span>
+                    </a>
+                    <a href="{{ route('admin.sold-items') }}" class="sidebar-link" data-route="admin.sold-items">
+                        <i class="fas fa-circle-check"></i><span>Sold</span>
+                    </a>
+                </div></div>
+
+                <button class="sidebar-link" aria-expanded="false" onclick="toggleMenu(this)">
+                    <i class="fas fa-right-left"></i><span>Transactions</span>
+                    <i class="fas fa-chevron-down nav-chevron"></i>
+                </button>
+                <div class="submenu"><div>
+                    <a href="{{ route('admin.transactions.history') }}" class="sidebar-link" data-route="admin.transactions.history">
+                        <i class="fas fa-receipt"></i><span>All orders</span>
+                    </a>
+                    <a href="{{ route('admin.transactions.cash') }}" class="sidebar-link" data-route="admin.transactions.cash">
+                        <i class="fas fa-money-bill-wave"></i><span>Cash</span>
+                    </a>
+                    <a href="{{ route('admin.transactions.trade') }}" class="sidebar-link" data-route="admin.transactions.trade">
+                        <i class="fas fa-right-left"></i><span>Trade</span>
+                    </a>
+                    <a href="{{ route('admin.transactions.points-given') }}" class="sidebar-link" data-route="admin.transactions.points-given">
+                        <i class="fas fa-arrow-up"></i><span>Points given</span>
+                    </a>
+                    <a href="{{ route('admin.transactions.points-received') }}" class="sidebar-link" data-route="admin.transactions.points-received">
+                        <i class="fas fa-arrow-down"></i><span>Points received</span>
+                    </a>
+                    <a href="{{ route('admin.transactions.profit') }}" class="sidebar-link" data-route="admin.transactions.profit">
+                        <i class="fas fa-sack-dollar"></i><span>Profit summary</span>
+                    </a>
+                </div></div>
+
+                <div class="nav-overline">Insight</div>
+
+                <button class="sidebar-link" aria-expanded="false" onclick="toggleMenu(this)">
+                    <i class="fas fa-chart-bar"></i><span>Reports</span>
+                    <i class="fas fa-chevron-down nav-chevron"></i>
+                </button>
+                <div class="submenu"><div>
+                    <a href="{{ route('admin.reports.items-acquired') }}" class="sidebar-link" data-route="admin.reports.items-acquired">
+                        <i class="fas fa-shopping-bag"></i><span>Items acquired</span>
+                    </a>
+                    <a href="{{ route('admin.reports.items-sold') }}" class="sidebar-link" data-route="admin.reports.items-sold">
+                        <i class="fas fa-boxes-stacked"></i><span>Items sold</span>
+                    </a>
+                    <a href="{{ route('admin.reports.profit') }}" class="sidebar-link" data-route="admin.reports.profit">
+                        <i class="fas fa-coins"></i><span>Profit from markup</span>
+                    </a>
+                    <a href="{{ route('admin.reports.categories') }}" class="sidebar-link" data-route="admin.reports.categories">
+                        <i class="fas fa-list"></i><span>Top categories</span>
+                    </a>
+                    <a href="{{ route('admin.reports.users') }}" class="sidebar-link" data-route="admin.reports.users">
+                        <i class="fas fa-user-check"></i><span>Active users</span>
+                    </a>
+                </div></div>
+
+                <a href="{{ route('admin.activity') }}" class="sidebar-link" data-route="admin.activity">
+                    <i class="fas fa-clock-rotate-left"></i><span>Activity log</span>
+                </a>
+
+                <div class="nav-overline">Manage</div>
+
+                <a href="{{ route('admin.conversations') }}" class="sidebar-link" data-route="admin.conversations">
+                    <i class="fas fa-comments"></i><span>Chat</span>
+                    <span class="nav-count" id="unreadCount" style="display: none;">0</span>
+                </a>
+                <a href="{{ route('admin.students') }}" class="sidebar-link" data-route="admin.students">
+                    <i class="fas fa-users"></i><span>Students</span>
+                </a>
+                <a href="{{ route('admin.categories') }}" class="sidebar-link" data-route="admin.categories">
+                    <i class="fas fa-tags"></i><span>Categories</span>
+                </a>
+                <a href="{{ route('admin.settings') }}" class="sidebar-link" data-route="admin.settings">
+                    <i class="fas fa-gear"></i><span>Settings</span>
+                </a>
+            </nav>
+
+            <div class="drawer-foot">
+                <form method="POST" action="{{ route('admin.logout') }}">
+                    @csrf
+                    <button type="submit" class="sidebar-link">
+                        <i class="fas fa-arrow-right-from-bracket"></i><span>Sign out</span>
+                    </button>
+                </form>
+            </div>
+        </aside>
+
+        <!-- ── Main ─────────────────────────────────────────────────── -->
         <div class="flex-1 flex flex-col overflow-hidden">
-            <!-- Header -->
-            <header class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between shadow-sm">
-                <div class="flex items-center gap-4">
-                    <button class="md:hidden" onclick="toggleDrawer()">
-                        <i class="fas fa-bars text-2xl text-gray-700"></i>
+            <header class="topbar">
+                <div class="flex items-center gap-3 min-w-0">
+                    <button class="icon-btn lg:hidden" onclick="toggleDrawer()" aria-label="Open menu">
+                        <i class="fas fa-bars"></i>
                     </button>
-                    <h2 class="text-2xl font-bold text-gray-900">@yield('title', 'Dashboard')</h2>
+                    <div class="min-w-0">
+                        <h2 class="truncate">@yield('title', 'Dashboard')</h2>
+                        <div class="crumb truncate">@yield('subtitle', 'Fati Market administration')</div>
+                    </div>
                 </div>
-                <div class="flex items-center gap-4">
-                    <!-- top bar search/notification removed -->
 
-                    @php
-                        $profilePic = session('admin_profile_picture');
-                        $firstName = session('admin_first_name', 'A');
-                    @endphp
-                    @if($profilePic)
-                        <a href="{{ route('admin.profile') }}" class="cursor-pointer">
-                            <img src="{{ $profilePic }}" alt="Profile" class="w-10 h-10 rounded-full object-cover">
-                        </a>
-                    @else
-                        <a href="{{ route('admin.profile') }}" class="cursor-pointer">
-                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center text-white font-bold">
-                                {{ substr($firstName, 0, 1) }}
+                <div class="flex items-center gap-2">
+                    @yield('actions')
+
+                    <div class="relative">
+                        <button onclick="toggleProfileMenu(event)" aria-label="Account">
+                            @if($profilePic)
+                                <img src="{{ $profilePic }}" alt="" class="avatar">
+                            @else
+                                <div class="avatar">{{ $initial }}</div>
+                            @endif
+                        </button>
+
+                        <div class="menu-pop" id="profileMenu">
+                            <div style="padding: 8px 10px 10px; border-bottom: 1px solid var(--line); margin-bottom: 4px;">
+                                <div style="font-size: 13px; font-weight: 600;">{{ $firstName }} {{ $lastName }}</div>
+                                <div style="font-size: 11.5px; color: var(--ink-500);">{{ $email }}</div>
                             </div>
-                        </a>
-                    @endif
-
+                            <a href="{{ route('admin.profile') }}"><i class="fas fa-user"></i>Profile</a>
+                            <a href="{{ route('admin.settings') }}"><i class="fas fa-gear"></i>Settings</a>
+                            <form method="POST" action="{{ route('admin.logout') }}">
+                                @csrf
+                                <button type="submit" class="danger"><i class="fas fa-arrow-right-from-bracket"></i>Sign out</button>
+                            </form>
+                        </div>
+                    </div>
                 </div>
             </header>
 
-            <!-- Content Area -->
-            <main class="flex-1 overflow-y-auto p-6">
+            <main class="app-main">
                 @yield('content')
             </main>
         </div>
     </div>
 
-    <!-- Toast Container -->
     <div id="toastContainer"></div>
 
     <script>
-        function toggleDrawer() {
-            const drawer = document.querySelector('.drawer-container');
-            drawer.classList.toggle('open');
+        function toggleDrawer(force) {
+            const drawer = document.getElementById('drawer');
+            const scrim = document.getElementById('drawerScrim');
+            const open = force === undefined ? !drawer.classList.contains('open') : force;
+
+            drawer.classList.toggle('open', open);
+            scrim.classList.toggle('open', open);
         }
 
         function toggleMenu(button) {
             const submenu = button.nextElementSibling;
-            const icon = button.querySelector('.fa-chevron-down');
-            submenu.classList.toggle('hidden');
-            icon.style.transform = submenu.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
+            const open = !submenu.classList.contains('open');
+
+            submenu.classList.toggle('open', open);
+            submenu.classList.toggle('hidden', !open);
+            button.setAttribute('aria-expanded', open ? 'true' : 'false');
         }
 
+        function toggleProfileMenu(event) {
+            event.stopPropagation();
+            document.getElementById('profileMenu').classList.toggle('open');
+        }
+
+        document.addEventListener('click', () => {
+            document.getElementById('profileMenu')?.classList.remove('open');
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key !== 'Escape') return;
+
+            document.getElementById('profileMenu')?.classList.remove('open');
+            toggleDrawer(false);
+        });
+
+        /**
+         * A peso amount, from the decimal strings the API sends.
+         *
+         * Money is never parsed into arithmetic here - the backend owns every
+         * calculation and this only renders what it was handed.
+         */
+        function fmPeso(amount) {
+            if (amount === null || amount === undefined || amount === '') return '—';
+
+            const value = Number(amount);
+            if (!isFinite(value)) return '—';
+
+            return '₱' + value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        /**
+         * A transient message. Toasts stack instead of covering each other,
+         * and the text is set as text so a message quoting an item title
+         * cannot inject markup.
+         */
         function showToast(message, type = 'info') {
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
+            const icon = type === 'success' ? 'circle-check'
+                : type === 'error' ? 'circle-exclamation'
+                : 'circle-info';
+
             toast.className = `toast ${type}`;
-            toast.innerHTML = `
-                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
-                <span>${message}</span>
-            `;
+            toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+            toast.innerHTML = `<i class="fas fa-${icon}"></i><span></span>`;
+            toast.querySelector('span').textContent = message;
             container.appendChild(toast);
 
             setTimeout(() => {
-                toast.style.animation = 'slideOut 0.3s ease forwards';
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
+                toast.classList.add('leaving');
+                setTimeout(() => toast.remove(), 240);
+            }, 3400);
         }
 
-        // Update active link based on current route
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const currentRoute = document.querySelector('meta[name="current-route"]')?.getAttribute('content') || '';
 
-            // Mark active link
-            document.querySelectorAll('.sidebar-link').forEach(link => {
-                link.classList.remove('active');
+            // Longest match wins, so "admin.transactions.cash" does not also
+            // light up the "admin.transactions" entry.
+            let best = null;
+
+            document.querySelectorAll('.sidebar-link[data-route]').forEach(link => {
                 const route = link.getAttribute('data-route');
-                if (route && currentRoute.includes(route)) {
-                    link.classList.add('active');
+
+                if (currentRoute === route || currentRoute.startsWith(route + '.')) {
+                    if (!best || route.length > best.getAttribute('data-route').length) best = link;
                 }
             });
 
-            // Open dropdown if child is active
-            const activeLink = document.querySelector('.sidebar-link.active');
-            if (activeLink) {
-                const inventorySubmenu = activeLink.closest('.inventory-submenu');
-                const transactionsSubmenu = activeLink.closest('.transactions-submenu');
-                const reportsSubmenu = activeLink.closest('.reports-submenu');
+            if (best) {
+                best.classList.add('active');
 
-                if (inventorySubmenu) {
-                    inventorySubmenu.classList.remove('hidden');
-                    const icon = document.querySelector('.inventory-toggle .fa-chevron-down');
-                    if (icon) icon.style.transform = 'rotate(180deg)';
-                }
-                if (transactionsSubmenu) {
-                    transactionsSubmenu.classList.remove('hidden');
-                    const icon = document.querySelector('.transactions-toggle .fa-chevron-down');
-                    if (icon) icon.style.transform = 'rotate(180deg)';
-                }
-                if (reportsSubmenu) {
-                    reportsSubmenu.classList.remove('hidden');
-                    const icon = document.querySelector('.reports-toggle .fa-chevron-down');
-                    if (icon) icon.style.transform = 'rotate(180deg)';
+                const submenu = best.closest('.submenu');
+
+                if (submenu) {
+                    submenu.classList.add('open');
+                    submenu.classList.remove('hidden');
+                    submenu.previousElementSibling?.setAttribute('aria-expanded', 'true');
                 }
             }
 
-        });
-
-        // Close drawer on mobile when link is clicked
-        if (window.innerWidth < 768) {
-            document.querySelectorAll('.sidebar-link').forEach(link => {
-                link.addEventListener('click', () => {
-                    document.querySelector('.drawer-container').classList.remove('open');
+            if (window.innerWidth < 1024) {
+                document.querySelectorAll('.drawer-scroll a').forEach(link => {
+                    link.addEventListener('click', () => toggleDrawer(false));
                 });
-            });
-        }
+            }
+        });
     </script>
     @stack('scripts')
 </body>
