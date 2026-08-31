@@ -6,15 +6,15 @@
 <div class="space-y-6">
     <!-- USERS SECTION -->
     <div>
-        <h3 class="text-sm font-semibold text-green-700 uppercase tracking-wide mb-4">USERS</h3>
+        <h3 class="fm-section-title">Students</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div class="stat-card">
                 <div class="flex items-start justify-between">
                     <div>
-                        <p class="text-gray-600 text-sm font-medium">Total</p>
-                        <div class="stat-value text-2xl">{{ $stats['users']['total_students'] ?? 0 }}</div>
+                        <p class="stat-label">Total</p>
+                        <div class="stat-value">{{ $stats['users']['total_students'] ?? 0 }}</div>
                     </div>
-                    <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                    <div class="stat-icon" style="background: var(--info-bg, #EEF2F1);">
                         <i class="fas fa-graduation-cap text-blue-600"></i>
                     </div>
                 </div>
@@ -23,10 +23,10 @@
             <div class="stat-card">
                 <div class="flex items-start justify-between">
                     <div>
-                        <p class="text-gray-600 text-sm font-medium">Active</p>
-                        <div class="stat-value text-2xl">{{ $stats['users']['active_students'] ?? 0 }}</div>
+                        <p class="stat-label">Active</p>
+                        <div class="stat-value">{{ $stats['users']['active_students'] ?? 0 }}</div>
                     </div>
-                    <div class="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                    <div class="stat-icon" style="background: var(--success-bg, #EEF2F1);">
                         <i class="fas fa-check-circle text-green-600"></i>
                     </div>
                 </div>
@@ -35,10 +35,10 @@
             <div class="stat-card">
                 <div class="flex items-start justify-between">
                     <div>
-                        <p class="text-gray-600 text-sm font-medium">Pending</p>
-                        <div class="stat-value text-2xl">{{ $stats['users']['pending_students'] ?? 0 }}</div>
+                        <p class="stat-label">Pending</p>
+                        <div class="stat-value">{{ $stats['users']['pending_students'] ?? 0 }}</div>
                     </div>
-                    <div class="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center">
+                    <div class="stat-icon" style="background: var(--warning-bg, #EEF2F1);">
                         <i class="fas fa-hourglass-half text-yellow-600"></i>
                     </div>
                 </div>
@@ -47,10 +47,10 @@
             <div class="stat-card">
                 <div class="flex items-start justify-between">
                     <div>
-                        <p class="text-gray-600 text-sm font-medium">Verified</p>
-                        <div class="stat-value text-2xl">{{ $stats['users']['verified_students'] ?? 0 }}</div>
+                        <p class="stat-label">Verified</p>
+                        <div class="stat-value">{{ $stats['users']['verified_students'] ?? 0 }}</div>
                     </div>
-                    <div class="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                    <div class="stat-icon" style="background: var(--info-bg, #EEF2F1);">
                         <i class="fas fa-check-double text-purple-600"></i>
                     </div>
                 </div>
@@ -60,15 +60,15 @@
 
     <!-- ITEMS SECTION -->
     <div>
-        <h3 class="text-sm font-semibold text-green-700 uppercase tracking-wide mb-4">ITEMS</h3>
+        <h3 class="fm-section-title">Inventory</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div class="stat-card">
                 <div class="flex items-start justify-between">
                     <div>
-                        <p class="text-gray-600 text-sm font-medium">Total</p>
-                        <div class="stat-value text-2xl">{{ $stats['items']['total_items'] ?? 0 }}</div>
+                        <p class="stat-label">Total</p>
+                        <div class="stat-value">{{ $stats['items']['total_items'] ?? 0 }}</div>
                     </div>
-                    <div class="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center">
+                    <div class="stat-icon" style="background: var(--info-bg, #EEF2F1);">
                         <i class="fas fa-store text-indigo-600"></i>
                     </div>
                 </div>
@@ -77,10 +77,10 @@
             <div class="stat-card">
                 <div class="flex items-start justify-between">
                     <div>
-                        <p class="text-gray-600 text-sm font-medium">Public</p>
-                        <div class="stat-value text-2xl">{{ $stats['items']['public_items'] ?? 0 }}</div>
+                        <p class="stat-label">Public</p>
+                        <div class="stat-value">{{ $stats['items']['public_items'] ?? 0 }}</div>
                     </div>
-                    <div class="w-10 h-10 rounded-lg bg-cyan-100 flex items-center justify-center">
+                    <div class="stat-icon" style="background: var(--surface-bg, #EEF2F1);">
                         <i class="fas fa-globe text-cyan-600"></i>
                     </div>
                 </div>
@@ -89,10 +89,10 @@
             <div class="stat-card">
                 <div class="flex items-start justify-between">
                     <div>
-                        <p class="text-gray-600 text-sm font-medium">Private</p>
-                        <div class="stat-value text-2xl">{{ $stats['items']['private_items'] ?? 0 }}</div>
+                        <p class="stat-label">Private</p>
+                        <div class="stat-value">{{ $stats['items']['private_items'] ?? 0 }}</div>
                     </div>
-                    <div class="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center">
+                    <div class="stat-icon" style="background: var(--danger-bg, #EEF2F1);">
                         <i class="fas fa-lock text-red-600"></i>
                     </div>
                 </div>
@@ -101,10 +101,10 @@
             <div class="stat-card">
                 <div class="flex items-start justify-between">
                     <div>
-                        <p class="text-gray-600 text-sm font-medium">Acquired</p>
-                        <div class="stat-value text-2xl">{{ $stats['items']['acquired_items'] ?? 0 }}</div>
+                        <p class="stat-label">Acquired</p>
+                        <div class="stat-value">{{ $stats['items']['acquired_items'] ?? 0 }}</div>
                     </div>
-                    <div class="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
+                    <div class="stat-icon" style="background: var(--warning-bg, #EEF2F1);">
                         <i class="fas fa-download text-orange-600"></i>
                     </div>
                 </div>
@@ -113,10 +113,10 @@
             <div class="stat-card">
                 <div class="flex items-start justify-between">
                     <div>
-                        <p class="text-gray-600 text-sm font-medium">Reserved</p>
-                        <div class="stat-value text-2xl">{{ $stats['items']['reserved_items'] ?? 0 }}</div>
+                        <p class="stat-label">Reserved</p>
+                        <div class="stat-value">{{ $stats['items']['reserved_items'] ?? 0 }}</div>
                     </div>
-                    <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
+                    <div class="stat-icon" style="background: var(--surface-bg, #EEF2F1);">
                         <i class="fas fa-bookmark text-pink-600"></i>
                     </div>
                 </div>
@@ -125,10 +125,10 @@
             <div class="stat-card">
                 <div class="flex items-start justify-between">
                     <div>
-                        <p class="text-gray-600 text-sm font-medium">Sold</p>
-                        <div class="stat-value text-2xl">{{ $stats['items']['sold_items'] ?? 0 }}</div>
+                        <p class="stat-label">Sold</p>
+                        <div class="stat-value">{{ $stats['items']['sold_items'] ?? 0 }}</div>
                     </div>
-                    <div class="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center">
+                    <div class="stat-icon" style="background: var(--surface-bg, #EEF2F1);">
                         <i class="fas fa-shopping-cart text-teal-600"></i>
                     </div>
                 </div>
@@ -152,13 +152,13 @@
         </div>
         <div class="space-y-3">
             @foreach($registrations as $registration)
-                <div class="bg-white rounded-lg shadow p-4 flex items-center gap-4">
+                <div class="fm-card fm-card-body flex items-center gap-4">
                     <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
                         <i class="fas fa-user text-blue-600"></i>
                     </div>
                     <div class="flex-1 min-w-0">
                         <p class="text-sm font-medium text-gray-900">{{ $registration['name'] ?? 'N/A' }}</p>
-                        <p class="text-xs text-gray-500">{{ $registration['email'] ?? 'N/A' }}</p>
+                        <p class="cell-sub">{{ $registration['email'] ?? 'N/A' }}</p>
                     </div>
                 </div>
             @endforeach
@@ -174,7 +174,7 @@
         </div>
         <div class="space-y-3">
             @foreach($items as $item)
-                <div class="bg-white rounded-lg shadow p-4 flex items-center gap-4">
+                <div class="fm-card fm-card-body flex items-center gap-4">
                     <div class="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
                         <i class="fas fa-shopping-bag text-indigo-600"></i>
                     </div>
@@ -196,7 +196,7 @@
         </div>
         <div class="space-y-3">
             @foreach($verifications as $verification)
-                <div class="bg-white rounded-lg shadow p-4 flex items-center gap-4 border-l-4 border-orange-500">
+                <div class="fm-card fm-card-body flex items-center gap-4" style="border-left: 3px solid var(--warning);">
                     <div class="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center flex-shrink-0">
                         <i class="fas fa-certificate text-orange-600"></i>
                     </div>
@@ -212,9 +212,9 @@
 
     <!-- Quick Actions -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="fm-card fm-card-body">
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-bold text-gray-900">Quick Actions</h3>
+                <h3>Quick Actions</h3>
                 <i class="fas fa-bolt text-yellow-500"></i>
             </div>
             <div class="space-y-2">
@@ -237,9 +237,9 @@
             </div>
         </div>
 
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="fm-card fm-card-body">
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-bold text-gray-900">System Status</h3>
+                <h3>System Status</h3>
                 <i class="fas fa-heartbeat text-green-500"></i>
             </div>
             <div class="space-y-3">
