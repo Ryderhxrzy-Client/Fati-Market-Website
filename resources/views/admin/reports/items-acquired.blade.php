@@ -1,7 +1,7 @@
 @extends('layouts.admin-dashboard')
 
-@section('title', 'Total Item Acquired')
-@section('subtitle', 'View acquired totals and related transactions')
+@section('title', 'Items Acquired')
+@section('subtitle', 'Every item the store has taken in and what it agreed to pay')
 
 @section('content')
 <div class="space-y-6">
@@ -9,11 +9,11 @@
         <div class="fm-card fm-card-body">
             <div class="flex items-start justify-between">
                 <div>
-                    <p class="text-sm text-gray-600 font-medium">Total Items Acquired</p>
-                    <p class="text-4xl font-bold text-blue-600 mt-2">{{ $reportData['total_acquired'] ?? ($reportData['summary']['total_items_acquired'] ?? 0) }}</p>
-    </div>
-                <div class="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
-                    <i class="fas fa-shopping-bag text-blue-600"></i>
+                    <p class="stat-label">Total items acquired</p>
+                    <p class="stat-value text-4xl mt-2">{{ $reportData['total_acquired'] ?? 0 }}</p>
+                </div>
+                <div class="stat-icon" style="background: var(--info-bg);">
+                    <i class="fas fa-warehouse" style="color: var(--info);"></i>
                 </div>
             </div>
         </div>
@@ -21,70 +21,60 @@
         <div class="fm-card fm-card-body">
             <div class="flex items-start justify-between">
                 <div>
-                    <p class="text-sm text-gray-600 font-medium">Total Items Sold</p>
-                    <p class="text-4xl font-bold text-green-600 mt-2">{{ $reportData['summary']['total_items_sold'] ?? 0 }}</p>
+                    <p class="stat-label">Total items sold</p>
+                    <p class="stat-value text-4xl mt-2">{{ $reportData['total_sold'] ?? 0 }}</p>
                 </div>
-                <div class="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
-                    <i class="fas fa-boxes text-green-600"></i>
+                <div class="stat-icon" style="background: var(--success-bg);">
+                    <i class="fas fa-boxes-stacked" style="color: var(--success);"></i>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="fm-card">
-        <div class="px-6 py-4 border-b border-gray-200">
-            <h4 class="text-lg font-semibold text-gray-900">Transactions (Acquired)</h4>
-            <p>Item name, buyer, seller, points used, and status</p>
+        <div class="fm-card-head">
+            <div>
+                <h4>Acquired inventory</h4>
+                <p class="cell-sub">The items behind the number above - each one physically in the store.</p>
+            </div>
         </div>
 
         <div class="fm-table-wrap">
             <table class="fm-table">
                 <thead>
                     <tr>
-                        <th>Item Name</th>
-                        <th>Buyer</th>
+                        <th>Item</th>
                         <th>Seller</th>
-                        <th>Points Used</th>
-                        <th>Status</th>
+                        <th>Acquisition price</th>
+                        <th>Acquired</th>
+                        <th>Seller payout</th>
                     </tr>
                 </thead>
 
                 <tbody>
-                    @forelse($reportData['sales'] ?? [] as $sale)
+                    @forelse($reportData['items'] ?? [] as $item)
                         <tr>
+                            <td><p class="cell-title">{{ $item['title'] }}</p></td>
+                            <td><p>{{ $item['seller_email'] }}</p></td>
+                            <td><p class="cell-title money">{{ \App\Support\Peso::format($item['acquisition_price']) }}</p></td>
                             <td>
-                                <p class="text-sm font-medium text-gray-900">{{ $sale['item_name'] ?? $sale['item_name'] ?? 'N/A' }}</p>
+                                <p>{{ !empty($item['acquired_at']) ? date('M d, Y', strtotime($item['acquired_at'])) : '—' }}</p>
                             </td>
                             <td>
-                                <p>{{ $sale['buyer_email'] ?? 'N/A' }}</p>
-                            </td>
-                            <td>
-                                <p>{{ $sale['seller_email'] ?? 'N/A' }}</p>
-                            </td>
-                            <td>
-                                <p class="text-sm font-semibold text-blue-600">{{ $sale['points_used'] ?? 0 }}</p>
-                            </td>
-                            <td>
-                                @php
-                                    $status = $sale['status'] ?? 'pending';
-                                    $statusColors = [
-                                        'completed' => 'bg-green-100 text-green-800',
-                                        'pending' => 'bg-orange-100 text-orange-800',
-                                        'failed' => 'bg-red-100 text-red-800',
-                                    ];
-                                @endphp
-                                <span class="px-3 py-1 rounded-full text-xs font-semibold {{ $statusColors[$status] ?? 'bg-gray-100 text-gray-800' }}">
-                                    {{ ucfirst($status) }}
-                                </span>
+                                @if(($item['seller_payout_status'] ?? 'unpaid') === 'paid')
+                                    <span class="fm-badge success">Paid</span>
+                                @else
+                                    <span class="fm-badge warning">Unpaid</span>
+                                @endif
                             </td>
                         </tr>
                     @empty
                         <tr>
                             <td colspan="5">
                                 <div class="fm-empty">
-                                    <i class="fas fa-inbox"></i>
-                                    <p>No acquired transactions data available</p>
-                                    <span>Nothing to show here yet.</span>
+                                    <i class="fas fa-warehouse"></i>
+                                    <p>Nothing acquired yet</p>
+                                    <span>Items appear here once their turnover is verified.</span>
                                 </div>
                             </td>
                         </tr>
@@ -94,19 +84,4 @@
         </div>
     </div>
 </div>
-
-@push('scripts')
-<script>
-    document.getElementById('searchInput')?.addEventListener('keyup', function(e) {
-        const searchTerm = e.target.value.toLowerCase();
-        document.querySelectorAll('tbody tr').forEach(row => {
-            if (row.querySelector('td')) {
-                const text = row.textContent.toLowerCase();
-                row.style.display = text.includes(searchTerm) ? '' : 'none';
-            }
-        });
-    });
-</script>
-@endpush
 @endsection
-

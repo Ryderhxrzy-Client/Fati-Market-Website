@@ -80,6 +80,19 @@ let selectedConversation = null;
 let allConversations = [];
 let busyAction = false;
 
+// Item-status badge colours. An unknown status falls back to grey instead of
+// `undefined`, which used to paint a white badge with white text.
+const statusBadgeColor = {
+    public: '#10b981',
+    private: '#64748b',
+    pending: '#d97706',
+    acquired: '#7c3aed',
+    reserved: '#2563eb',
+    sold: '#dc2626',
+    rejected: '#b91c1c',
+};
+const statusColor = (status) => statusBadgeColor[status] || '#64748b';
+
 function getToken() {
     const metaToken = document.querySelector('meta[name="api-token"]')?.getAttribute('content');
     if (metaToken && metaToken.trim()) {
@@ -162,12 +175,6 @@ function renderConversations(conversations) {
         const itemTitle = conv.item_title || 'No item';
         const itemStatus = conv.item_status || 'public';
         const userType = userEmail.includes('student.fatima') ? 'Student' : 'User';
-        const statusBadgeColor = {
-            'public': '#10b981',
-            'private': 'var(--ink-500)',
-            'sold': '#ef4444',
-            'acquired': '#8b5cf6'
-        };
 
         return `
             <div class="p-4 hover:bg-gray-50 cursor-pointer transition border-b border-gray-100 conversation-item"
@@ -189,7 +196,7 @@ function renderConversations(conversations) {
                         ${unreadCount > 0 ? `<span style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; background: #ef4444; color: white; font-size: 11px; border-radius: 50%; font-weight: bold;">${unreadCount}</span>` : ''}
                     </div>
                     <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 4px;">
-                        <span style="background: ${statusBadgeColor[itemStatus]}; color: white; font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 600; text-transform: capitalize;">${itemStatus}</span>
+                        <span style="background: ${statusColor(itemStatus)}; color: white; font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 600; text-transform: capitalize;">${itemStatus}</span>
                         <span style="color: var(--ink-500); font-size: 11px;">•</span>
                         <span style="color: var(--ink-500); font-size: 11px; font-weight: 500;">${userType}</span>
                     </div>
@@ -232,12 +239,6 @@ async function loadConversationMessages(element) {
 
     const itemStatus = selectedConversation.item_status || 'public';
     const userType = selectedConversation.other_user_email.includes('student.fatima') ? 'Student' : 'User';
-    const statusBadgeColor = {
-        'public': '#10b981',
-        'private': 'var(--ink-500)',
-        'sold': '#ef4444',
-        'acquired': '#8b5cf6'
-    };
 
     document.getElementById('chatHeader').innerHTML = `
         <div style="display: flex; gap: 12px; align-items: center; width: 100%;">
@@ -248,7 +249,7 @@ async function loadConversationMessages(element) {
             <div style="flex: 1;">
                 <p style="font-weight: 600; color: var(--ink-900); margin: 0; font-size: 14px;">${userName}</p>
                 <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px;">
-                    <span style="background: ${statusBadgeColor[itemStatus]}; color: white; font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 600; text-transform: capitalize;">${itemStatus}</span>
+                    <span style="background: ${statusColor(itemStatus)}; color: white; font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 600; text-transform: capitalize;">${itemStatus}</span>
                     <span style="color: var(--ink-500); font-size: 11px;">•</span>
                     <span style="color: var(--ink-500); font-size: 11px; font-weight: 500;">${userType}</span>
                 </div>
