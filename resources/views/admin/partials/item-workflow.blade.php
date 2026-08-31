@@ -154,13 +154,17 @@
         // ── Physically receiving it ──────────────────────────────────────
         if (!item.is_turnover_verified) {
             html += wfStep(
-                'Verify turnover',
-                'Confirms the item is physically in the store. This is what entitles the seller to their cash.',
+                'Mark acquired',
+                'Confirms the item is physically in the store - what entitles the seller to their cash. Attach the counter proof: the item received, the seller paid.',
                 `<input id="wfTurnoverPrice" type="text" inputmode="decimal" placeholder="Acquisition price (optional)"
                         value="${wfAttr(item.acquisition_price || '')}" style="${inputStyle}">
                  <input id="wfPayoutAmount" type="text" inputmode="decimal" placeholder="Payout amount (optional)" style="${inputStyle}">
                  <input id="wfTurnoverNotes" type="text" placeholder="Notes (optional)" style="${inputStyle}">
-                 <button style="${buttonStyle}" onclick="wfVerifyTurnover()">Mark received</button>`
+                 <label style="display: block; font-size: 12px; color: #6b7280; margin-bottom: 2px;">Proof: item received</label>
+                 <input id="wfProofItem" type="file" accept="image/*" style="${inputStyle}">
+                 <label style="display: block; font-size: 12px; color: #6b7280; margin-bottom: 2px;">Proof: seller paid</label>
+                 <input id="wfProofPayout" type="file" accept="image/*" style="${inputStyle}">
+                 <button style="${buttonStyle}" onclick="wfVerifyTurnover()">Confirm &amp; proof</button>`
             );
         }
 
@@ -274,17 +278,44 @@
         wfPost('meetup', { meetup_schedule: schedule || null }, 'Meet-up schedule saved');
     };
 
-    window.wfVerifyTurnover = function () {
-        const body = {};
+    window.wfVerifyTurnover = async function () {
+        if (workflowBusy) return;
+        workflowBusy = true;
+
+        // Multipart, because the two proof photographs ride along with the
+        // prices - the same payload the mobile scan screen sends.
+        const body = new FormData();
         const price = wfValue('wfTurnoverPrice');
         const payout = wfValue('wfPayoutAmount');
         const notes = wfValue('wfTurnoverNotes');
+        const proofItem = document.getElementById('wfProofItem')?.files[0];
+        const proofPayout = document.getElementById('wfProofPayout')?.files[0];
 
-        if (price) body.acquisition_price = price;
-        if (payout) body.seller_payout_amount = payout;
-        if (notes) body.notes = notes;
+        if (price) body.append('acquisition_price', price);
+        if (payout) body.append('seller_payout_amount', payout);
+        if (notes) body.append('notes', notes);
+        if (proofItem) body.append('turnover_photo', proofItem);
+        if (proofPayout) body.append('payout_photo', proofPayout);
 
-        wfPost('verify-turnover', body, 'Turnover verified');
+        try {
+            const response = await fetch(`${WF_API}/admin/items/${workflowItem.item_id}/verify-turnover`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${wfToken()}`, 'Accept': 'application/json' },
+                body,
+            });
+
+            const payload = await response.json().catch(() => ({}));
+
+            if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
+
+            workflowItem = payload.data || workflowItem;
+            renderWorkflow();
+            wfNotify('Item marked acquired', 'success');
+        } catch (error) {
+            wfNotify(error.message, 'error');
+        } finally {
+            workflowBusy = false;
+        }
     };
 
     window.wfRecordPayout = function () {
