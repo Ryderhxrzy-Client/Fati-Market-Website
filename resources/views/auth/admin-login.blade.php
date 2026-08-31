@@ -1,314 +1,214 @@
 @extends('layouts.admin-auth')
 
-@section('title', 'Admin Login')
+@section('title', 'Sign in')
 
 @section('content')
-<div class="min-h-screen flex flex-col">
-    <!-- Header with gradient background -->
-    <div class="bg-gradient-to-b from-[#1A5C38] to-[#2E7D52] h-[300px] flex items-center justify-center">
-        <div class="flex flex-col items-center gap-3">
-            <div class="w-[72px] h-[72px] rounded-full bg-white/15 border-2 border-[#D4A017] flex items-center justify-center">
-                <i class="fas fa-shopping-cart text-white text-[38px]"></i>
+{{--
+    A two-panel sign-in: the brand sits on the left on a wide screen and
+    collapses to a slim header on a phone, so the form is never pushed below
+    the fold the way the old 300px banner pushed it.
+--}}
+<div class="min-h-screen lg:grid lg:grid-cols-2">
+
+    <!-- ── Brand panel ─────────────────────────────────────────────── -->
+    <div class="relative overflow-hidden px-8 py-10 lg:px-14 lg:py-16 flex flex-col justify-between"
+         style="background: linear-gradient(160deg, var(--brand-900) 0%, var(--brand-700) 60%, var(--brand-600) 100%);">
+
+        <div aria-hidden="true"
+             style="position: absolute; width: 420px; height: 420px; right: -140px; top: -120px;
+                    border-radius: 50%; background: rgba(255,255,255,0.05);"></div>
+        <div aria-hidden="true"
+             style="position: absolute; width: 300px; height: 300px; left: -110px; bottom: -110px;
+                    border-radius: 50%; background: rgba(255,255,255,0.04);"></div>
+
+        <div class="relative flex items-center gap-3">
+            <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(255,255,255,0.14);
+                        border: 1px solid rgba(255,255,255,0.2); display: flex; align-items: center;
+                        justify-content: center;">
+                <i class="fas fa-store text-white text-lg"></i>
             </div>
-            <h1 class="text-white text-[26px] font-bold tracking-[1px]">Fati-Market</h1>
-            <p class="text-white/80 text-[13px]">Admin Login</p>
+            <div>
+                <div class="text-white font-semibold">Fati Market</div>
+                <div class="text-white/55 text-[11px] uppercase tracking-wider">Admin console</div>
+            </div>
+        </div>
+
+        <div class="relative hidden lg:block mt-16">
+            <h1 class="text-white text-[30px] font-semibold leading-tight">
+                Run the store<br>from one place.
+            </h1>
+            <p class="text-white/65 text-[14px] mt-3 max-w-sm">
+                Review offers, price and publish stock, settle GCash payments and
+                answer students - the same tools as the mobile app.
+            </p>
+
+            <ul class="mt-8 space-y-3 text-white/75 text-[13.5px]">
+                <li class="flex items-center gap-3">
+                    <i class="fas fa-circle-check" style="color: #7BD3A4;"></i>
+                    Acquire, price and publish items
+                </li>
+                <li class="flex items-center gap-3">
+                    <i class="fas fa-circle-check" style="color: #7BD3A4;"></i>
+                    Verify GCash receipts and complete orders
+                </li>
+                <li class="flex items-center gap-3">
+                    <i class="fas fa-circle-check" style="color: #7BD3A4;"></i>
+                    Chat with buyers and sellers per item
+                </li>
+            </ul>
+        </div>
+
+        <p class="relative text-white/40 text-[11.5px] mt-10 hidden lg:block">
+            Ofelia Store &middot; Our Lady of Fatima University
+        </p>
+    </div>
+
+    <!-- ── Form panel ──────────────────────────────────────────────── -->
+    <div class="flex items-center justify-center px-5 py-10 lg:py-16">
+        <div class="w-full" style="max-width: 400px;">
+
+            <h2 class="text-[24px] font-semibold">Welcome back</h2>
+            <p class="text-[14px] mt-1" style="color: var(--ink-500);">
+                Sign in with your administrator account.
+            </p>
+
+            @if ($errors->any())
+                <div role="alert" class="mt-5 flex gap-3 p-3"
+                     style="background: #FCE8E6; border: 1px solid #F3C7C3; border-radius: var(--radius); color: var(--danger);">
+                    <i class="fas fa-circle-exclamation mt-0.5"></i>
+                    <div class="text-[13px]">
+                        @foreach ($errors->all() as $error)
+                            <div>{{ $error }}</div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
+            <form method="POST" action="/" class="mt-6" id="loginForm">
+                @csrf
+
+                <div class="mb-4">
+                    <label for="email" class="block text-[13px] font-semibold mb-2" style="color: var(--ink-700);">
+                        Email address
+                    </label>
+                    <div class="relative">
+                        <i class="fas fa-envelope auth-icon"></i>
+                        <input type="email" id="email" name="email" required autofocus
+                               autocomplete="username"
+                               class="auth-input {{ $errors->has('email') ? 'invalid' : '' }}"
+                               placeholder="you@fatima.edu.ph"
+                               value="{{ old('email') }}">
+                    </div>
+                    @error('email')
+                        <p class="text-[12px] mt-1.5" style="color: var(--danger);">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div class="mb-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <label for="password" class="block text-[13px] font-semibold" style="color: var(--ink-700);">
+                            Password
+                        </label>
+                        <a href="#" class="text-[12.5px] font-semibold no-underline hover:underline"
+                           style="color: var(--brand-600);">Forgot password?</a>
+                    </div>
+                    <div class="relative">
+                        <i class="fas fa-lock auth-icon"></i>
+                        <input type="password" id="password" name="password" required
+                               autocomplete="current-password"
+                               class="auth-input {{ $errors->has('password') ? 'invalid' : '' }}"
+                               style="padding-right: 42px;"
+                               placeholder="Enter your password">
+                        <button type="button" onclick="togglePassword()"
+                                aria-label="Show password"
+                                id="passwordToggle"
+                                style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+                                       background: none; border: none; cursor: pointer; color: var(--ink-400);
+                                       padding: 4px;">
+                            <i class="fas fa-eye" id="passwordToggleIcon"></i>
+                        </button>
+                    </div>
+                    @error('password')
+                        <p class="text-[12px] mt-1.5" style="color: var(--danger);">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <label class="flex items-center gap-2 mb-6 cursor-pointer text-[13.5px]" style="color: var(--ink-500);">
+                    <input type="checkbox" name="remember" style="width: 15px; height: 15px; accent-color: var(--brand-600);">
+                    Keep me signed in
+                </label>
+
+                <button type="submit" class="auth-btn" id="loginButton">
+                    <span id="buttonText">Sign in</span>
+                    <span id="buttonSpinner" style="display: none;">
+                        <span style="display: inline-block; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.35);
+                                     border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite;"></span>
+                    </span>
+                </button>
+            </form>
+
+            <p class="text-center text-[12px] mt-8" style="color: var(--ink-400);">
+                Students use the Fati Market mobile app.
+            </p>
         </div>
     </div>
-    
-    <!-- Form card -->
-    <div class="bg-white rounded-[20px] shadow-2xl mx-5 -mt-7 p-8 max-w-[600px] mx-auto">
-        <div class="text-center mb-6">
-            <h2 class="text-[22px] font-bold text-[#1C1B1F] mb-1">Welcome Back</h2>
-            <p class="text-[14px] text-[#6B6B6B]">Log in to your admin account</p>
-        </div>
-        
-                
-        <form method="POST" action="/">
-            @csrf
-            
-            <!-- Email field -->
-            <div class="mb-4">
-                <label class="block mb-2 font-semibold text-[#1C1B1F] text-[14px]" for="email">Email Address</label>
-                <div class="relative">
-                    <i class="fas fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-[#1A5C38] text-[20px]"></i>
-                    <input 
-                        type="email" 
-                        id="email" 
-                        name="email" 
-                        class="w-full pl-12 pr-4 py-3 border-2 border-[#EEEEE8] rounded-[12px] text-[16px] transition-colors focus:outline-none focus:border-[#1A5C38] {{ $errors->has('email') ? 'border-red-500' : '' }}"
-                        placeholder="Enter your email"
-                        value="{{ old('email') }}"
-                        required
-                    >
-                </div>
-                @error('email')
-                    <div class="text-red-500 text-[12px] mt-1">
-                        {{ $message }}
-                    </div>
-                @enderror
-            </div>
-            
-            <!-- Password field -->
-            <div class="mb-4">
-                <label class="block mb-2 font-semibold text-[#1C1B1F] text-[14px]" for="password">Password</label>
-                <div class="relative">
-                    <i class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-[#1A5C38] text-[20px]"></i>
-                    <input 
-                        type="password" 
-                        id="password" 
-                        name="password" 
-                        class="w-full pl-12 pr-12 py-3 border-2 border-[#EEEEE8] rounded-[12px] text-[16px] transition-colors focus:outline-none focus:border-[#1A5C38] {{ $errors->has('password') ? 'border-red-500' : '' }}"
-                        placeholder="Enter your password"
-                        required
-                    >
-                    <button type="button" class="absolute right-4 top-1/2 -translate-y-1/2 bg-none border-none text-[#1A5C38] text-[20px] p-0" onclick="togglePassword()">
-                        <i class="fas fa-eye" id="passwordToggleIcon"></i>
-                    </button>
-                </div>
-                @error('password')
-                    <div class="text-red-500 text-[12px] mt-1">
-                        {{ $message }}
-                    </div>
-                @enderror
-            </div>
-            
-            <!-- Forgot password link -->
-            <div class="text-right mb-5">
-                <a href="#" class="text-[#1A5C38] text-[14px] font-semibold no-underline hover:underline">Forgot Password?</a>
-            </div>
-            
-            <!-- Remember me -->
-            <div class="flex items-center gap-2 mb-5">
-                <input type="checkbox" id="remember" name="remember" class="w-auto">
-                <label for="remember" class="m-0 text-[14px] text-[#6B6B6B]">Remember me</label>
-            </div>
-            
-            <!-- Login button -->
-            <button type="submit" class="w-full h-[52px] bg-[#1A5C38] text-white border-none rounded-[12px] text-[16px] font-bold cursor-pointer transition-all hover:bg-[#2E7D52] hover:-translate-y-0.5 hover:shadow-lg flex items-center justify-center gap-2" id="loginButton">
-                <span id="buttonText">Login</span>
-                <div class="hidden" id="buttonSpinner">
-                    <div class="w-[22px] h-[22px] border-2 border-transparent border-t-2 border-white rounded-full animate-spin"></div>
-                </div>
-            </button>
-        </form>
-    </div>
-    
-    <div class="flex-1"></div>
 </div>
 
-<!-- Success dialog (hidden by default) -->
 @if (session('login_success'))
-<div class="fixed inset-0 bg-black/50 flex items-center justify-center z-[1000]" id="successDialog">
-    <div class="bg-white rounded-[16px] p-8 max-w-[400px] text-center shadow-2xl">
-        <div class="w-[72px] h-[72px] rounded-full bg-[#1A5C38]/10 flex items-center justify-center mx-auto mb-4">
-            <i class="fas fa-shopping-cart text-[#1A5C38] text-[36px]"></i>
+<div class="fixed inset-0 flex items-center justify-center z-[1000] p-6"
+     style="background: rgba(12, 48, 33, 0.45); backdrop-filter: blur(3px);" id="successDialog">
+    <div style="background: var(--surface); border-radius: 16px; padding: 30px; max-width: 380px; width: 100%;
+                text-align: center; box-shadow: var(--shadow-lg);">
+        <div style="width: 60px; height: 60px; border-radius: 50%; background: var(--brand-100);
+                    display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+            <i class="fas fa-circle-check" style="color: var(--brand-600); font-size: 26px;"></i>
         </div>
-        <h3 class="text-[20px] font-bold text-[#1C1B1F] mb-2">Login Successful</h3>
-        <p class="text-[14px] text-[#6B6B6B] mb-6">Welcome back! Redirecting to dashboard...</p>
-        <button class="w-full h-[52px] bg-[#1A5C38] text-white border-none rounded-[12px] text-[16px] font-bold cursor-pointer transition-all hover:bg-[#2E7D52] hover:-translate-y-0.5 hover:shadow-lg" onclick="window.location.href='/dashboard'">
-            Go to Dashboard
-        </button>
+        <h3 class="text-[18px] font-semibold mb-1">You are signed in</h3>
+        <p class="text-[13.5px] mb-6" style="color: var(--ink-500);">Taking you to the dashboard…</p>
+        <button class="auth-btn" onclick="window.location.href='/dashboard'">Go to dashboard</button>
     </div>
 </div>
 @endif
 @endsection
 
+@push('styles')
+<style>
+    @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+@endpush
+
 @push('scripts')
 <script>
-    // Toggle password visibility
     function togglePassword() {
-        const passwordInput = document.getElementById('password');
-        const toggleIcon = document.getElementById('passwordToggleIcon');
-        
-        if (passwordInput.type === 'password') {
-            passwordInput.type = 'text';
-            toggleIcon.classList.remove('fa-eye');
-            toggleIcon.classList.add('fa-eye-slash');
-        } else {
-            passwordInput.type = 'password';
-            toggleIcon.classList.remove('fa-eye-slash');
-            toggleIcon.classList.add('fa-eye');
-        }
+        const input = document.getElementById('password');
+        const icon = document.getElementById('passwordToggleIcon');
+        const shown = input.type === 'text';
+
+        input.type = shown ? 'password' : 'text';
+        icon.classList.toggle('fa-eye', shown);
+        icon.classList.toggle('fa-eye-slash', !shown);
+        document.getElementById('passwordToggle')
+            .setAttribute('aria-label', shown ? 'Show password' : 'Hide password');
     }
-    
-    // Show toast messages
-    document.addEventListener('DOMContentLoaded', function() {
-        @if ($errors->any())
-            @foreach ($errors->all() as $error)
-                showToast('error', '{{ $error }}');
-            @endforeach
-        @endif
-        
-        @if (session('error'))
-            showToast('error', '{{ session('error') }}');
-        @endif
-        
-        @if (session('success'))
-            showToast('success', '{{ session('success') }}');
-        @endif
-    });
-    
-    function showToast(type, message) {
-        console.log('Showing toast:', type, message); // Debug log
-        
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-        toast.style.cssText = `
-            background: ${type === 'success' ? '#10b981' : '#ef4444'};
-            color: white;
-            padding: 12px 16px;
-            border-radius: 8px;
-            margin-bottom: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            min-width: 300px;
-            animation: slideIn 0.3s ease-out;
-            z-index: 9999;
-            position: relative;
-        `;
-        
-        const icon = document.createElement('i');
-        icon.className = `fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}`;
-        
-        const text = document.createElement('span');
-        text.textContent = message;
-        
-        toast.appendChild(icon);
-        toast.appendChild(text);
-        
-        const container = document.getElementById('toast-container');
-        if (container) {
-            container.appendChild(toast);
-            
-            // Auto remove after 3 seconds
-            setTimeout(() => {
-                toast.style.animation = 'slideOut 0.3s ease-out';
-                setTimeout(() => {
-                    if (container.contains(toast)) {
-                        container.removeChild(toast);
-                    }
-                }, 300);
-            }, 3000);
-        } else {
-            console.error('Toast container not found');
-        }
-    }
-    
-    // Add animations
-    const style = document.createElement('style');
-    style.textContent = `
-        @keyframes slideIn {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-        
-        @keyframes slideOut {
-            from {
-                transform: translateX(0);
-                opacity: 1;
-            }
-            to {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-        }
-    `;
-    document.head.appendChild(style);
-    
-    // Show loading state on form submission
-    document.querySelector('form').addEventListener('submit', function(e) {
-        e.preventDefault(); // Prevent page reload
-        
+
+    // Signing in calls the API, which takes a moment; say so rather than
+    // letting the page sit there looking ignored.
+    document.getElementById('loginForm').addEventListener('submit', function () {
         const button = document.getElementById('loginButton');
-        const buttonText = document.getElementById('buttonText');
-        const spinner = document.getElementById('buttonSpinner');
-        
+
         button.disabled = true;
-        buttonText.style.display = 'none';
-        spinner.style.display = 'block';
-        
-        // Get form data
-        const formData = new FormData(e.target);
-        
-        // Send AJAX request
-        fetch('/', {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json',
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            button.disabled = false;
-            buttonText.style.display = 'block';
-            spinner.style.display = 'none';
-            
-            if (data.success) {
-                showToast('success', data.message || 'Login successful! Admin access granted.');
-                // Update CSRF token for next requests
-                if (data.csrf_token) {
-                    document.querySelector('input[name="_token"]').value = data.csrf_token;
-                }
-                // Redirect to dashboard
-                setTimeout(() => {
-                    if (data.redirect) {
-                        window.location.href = data.redirect;
-                    } else {
-                        window.location.href = '/dashboard';
-                    }
-                }, 1500);
-            } else if (data.errors) {
-                // Show validation errors
-                Object.values(data.errors).forEach(error => {
-                    showToast('error', error);
-                });
-            } else if (data.message) {
-                showToast('error', data.message);
-            }
-        })
-        .catch(error => {
-            button.disabled = false;
-            buttonText.style.display = 'block';
-            spinner.style.display = 'none';
-            showToast('error', 'Login failed: ' + error.message);
-        });
+        document.getElementById('buttonText').textContent = 'Signing in';
+        document.getElementById('buttonSpinner').style.display = 'inline-block';
     });
-    
-    // Auto-hide success dialog after 3 seconds
-    @if (session('login_success'))
-        setTimeout(function() {
-            const dialog = document.getElementById('successDialog');
-            if (dialog) {
-                dialog.style.display = 'none';
-                window.location.href = '/dashboard';
-            }
-        }, 3000);
-    @endif
-    
-    // Clear error messages after 5 seconds
-    setTimeout(function() {
-        const errorMessages = document.querySelectorAll('.error-message');
-        errorMessages.forEach(function(element) {
-            element.style.display = 'none';
-        });
-    }, 5000);
-    
-    // Clear success messages after 3 seconds
-    setTimeout(function() {
-        const successMessages = document.querySelectorAll('.success-message');
-        successMessages.forEach(function(element) {
-            element.style.display = 'none';
-        });
-    }, 3000);
+
+    document.addEventListener('DOMContentLoaded', function () {
+        @if (session('error'))
+            showToast('error', @json(session('error')));
+        @endif
+
+        @if (session('success'))
+            showToast('success', @json(session('success')));
+        @endif
+    });
 </script>
 @endpush
