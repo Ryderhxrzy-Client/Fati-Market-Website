@@ -315,6 +315,11 @@ function renderMessages(messages) {
             return renderOrderCard(msg, isAdmin, senderName, timestamp);
         }
 
+        // A seller's fresh listing: the offer card, with the review decisions.
+        if (msg.kind === 'item_listed' && msg.item_card) {
+            return renderItemOfferCard(msg, isAdmin, senderName, timestamp);
+        }
+
         return `
             <div style="display: flex; ${isAdmin ? 'justify-content: flex-end;' : 'justify-content: flex-start;'} margin-bottom: 12px;">
                 <div style="display: flex; gap: 8px; ${isAdmin ? 'flex-direction: row-reverse;' : ''} max-width: 70%;">
@@ -582,6 +587,136 @@ async function refreshThread() {
     const element = document.querySelector(selector);
 
     if (element) await loadConversationMessages(element);
+}
+
+// ── Listing offers ───────────────────────────────────────────────────────
+
+function renderItemOfferCard(msg, isAdmin, senderName, timestamp) {
+    const item = msg.item_card;
+    const photo = (item.photos && item.photos[0]) || null;
+    const pending = (item.status || '').toLowerCase() === 'pending';
+
+    return `
+        <div style="display: flex; ${isAdmin ? 'justify-content: flex-end;' : 'justify-content: flex-start;'} margin-bottom: 12px;">
+            <div style="max-width: 420px; width: 100%; background: white; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden;">
+
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--surface-sunk); border-bottom: 1px solid var(--line);">
+                    <span style="font-size: 12px; font-weight: 700; color: var(--brand-700);">
+                        <i class="fas fa-tag"></i> Item offer
+                    </span>
+                    <span style="font-size: 11px; color: var(--ink-500);">Item #${item.item_id}</span>
+                </div>
+
+                <div style="padding: 14px;">
+                    <div onclick="openItem(${item.item_id})"
+                         style="display: flex; gap: 10px; align-items: center; cursor: pointer; margin-bottom: 12px;">
+                        ${photo
+                            ? `<img src="${escapeAttr(photo)}" alt="" style="width: 56px; height: 56px; border-radius: 6px; object-fit: cover; flex-shrink: 0;">`
+                            : `<div style="width: 56px; height: 56px; border-radius: 6px; background: var(--surface-sunk); display: flex; align-items: center; justify-content: center; color: var(--ink-400); flex-shrink: 0;"><i class="fas fa-image"></i></div>`}
+                        <div style="min-width: 0;">
+                            <p style="margin: 0; font-size: 13px; font-weight: 600; color: var(--ink-900);">${escapeHtml(item.title || ('Item #' + item.item_id))}</p>
+                            <p style="margin: 2px 0 0 0; font-size: 12px; color: var(--ink-500);">Asking ${peso(item.seller_asking_price)}</p>
+                            <p style="margin: 2px 0 0 0; font-size: 11px; color: var(--brand-600); font-weight: 600;">Click to view item</p>
+                        </div>
+                    </div>
+
+                    <div style="border-top: 1px solid var(--surface-sunk); padding-top: 8px;">
+                        ${summaryRow('Asking price', peso(item.seller_asking_price), true)}
+                        ${item.acquisition_price ? summaryRow('Store offer', peso(item.acquisition_price)) : ''}
+                    </div>
+
+                    <div style="margin-top: 10px;">${badge(item.status || 'pending', '#374151', '#f3f4f6')}</div>
+
+                    ${item.rejected_reason ? `
+                        <p style="margin: 10px 0 0 0; padding: 8px 10px; background: var(--danger-bg, #FCE8E6); border-radius: 6px; font-size: 12px; color: var(--danger);">${escapeHtml(item.rejected_reason)}</p>
+                    ` : ''}
+
+                    ${pending ? `
+                        <div style="display: flex; gap: 8px; margin-top: 12px; border-top: 1px solid var(--surface-sunk); padding-top: 12px;">
+                            <button onclick="acceptOffer(${item.item_id}, '${escapeAttr(item.seller_asking_price || '')}')"
+                                    style="background: #16a34a; color: white; border: 1px solid #16a34a; font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 6px; cursor: pointer;">Accept &middot; set price</button>
+                            <button onclick="rejectOffer(${item.item_id})"
+                                    style="background: white; color: var(--danger); border: 1px solid var(--danger); font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 6px; cursor: pointer;">Reject</button>
+                        </div>
+                    ` : ''}
+
+                    <p style="margin: 8px 0 0 0; font-size: 11px; color: var(--ink-400);">${escapeHtml(senderName)} &middot; ${timestamp}</p>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Accepting an offer is setting the acquisition price - the same first step
+ * the inventory workflow takes, against the same endpoint.
+ */
+async function acceptOffer(itemId, askingPrice) {
+    if (busyAction) return;
+
+    const price = window.prompt('Acquisition price - what the store pays the seller:', askingPrice);
+    if (price === null) return;
+    if (!price.trim() || isNaN(Number(price))) {
+        alert('Enter a valid peso amount, e.g. 300 or 299.50.');
+        return;
+    }
+
+    busyAction = true;
+
+    try {
+        const response = await fetch(`${API}/admin/items/${itemId}/acquisition-price`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ acquisition_price: price.trim() }),
+        });
+        const payload = await response.json().catch(() => ({}));
+
+        if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
+
+        await refreshThread();
+    } catch (error) {
+        alert(`Could not accept the offer: ${error.message}`);
+    } finally {
+        busyAction = false;
+    }
+}
+
+async function rejectOffer(itemId) {
+    if (busyAction) return;
+
+    const reason = window.prompt('Reject this offer - give the seller a reason:');
+    if (reason === null) return;
+    if (!reason.trim()) {
+        alert('A reason is required.');
+        return;
+    }
+
+    busyAction = true;
+
+    try {
+        const response = await fetch(`${API}/admin/items/${itemId}/reject`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ reason: reason.trim() }),
+        });
+        const payload = await response.json().catch(() => ({}));
+
+        if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
+
+        await refreshThread();
+    } catch (error) {
+        alert(`Could not reject the offer: ${error.message}`);
+    } finally {
+        busyAction = false;
+    }
 }
 
 // ── Overlays ─────────────────────────────────────────────────────────────
