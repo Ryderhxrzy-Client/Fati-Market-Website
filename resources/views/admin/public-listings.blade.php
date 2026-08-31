@@ -48,7 +48,10 @@
                                 </div>
                             </td>
                             <td>
-                                <p>{{ $sellerEmail }}</p>
+                                {{-- The store owns it now; the student is
+                                     provenance, not the seller. --}}
+                                <p class="cell-title">Ofelia Store</p>
+                                <p class="cell-sub">from {{ $sellerEmail }}</p>
                             </td>
                             <td>
                                 <p class="cell-title money">{{ \App\Support\Peso::format($price) }}</p>
