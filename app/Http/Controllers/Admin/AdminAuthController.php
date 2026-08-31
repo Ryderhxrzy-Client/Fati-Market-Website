@@ -399,7 +399,10 @@ class AdminAuthController extends Controller
                         'transaction_id' => $txn['transaction_id'] ?? null,
                         'item_title' => $txn['item']['title'] ?? 'N/A',
                         'buyer_email' => $txn['buyer']['email'] ?? 'N/A',
-                        'seller_email' => $txn['seller']['email'] ?? 'N/A',
+                        // The store sells what it owns; the student it came
+                        // from is provenance, shown separately.
+                        'seller_email' => $txn['seller']['name'] ?? ($txn['seller']['email'] ?? 'N/A'),
+                        'consigned_by' => $txn['consigned_by'] ?? null,
                         'payment_method' => $txn['payment_method'] ?? 'N/A',
                         'status' => $txn['status'] ?? 'pending',
                         'points_used' => $txn['points_used'] ?? 0,
@@ -765,7 +768,10 @@ class AdminAuthController extends Controller
                     return [
                         'item_name' => $sale['item']['title'] ?? 'N/A',
                         'markup_points' => $sale['item']['markup_points'] ?? 0,
-                        'seller_email' => $sale['seller']['email'] ?? 'N/A',
+                        // The sale was the store's; the student it came from
+                        // is provenance, not the seller of record.
+                        'seller_email' => $sale['consigned_by']
+                            ?? ($sale['seller']['name'] ?? 'Ofelia Store'),
                     ];
                 }, $recentSales);
             }

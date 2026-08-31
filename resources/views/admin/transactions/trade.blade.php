@@ -40,6 +40,9 @@
                                     @if($transaction['seller_email'] ?? null)
                                         <p class="text-xs text-gray-600">Seller: {{ $transaction['seller_email'] }}</p>
                                     @endif
+                                    @if($transaction['consigned_by'] ?? null)
+                                        <p class="text-xs text-gray-500">From: {{ $transaction['consigned_by'] }}</p>
+                                    @endif
                                 </div>
                             </td>
                             <td>
