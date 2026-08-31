@@ -63,6 +63,9 @@
                             </td>
                             <td class="px-6 py-4">
                                 <div class="flex gap-2">
+                                    <button class="px-3 py-1 text-sm font-medium text-purple-600 hover:bg-purple-50 rounded transition" title="Acquisition &amp; publishing" onclick="openItemWorkflow({{ $itemId }})">
+                                        <i class="fas fa-diagram-project"></i>
+                                    </button>
                                     <button class="px-3 py-1 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded transition view-item-btn" title="View details" data-item-id="{{ $itemId }}" data-item-data="{{ base64_encode(json_encode($item)) }}">
                                         <i class="fas fa-eye"></i>
                                     </button>
@@ -153,6 +156,8 @@
     }
 </style>
 @endpush
+
+@include('admin.partials.item-workflow')
 
 @push('scripts')
 <script>
