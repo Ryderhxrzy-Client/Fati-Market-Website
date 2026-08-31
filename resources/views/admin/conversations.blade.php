@@ -595,6 +595,9 @@ function renderItemOfferCard(msg, isAdmin, senderName, timestamp) {
     const item = msg.item_card;
     const photo = (item.photos && item.photos[0]) || null;
     const pending = (item.status || '').toLowerCase() === 'pending';
+    // A price on a pending listing IS the acceptance; from there the next
+    // move is scheduling the turnover, not deciding again.
+    const accepted = pending && item.acquisition_price;
 
     return `
         <div style="display: flex; ${isAdmin ? 'justify-content: flex-end;' : 'justify-content: flex-start;'} margin-bottom: 12px;">
@@ -623,6 +626,7 @@ function renderItemOfferCard(msg, isAdmin, senderName, timestamp) {
                     <div style="border-top: 1px solid var(--surface-sunk); padding-top: 8px;">
                         ${summaryRow('Asking price', peso(item.seller_asking_price), true)}
                         ${item.acquisition_price ? summaryRow('Store offer', peso(item.acquisition_price)) : ''}
+                        ${item.meetup_schedule ? summaryRow('Meet-up', new Date(item.meetup_schedule).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })) : ''}
                     </div>
 
                     <div style="margin-top: 10px;">${badge(item.status || 'pending', '#374151', '#f3f4f6')}</div>
@@ -631,7 +635,14 @@ function renderItemOfferCard(msg, isAdmin, senderName, timestamp) {
                         <p style="margin: 10px 0 0 0; padding: 8px 10px; background: var(--danger-bg, #FCE8E6); border-radius: 6px; font-size: 12px; color: var(--danger);">${escapeHtml(item.rejected_reason)}</p>
                     ` : ''}
 
-                    ${pending ? `
+                    ${accepted ? `
+                        <div style="display: flex; gap: 8px; margin-top: 12px; border-top: 1px solid var(--surface-sunk); padding-top: 12px;">
+                            <button onclick="scheduleMeetup(${item.item_id})"
+                                    style="background: #16a34a; color: white; border: 1px solid #16a34a; font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 6px; cursor: pointer;">
+                                ${item.meetup_schedule ? 'Change meet-up schedule' : 'Set meet-up schedule'}
+                            </button>
+                        </div>
+                    ` : pending ? `
                         <div style="display: flex; gap: 8px; margin-top: 12px; border-top: 1px solid var(--surface-sunk); padding-top: 12px;">
                             <button onclick="acceptOffer(${item.item_id}, '${escapeAttr(item.seller_asking_price || '')}')"
                                     style="background: #16a34a; color: white; border: 1px solid #16a34a; font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 6px; cursor: pointer;">Accept &middot; set price</button>
@@ -680,6 +691,46 @@ async function acceptOffer(itemId, askingPrice) {
         await refreshThread();
     } catch (error) {
         alert(`Could not accept the offer: ${error.message}`);
+    } finally {
+        busyAction = false;
+    }
+}
+
+/**
+ * When the seller comes in. Sent to the same endpoint the mobile card and the
+ * inventory workflow use; the 6h/1h/30m reminders count down from it.
+ */
+async function scheduleMeetup(itemId) {
+    if (busyAction) return;
+
+    const raw = window.prompt('Meet-up date and time (YYYY-MM-DD HH:MM):');
+    if (raw === null) return;
+
+    const when = new Date(raw.trim().replace(' ', 'T'));
+    if (isNaN(when.getTime())) {
+        alert('Enter the schedule as YYYY-MM-DD HH:MM, e.g. 2026-09-02 14:30.');
+        return;
+    }
+
+    busyAction = true;
+
+    try {
+        const response = await fetch(`${API}/admin/items/${itemId}/meetup`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ meetup_schedule: raw.trim() }),
+        });
+        const payload = await response.json().catch(() => ({}));
+
+        if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
+
+        await refreshThread();
+    } catch (error) {
+        alert(`Could not save the schedule: ${error.message}`);
     } finally {
         busyAction = false;
     }
