@@ -7,7 +7,7 @@
     <!-- Add Category Button -->
     <div class="flex items-center justify-between">
         <h2 class="text-xl font-bold text-gray-900">All Categories</h2>
-        <button onclick="openAddCategoryModal()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
+        <button onclick="openAddCategoryModal()" class="fm-btn primary">
             <i class="fas fa-plus mr-2"></i>Add Category
         </button>
     </div>
@@ -15,10 +15,10 @@
     <!-- Categories Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         @forelse($categories as $category)
-            <div class="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition">
+            <div class="fm-card fm-card-hover">
                 <div class="h-32 bg-gradient-to-br from-green-400 to-blue-500"></div>
                 <div class="p-4">
-                    <h3 class="text-lg font-bold text-gray-900">{{ $category['name'] ?? 'Unknown' }}</h3>
+                    <h3>{{ $category['name'] ?? 'Unknown' }}</h3>
                     <p class="text-sm text-gray-600 mt-2">{{ $category['description'] ?? 'No description' }}</p>
                     <p class="text-xs text-gray-500 mt-3">
                         <i class="fas fa-box mr-2"></i>
@@ -36,12 +36,17 @@
             </div>
         @empty
             <div class="col-span-full">
-                <div class="bg-white rounded-lg shadow p-12 text-center">
-                    <i class="fas fa-tags text-4xl text-gray-300 mb-3"></i>
-                    <p class="text-gray-500 mt-2">No categories found</p>
-                    <button onclick="openAddCategoryModal()" class="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium text-sm">
-                        <i class="fas fa-plus mr-2"></i>Create First Category
-                    </button>
+                <div class="fm-card">
+                    <div class="fm-empty">
+                        <i class="fas fa-tags"></i>
+                        <p>No categories yet</p>
+                        <span>Categories are how students file the items they list.</span>
+                        <div class="mt-4">
+                            <button onclick="openAddCategoryModal()" class="fm-btn primary">
+                                <i class="fas fa-plus"></i>Create the first category
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         @endforelse
@@ -61,12 +66,12 @@
         <form class="space-y-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Category Name</label>
-                <input type="text" placeholder="e.g., Electronics" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                <input type="text" placeholder="e.g., Electronics" class="fm-input">
             </div>
 
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                <textarea placeholder="Brief description of the category..." rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"></textarea>
+                <textarea placeholder="Brief description of the category..." rows="3" class="fm-input"></textarea>
             </div>
 
             <div>
