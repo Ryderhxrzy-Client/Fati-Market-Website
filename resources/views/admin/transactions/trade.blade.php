@@ -1,43 +1,38 @@
 @extends('layouts.admin-dashboard')
 
 @section('title', 'Trade Transactions')
+@section('subtitle', 'View all trade transactions')
 
 @section('content')
 <div class="space-y-6">
     <!-- Header -->
-    <div class="flex justify-between items-center">
-        <div>
-            <h3 class="text-lg font-bold text-gray-900">Trade Transactions</h3>
-            <p class="text-sm text-gray-600">View all trade transactions</p>
-        </div>
-        <div class="flex gap-3">
-            <input type="search" placeholder="Search transactions..." id="searchInput" class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
-        </div>
+    <div class="fm-toolbar">
+        <span class="fm-search"><i class="fas fa-magnifying-glass"></i><input type="search" placeholder="Search transactions..." id="searchInput" class="fm-input"></span>
     </div>
 
     <!-- Transactions Table -->
-    <div class="bg-white rounded-lg shadow overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="w-full">
-                <thead class="bg-gray-50 border-b border-gray-200">
+    <div class="fm-card">
+        <div class="fm-table-wrap">
+            <table class="fm-table">
+                <thead>
                     <tr>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Transaction ID</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Item</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Buyer / Seller</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Payment Method</th>
-                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-900">Status</th>
+                        <th>Transaction ID</th>
+                        <th>Item</th>
+                        <th>Buyer / Seller</th>
+                        <th>Payment Method</th>
+                        <th>Status</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-200">
+                <tbody>
                     @forelse($transactions as $transaction)
-                        <tr class="hover:bg-gray-50 transition">
-                            <td class="px-6 py-4">
+                        <tr>
+                            <td>
                                 <p class="text-sm font-medium text-gray-900">{{ $transaction['transaction_id'] ?? 'TXN-0000' }}</p>
                             </td>
-                            <td class="px-6 py-4">
+                            <td>
                                 <p class="text-sm font-medium text-gray-900">{{ $transaction['item_title'] ?? 'N/A' }}</p>
                             </td>
-                            <td class="px-6 py-4">
+                            <td>
                                 <div class="space-y-1">
                                     @if($transaction['buyer_email'] ?? null)
                                         <p class="text-xs text-gray-600">Buyer: {{ $transaction['buyer_email'] }}</p>
@@ -47,10 +42,10 @@
                                     @endif
                                 </div>
                             </td>
-                            <td class="px-6 py-4">
-                                <p class="text-sm text-gray-900">{{ $transaction['payment_method'] ?? 'N/A' }}</p>
+                            <td>
+                                <p>{{ $transaction['payment_method'] ?? 'N/A' }}</p>
                             </td>
-                            <td class="px-6 py-4">
+                            <td>
                                 @php
                                     $status = $transaction['status'] ?? 'pending';
                                     $statusColors = [
@@ -67,9 +62,12 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-6 py-12 text-center">
-                                <i class="fas fa-inbox text-4xl text-gray-300 mb-3 block"></i>
-                                <p class="text-gray-500">No trade transactions found</p>
+                            <td colspan="5">
+                                <div class="fm-empty">
+                                    <i class="fas fa-inbox"></i>
+                                    <p>No trade transactions found</p>
+                                    <span>Nothing to show here yet.</span>
+                                </div>
                             </td>
                         </tr>
                     @endforelse
