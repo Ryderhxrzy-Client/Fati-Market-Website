@@ -51,6 +51,13 @@
                 </div>
             </div>
 
+            <!-- Receipt lightbox / item panel -->
+            <div id="chatOverlay"
+                 onclick="if (event.target === this) closeOverlay()"
+                 style="display: none; position: fixed; inset: 0; background: rgba(17,24,39,0.82); z-index: 60; align-items: center; justify-content: center; padding: 32px;">
+                <div id="chatOverlayBody" style="background: white; border-radius: 12px; max-width: 640px; width: 100%; max-height: 88vh; overflow-y: auto; padding: 24px;"></div>
+            </div>
+
             <!-- Message Input -->
             <div id="messageInput" class="px-6 py-4 border-t border-gray-200 hidden" style="flex-shrink: 0;">
                 <div class="flex gap-3">
@@ -66,9 +73,12 @@
 
 @push('scripts')
 <script>
+const API = 'https://fati-api.alertaraqc.com/api';
+
 let token = null;
 let selectedConversation = null;
 let allConversations = [];
+let busyAction = false;
 
 function getToken() {
     const metaToken = document.querySelector('meta[name="api-token"]')?.getAttribute('content');
@@ -101,7 +111,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 async function loadConversations() {
     try {
-        const response = await fetch('https://fati-api.alertaraqc.com/api/conversations', {
+        const response = await fetch(`${API}/conversations`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Accept': 'application/json'
@@ -253,7 +263,7 @@ async function loadConversationMessages(element) {
     document.getElementById('messageInput').classList.remove('hidden');
 
     try {
-        const response = await fetch(`https://fati-api.alertaraqc.com/api/messages/${itemId}?other_user_id=${userId}`, {
+        const response = await fetch(`${API}/messages/${itemId}?other_user_id=${userId}`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Accept': 'application/json'
@@ -296,6 +306,14 @@ function renderMessages(messages) {
         const senderName = msg.sender_name || 'User';
         const timestamp = new Date(msg.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+        // A checkout, a GCash receipt or an order decision. These carry the
+        // order itself, so they are drawn as a card that Ofelia can act on -
+        // the same decisions the mobile admin app offers, from the same
+        // server-supplied `available_actions`.
+        if (msg.kind && msg.kind !== 'text' && msg.order) {
+            return renderOrderCard(msg, isAdmin, senderName, timestamp);
+        }
+
         return `
             <div style="display: flex; ${isAdmin ? 'justify-content: flex-end;' : 'justify-content: flex-start;'} margin-bottom: 12px;">
                 <div style="display: flex; gap: 8px; ${isAdmin ? 'flex-direction: row-reverse;' : ''} max-width: 70%;">
@@ -318,6 +336,323 @@ function renderMessages(messages) {
     area.scrollTop = area.scrollHeight;
 }
 
+// ── Order cards ──────────────────────────────────────────────────────────
+
+const PESO = '\u20B1';
+
+function peso(amount) {
+    const value = Number(amount);
+    if (!isFinite(value)) return PESO + '0.00';
+    return PESO + value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function paymentMethodLabel(method) {
+    return { gcash: 'GCash', points_full: 'Points only', cash: 'Cash at store' }[method]
+        || (method || 'Unknown');
+}
+
+/**
+ * Whether the money has actually arrived.
+ *
+ * Deliberately separate from the order status: an order can be reserved while
+ * its payment is still unverified, and the payment is what is being asked
+ * about.
+ */
+function paymentStateBadge(order) {
+    const status = order.payment_status;
+    const map = {
+        verified: [order.is_full_points_checkout ? 'Paid with points' : 'Paid', '#065f46', '#d1fae5'],
+        proof_submitted: ['Checking payment', '#92400e', '#fef3c7'],
+        rejected: ['Payment declined', '#991b1b', '#fee2e2'],
+    };
+    const [label, colour, background] = map[status] || ['Not paid yet', '#92400e', '#fef3c7'];
+
+    return badge(label, colour, background);
+}
+
+function orderStatusBadge(status) {
+    const map = {
+        pending_payment: ['Awaiting payment', '#92400e', '#fef3c7'],
+        payment_proof_submitted: ['Proof submitted', '#1e40af', '#dbeafe'],
+        payment_verified: ['Payment verified', '#1e40af', '#dbeafe'],
+        reserved: ['Reserved', '#1e40af', '#dbeafe'],
+        ready_for_pickup: ['Ready for pickup', '#3730a3', '#e0e7ff'],
+        completed: ['Completed', '#065f46', '#d1fae5'],
+        cancelled: ['Cancelled', '#374151', '#f3f4f6'],
+        rejected: ['Rejected', '#991b1b', '#fee2e2'],
+    };
+    const [label, colour, background] = map[status] || [status, '#374151', '#f3f4f6'];
+
+    return badge(label, colour, background);
+}
+
+function badge(label, colour, background) {
+    return `<span style="background: ${background}; color: ${colour}; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap;">${escapeHtml(label)}</span>`;
+}
+
+function summaryRow(label, value, strong) {
+    return `
+        <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 13px; padding: 3px 0;">
+            <span style="color: #6b7280;">${escapeHtml(label)}</span>
+            <span style="color: #1f2937; ${strong ? 'font-weight: 700;' : ''} text-align: right;">${escapeHtml(value)}</span>
+        </div>
+    `;
+}
+
+function renderOrderCard(msg, isAdmin, senderName, timestamp) {
+    const order = msg.order;
+    const item = order.item || {};
+    const photo = (item.photos && item.photos[0]) || null;
+    const heading = {
+        order_placed: ['fa-cart-shopping', 'Order placed'],
+        payment_submitted: ['fa-receipt', 'Payment sent'],
+        order_update: ['fa-bell', 'Order update'],
+    }[msg.kind] || ['fa-receipt', 'Order'];
+
+    return `
+        <div style="display: flex; ${isAdmin ? 'justify-content: flex-end;' : 'justify-content: flex-start;'} margin-bottom: 12px;">
+            <div style="max-width: 420px; width: 100%; background: white; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden;">
+
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #f9fafb; border-bottom: 1px solid #e5e7eb;">
+                    <span style="font-size: 12px; font-weight: 700; color: #166534;">
+                        <i class="fas ${heading[0]}"></i> ${heading[1]}
+                    </span>
+                    <span style="font-size: 11px; color: #6b7280;">${escapeHtml(order.receipt_no || ('#' + order.transaction_id))}</span>
+                </div>
+
+                <div style="padding: 14px;">
+                    <div onclick="openItem(${order.item_id})"
+                         style="display: flex; gap: 10px; align-items: center; cursor: pointer; margin-bottom: 12px;">
+                        ${photo
+                            ? `<img src="${escapeAttr(photo)}" alt="" style="width: 56px; height: 56px; border-radius: 6px; object-fit: cover; flex-shrink: 0;">`
+                            : `<div style="width: 56px; height: 56px; border-radius: 6px; background: #f3f4f6; display: flex; align-items: center; justify-content: center; color: #9ca3af; flex-shrink: 0;"><i class="fas fa-image"></i></div>`}
+                        <div style="min-width: 0;">
+                            <p style="margin: 0; font-size: 13px; font-weight: 600; color: #1f2937;">${escapeHtml(item.title || ('Item #' + order.item_id))}</p>
+                            <p style="margin: 2px 0 0 0; font-size: 12px; color: #6b7280;">${peso(order.amount_due)} due</p>
+                            <p style="margin: 2px 0 0 0; font-size: 11px; color: #16a34a; font-weight: 600;">Click to view item</p>
+                        </div>
+                    </div>
+
+                    <div style="border-top: 1px solid #f3f4f6; padding-top: 8px;">
+                        ${summaryRow('Price', peso(order.subtotal))}
+                        ${order.points_used > 0 ? summaryRow(order.points_used + ' point(s) used', '-' + peso(order.points_discount_amount)) : ''}
+                        ${summaryRow('Amount due', peso(order.amount_due), true)}
+                        ${summaryRow('Payment', paymentMethodLabel(order.payment_method))}
+                        ${order.payment_reference ? summaryRow('Reference', order.payment_reference) : ''}
+                    </div>
+
+                    <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px;">
+                        ${paymentStateBadge(order)}
+                        ${orderStatusBadge(order.status)}
+                    </div>
+
+                    ${order.payment_proof ? `
+                        <img src="${escapeAttr(order.payment_proof)}" alt="Payment receipt"
+                             data-proof="${escapeAttr(order.payment_proof)}"
+                             data-reference="${escapeAttr(order.payment_reference || '')}"
+                             onclick="openProof(this.dataset.proof, this.dataset.reference)"
+                             style="margin-top: 10px; width: 100%; height: 150px; object-fit: cover; border-radius: 8px; cursor: pointer;">
+                        <p style="margin: 4px 0 0 0; font-size: 11px; color: #6b7280;">Click the receipt to see it in full</p>
+                    ` : ''}
+
+                    ${msg.kind === 'order_update' ? `
+                        <p style="margin: 10px 0 0 0; padding: 8px 10px; background: #f3f4f6; border-radius: 6px; font-size: 12px; color: #374151; white-space: pre-line;">${escapeHtml(msg.message)}</p>
+                    ` : ''}
+
+                    ${carriesActions(msg) ? orderActionsHtml(order) : ''}
+
+                    <p style="margin: 8px 0 0 0; font-size: 11px; color: #9ca3af;">${escapeHtml(senderName)} &middot; ${timestamp}</p>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Which card in the thread carries the buttons.
+ *
+ * Every order card points at the same order, so only one offers the decisions:
+ * the receipt if the buyer sent one, otherwise the order itself.
+ */
+function carriesActions(msg) {
+    return msg.kind === 'payment_submitted'
+        || (msg.kind === 'order_placed' && !msg.order.payment_proof);
+}
+
+/**
+ * The decisions the server says are still open.
+ *
+ * `available_actions` is admin-only, so a payload without it simply renders no
+ * buttons rather than offering something the API would refuse.
+ */
+function orderActionsHtml(order) {
+    const actions = order.available_actions || [];
+    if (actions.length === 0) return '';
+
+    const id = order.transaction_id;
+    const buttons = [];
+
+    if (actions.includes('verify_payment')) {
+        buttons.push(actionButton(id, 'verify-payment', 'Approve', '#16a34a', false));
+    }
+    if (actions.includes('complete')) {
+        buttons.push(actionButton(id, 'complete', 'Complete', '#16a34a', false));
+    }
+    if (actions.includes('mark_ready_for_pickup')) {
+        buttons.push(actionButton(id, 'ready-for-pickup', 'Ready for pickup', '#4f46e5', false));
+    }
+
+    // Declining a submitted proof and cancelling an order are the same button
+    // to Ofelia; which endpoint it hits depends on where the order stands.
+    if (actions.includes('reject_payment')) {
+        buttons.push(actionButton(id, 'reject-payment', 'Decline', '#dc2626', true));
+    } else if (actions.includes('cancel')) {
+        buttons.push(actionButton(id, 'cancel', 'Cancel order', '#dc2626', true));
+    }
+
+    return `
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; border-top: 1px solid #f3f4f6; padding-top: 12px;">
+            ${buttons.join('')}
+        </div>
+    `;
+}
+
+function actionButton(id, endpoint, label, colour, outlined) {
+    const style = outlined
+        ? `background: white; color: ${colour}; border: 1px solid ${colour};`
+        : `background: ${colour}; color: white; border: 1px solid ${colour};`;
+
+    // Endpoint and label are both fixed strings chosen just above, so single
+    // quotes inside the attribute are safe here.
+    return `<button onclick="runOrderAction(${id}, '${endpoint}', '${label}')"
+                    style="${style} font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 6px; cursor: pointer;">${escapeHtml(label)}</button>`;
+}
+
+async function runOrderAction(transactionId, endpoint, label) {
+    if (busyAction) return;
+
+    // Declining and cancelling both tell the buyer why, in this same thread.
+    const needsReason = endpoint === 'reject-payment' || endpoint === 'cancel';
+    let reason = null;
+
+    if (needsReason) {
+        reason = window.prompt(`${label}: give the buyer a reason.`);
+        if (reason === null) return;
+        if (!reason.trim()) {
+            alert('A reason is required.');
+            return;
+        }
+    } else if (!window.confirm(`${label} this order?`)) {
+        return;
+    }
+
+    busyAction = true;
+
+    try {
+        const response = await fetch(`${API}/admin/transactions/${transactionId}/${endpoint}`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(needsReason ? { reason: reason.trim() } : {}),
+        });
+
+        const payload = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(payload.message || `HTTP ${response.status}`);
+        }
+
+        await refreshThread();
+    } catch (error) {
+        alert(`Could not ${label.toLowerCase()}: ${error.message}`);
+    } finally {
+        busyAction = false;
+    }
+}
+
+/** Re-read the open thread so the card shows the decision that was just made. */
+async function refreshThread() {
+    if (!selectedConversation) return;
+
+    const selector = `.conversation-item[data-item-id="${selectedConversation.item_id}"][data-user-id="${selectedConversation.other_user_id}"]`;
+    const element = document.querySelector(selector);
+
+    if (element) await loadConversationMessages(element);
+}
+
+// ── Overlays ─────────────────────────────────────────────────────────────
+
+function showOverlay(html) {
+    document.getElementById('chatOverlayBody').innerHTML = html;
+    document.getElementById('chatOverlay').style.display = 'flex';
+}
+
+function closeOverlay() {
+    document.getElementById('chatOverlay').style.display = 'none';
+    document.getElementById('chatOverlayBody').innerHTML = '';
+}
+
+function openProof(url, reference) {
+    showOverlay(`
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h4 style="margin: 0; font-size: 16px; font-weight: 700; color: #1f2937;">Payment receipt</h4>
+            <button onclick="closeOverlay()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #6b7280;">&times;</button>
+        </div>
+        ${reference ? `<p style="margin: 0 0 12px 0; font-size: 13px; color: #374151;">Reference: <strong>${escapeHtml(reference)}</strong></p>` : ''}
+        <img src="${escapeAttr(url)}" alt="Payment receipt" style="width: 100%; border-radius: 8px;">
+    `);
+}
+
+/** The listing behind an order, opened from the card's photo. */
+async function openItem(itemId) {
+    showOverlay('<p style="font-size: 13px; color: #6b7280;">Loading item...</p>');
+
+    try {
+        const response = await fetch(`${API}/items/${itemId}`, {
+            headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
+        });
+
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
+
+        const item = payload.data || {};
+        const photos = item.photos || [];
+
+        showOverlay(`
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                <h4 style="margin: 0; font-size: 18px; font-weight: 700; color: #1f2937;">${escapeHtml(item.title || 'Item')}</h4>
+                <button onclick="closeOverlay()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #6b7280;">&times;</button>
+            </div>
+
+            ${photos.length ? `<div style="display: flex; gap: 8px; overflow-x: auto; margin-bottom: 12px;">
+                ${photos.map(url => `<img src="${escapeAttr(url)}" alt="" style="height: 180px; border-radius: 8px; object-fit: cover;">`).join('')}
+            </div>` : ''}
+
+            <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 12px;">
+                <span style="font-size: 20px; font-weight: 700; color: #166534;">${peso(item.public_price || item.seller_asking_price || 0)}</span>
+                ${badge(item.status || 'unknown', '#374151', '#f3f4f6')}
+                ${item.reward_points ? badge(`Earn ${item.reward_points} point(s)`, '#92400e', '#fef3c7') : ''}
+            </div>
+
+            ${item.description ? `<p style="font-size: 13px; color: #374151; white-space: pre-line;">${escapeHtml(item.description)}</p>` : ''}
+
+            <div style="border-top: 1px solid #f3f4f6; margin-top: 12px; padding-top: 10px;">
+                ${item.acquisition_price ? summaryRow('Acquisition price', peso(item.acquisition_price)) : ''}
+                ${item.markup ? summaryRow('Markup', peso(item.markup)) : ''}
+                ${item.seller_email ? summaryRow('Seller', item.seller_email) : ''}
+            </div>
+        `);
+    } catch (error) {
+        showOverlay(`
+            <p style="font-size: 13px; color: #b91c1c;">Could not load the item: ${escapeHtml(error.message)}</p>
+            <button onclick="closeOverlay()" style="margin-top: 12px; background: #16a34a; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Close</button>
+        `);
+    }
+}
+
 async function sendMessage() {
     if (!selectedConversation) return;
 
@@ -327,7 +662,7 @@ async function sendMessage() {
     if (!message) return;
 
     try {
-        const response = await fetch(`https://fati-api.alertaraqc.com/api/messages/${selectedConversation.item_id}`, {
+        const response = await fetch(`${API}/messages/${selectedConversation.item_id}`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -366,6 +701,21 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+/**
+ * The same, for a value being written into a double-quoted HTML attribute.
+ *
+ * escapeHtml leaves quotes alone, which is fine between tags and not fine
+ * inside one - a stray quote there ends the attribute early.
+ */
+function escapeAttr(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
 }
 </script>
 @endpush
