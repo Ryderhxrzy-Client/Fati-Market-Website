@@ -585,37 +585,43 @@ class AdminAuthController extends Controller
         }
 
         $token = Session::get('admin_token');
-        $reportData = ['total_acquired' => 0, 'sales' => []];
+        $reportData = ['total_acquired' => 0, 'total_sold' => 0, 'items' => []];
 
         try {
+            // The count and the list must describe the same thing, so both
+            // come from the acquired inventory itself.
             $response = Http::timeout(30)
                 ->withHeaders([
                     'Accept' => 'application/json',
                     'Authorization' => 'Bearer ' . $token,
                 ])
-                ->get('https://fati-api.alertaraqc.com/api/admin/reports/sales');
+                ->get('https://fati-api.alertaraqc.com/api/admin/items', ['status' => 'acquired']);
 
             if ($response->successful()) {
-                $data = $response->json()['data'] ?? [];
-                
-                $reportData['total_acquired'] = $data['total_items_acquired'] ?? 0;
-                
-                // Sales table
-                $recentSales = $data['recent_sales'] ?? [];
-                $reportData['sales'] = array_map(function ($sale) {
-                    return [
-                        'transaction_id' => $sale['transaction_id'] ?? null,
-                        'item_name' => $sale['item']['title'] ?? 'N/A',
-                        'buyer_email' => $sale['buyer']['email'] ?? 'N/A',
-                        'seller_email' => $sale['seller']['email'] ?? 'N/A',
-                        'points_used' => $sale['points_used'] ?? 0,
-                        'status' => $sale['status'] ?? 'pending',
-                    ];
-                }, $recentSales);
+                $items = $response->json()['data'] ?? [];
+
+                $reportData['total_acquired'] = count($items);
+                $reportData['items'] = array_map(fn ($item) => [
+                    'title' => $item['title'] ?? 'N/A',
+                    'seller_email' => $item['seller_email'] ?? 'N/A',
+                    'acquisition_price' => $item['acquisition_price'] ?? null,
+                    'acquired_at' => $item['acquired_at'] ?? null,
+                    'seller_payout_status' => $item['seller_payout_status'] ?? 'unpaid',
+                ], $items);
+            }
+
+            $sold = Http::timeout(30)
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'Authorization' => 'Bearer ' . $token,
+                ])
+                ->get('https://fati-api.alertaraqc.com/api/admin/items', ['status' => 'sold']);
+
+            if ($sold->successful()) {
+                $reportData['total_sold'] = count($sold->json()['data'] ?? []);
             }
         } catch (\Exception $e) {
             \Log::error('Items acquired report fetch error: ' . $e->getMessage());
-            $reportData = ['total_acquired' => 0, 'sales' => []];
         }
 
         return view('admin.reports.items-acquired', compact('reportData'));
@@ -631,7 +637,7 @@ class AdminAuthController extends Controller
         }
 
         $token = Session::get('admin_token');
-        $reportData = ['total_sold' => 0, 'sales' => []];
+        $reportData = ['total_sold' => 0, 'items' => []];
 
         try {
             $response = Http::timeout(30)
@@ -639,29 +645,22 @@ class AdminAuthController extends Controller
                     'Accept' => 'application/json',
                     'Authorization' => 'Bearer ' . $token,
                 ])
-                ->get('https://fati-api.alertaraqc.com/api/admin/reports/sales');
+                ->get('https://fati-api.alertaraqc.com/api/admin/items', ['status' => 'sold']);
 
             if ($response->successful()) {
-                $data = $response->json()['data'] ?? [];
-                
-                $reportData['total_sold'] = $data['total_items_sold'] ?? 0;
-                
-                // Sales table
-                $recentSales = $data['recent_sales'] ?? [];
-                $reportData['sales'] = array_map(function ($sale) {
-                    return [
-                        'transaction_id' => $sale['transaction_id'] ?? null,
-                        'item_name' => $sale['item']['title'] ?? 'N/A',
-                        'buyer_email' => $sale['buyer']['email'] ?? 'N/A',
-                        'seller_email' => $sale['seller']['email'] ?? 'N/A',
-                        'points_used' => $sale['points_used'] ?? 0,
-                        'status' => $sale['status'] ?? 'pending',
-                    ];
-                }, $recentSales);
+                $items = $response->json()['data'] ?? [];
+
+                $reportData['total_sold'] = count($items);
+                $reportData['items'] = array_map(fn ($item) => [
+                    'title' => $item['title'] ?? 'N/A',
+                    'seller_email' => $item['seller_email'] ?? 'N/A',
+                    'public_price' => $item['public_price'] ?? null,
+                    'markup' => $item['markup'] ?? null,
+                    'acquisition_price' => $item['acquisition_price'] ?? null,
+                ], $items);
             }
         } catch (\Exception $e) {
             \Log::error('Items sold report fetch error: ' . $e->getMessage());
-            $reportData = ['total_sold' => 0, 'sales' => []];
         }
 
         return view('admin.reports.items-sold', compact('reportData'));
@@ -908,7 +907,8 @@ class AdminAuthController extends Controller
                     'Accept' => 'application/json',
                     'Authorization' => 'Bearer ' . $token,
                 ])
-                ->get('https://fati-api.alertaraqc.com/api/admin/categories');
+                // Categories live on the public route; /admin/categories does not exist.
+                ->get('https://fati-api.alertaraqc.com/api/categories');
 
             $categories = $response->successful() ? $response->json()['data'] ?? [] : [];
         } catch (\Exception $e) {
