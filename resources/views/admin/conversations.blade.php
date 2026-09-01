@@ -390,14 +390,28 @@ function paymentStateBadge(order, statusAt) {
         proof_submitted: ['Checking payment', '#92400e', '#fef3c7'],
         rejected: ['Payment declined', '#991b1b', '#fee2e2'],
     };
-    const [label, colour, background] = map[status] || ['Not paid yet', '#92400e', '#fef3c7'];
+    // Cash is handed over at the counter, so an unpaid cash order is not late -
+    // it is either waiting for Ofelia to approve it or waiting to be collected.
+    const unpaid = order.payment_method === 'cash'
+        ? (order.status === 'pending_payment'
+            ? ['Waiting for approval', '#92400e', '#fef3c7']
+            : ['Pay on pickup', '#1e40af', '#dbeafe'])
+        : ['Not paid yet', '#92400e', '#fef3c7'];
+
+    const [label, colour, background] = map[status] || unpaid;
 
     return badge(label, colour, background);
 }
 
-function orderStatusBadge(status) {
+function orderStatusBadge(status, paymentMethod) {
+    // `pending_payment` means two different things: a GCash buyer still owes
+    // the money, while a cash buyer owes nothing yet and is waiting on Ofelia.
+    const awaiting = paymentMethod === 'cash'
+        ? ['Awaiting admin approval', '#92400e', '#fef3c7']
+        : ['Awaiting payment', '#92400e', '#fef3c7'];
+
     const map = {
-        pending_payment: ['Awaiting payment', '#92400e', '#fef3c7'],
+        pending_payment: awaiting,
         payment_proof_submitted: ['Proof submitted', '#1e40af', '#dbeafe'],
         payment_verified: ['Payment verified', '#1e40af', '#dbeafe'],
         reserved: ['Reserved', '#1e40af', '#dbeafe'],
@@ -468,7 +482,7 @@ function renderOrderCard(msg, isAdmin, senderName, timestamp) {
 
                     <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px;">
                         ${paymentStateBadge(order, msg.payment_status_at)}
-                        ${orderStatusBadge(msg.order_status_at || order.status)}
+                        ${orderStatusBadge(msg.order_status_at || order.status, order.payment_method)}
                     </div>
 
                     ${order.payment_proof ? `
@@ -517,8 +531,14 @@ function orderActionsHtml(order) {
     const id = order.transaction_id;
     const buttons = [];
 
+    // Two shapes of approval, and the server offers exactly one of them:
+    // confirming GCash money that has landed, or accepting a cash order whose
+    // bill is settled at the counter when the buyer collects the item.
     if (actions.includes('verify_payment')) {
         buttons.push(actionButton(id, 'verify-payment', 'Approve', 'var(--brand-600)', false));
+    }
+    if (actions.includes('approve_order')) {
+        buttons.push(actionButton(id, 'approve-order', 'Approve', 'var(--brand-600)', false));
     }
     if (actions.includes('complete')) {
         buttons.push(actionButton(id, 'complete', 'Complete', 'var(--brand-600)', false));
@@ -576,7 +596,11 @@ async function runOrderAction(transactionId, endpoint, label) {
     } else {
         const confirmed = await askModal({
             title: `${label} this order?`,
-            body: 'The buyer sees the result in this conversation right away.',
+            // Approving a cash order settles nothing, and saying so here stops
+            // it being read as "the money came in".
+            body: endpoint === 'approve-order'
+                ? 'The item is held and the buyer gets their pickup code. It is not marked paid - the cash is taken when they collect it.'
+                : 'The buyer sees the result in this conversation right away.',
             confirmLabel: label,
         });
         if (confirmed === null) return;
