@@ -7,6 +7,10 @@ use App\Http\Controllers\Admin\AdminAuthController;
 Route::get('/', [AdminAuthController::class, 'showLoginForm'])->name('admin.login');
 Route::post('/', [AdminAuthController::class, 'login'])->name('admin.login.post');
 
+// Public. Google Play requires a privacy policy URL that anyone can open
+// without signing in, so this deliberately sits outside the admin.auth group.
+Route::view('/privacy-policy', 'privacy-policy')->name('privacy-policy');
+
 // Admin dashboard and pages (protected)
 Route::middleware('admin.auth')->group(function () {
     Route::get('/dashboard', [AdminAuthController::class, 'dashboard'])->name('admin.dashboard');
