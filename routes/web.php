@@ -61,6 +61,7 @@ Route::middleware('admin.auth')->group(function () {
 
     // Profile & Settings
     Route::get('/profile', [AdminAuthController::class, 'profile'])->name('admin.profile');
-    Route::get('/settings', [AdminAuthController::class, 'settings'])->name('admin.settings');
+    Route::get('/settings', [\App\Http\Controllers\Admin\GcashSettingsController::class, 'show'])->name('admin.settings');
+    Route::post('/settings/gcash', [\App\Http\Controllers\Admin\GcashSettingsController::class, 'update'])->name('admin.settings.gcash.update');
     Route::post('/logout', [AdminAuthController::class, 'logout'])->name('admin.logout');
 });

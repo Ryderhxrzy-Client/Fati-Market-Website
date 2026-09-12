@@ -4,6 +4,7 @@
 
 @section('content')
 <div class="space-y-6">
+    @include('admin.partials.gcash-settings')
     <!-- General Settings -->
     <div class="fm-card">
         <div class="px-6 py-4 border-b border-gray-200">
