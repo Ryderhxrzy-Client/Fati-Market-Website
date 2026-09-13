@@ -3,13 +3,16 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\AdminAuthController;
 
-// Admin login as index
-Route::get('/', [AdminAuthController::class, 'showLoginForm'])->name('admin.login');
-Route::post('/', [AdminAuthController::class, 'login'])->name('admin.login.post');
-
-// Public. Google Play requires a privacy policy URL that anyone can open
-// without signing in, so this deliberately sits outside the admin.auth group.
+// Public pages. These URLs are used on the Google OAuth consent screen and
+// must be reachable without signing in.
+Route::view('/', 'home')->name('home');
 Route::view('/privacy-policy', 'privacy-policy')->name('privacy-policy');
+Route::view('/terms-of-service', 'terms-of-service')->name('terms-of-service');
+
+// Keep the admin console separate from the public website.
+Route::get('/admin/login', [AdminAuthController::class, 'showLoginForm'])->name('admin.login');
+Route::post('/admin/login', [AdminAuthController::class, 'login'])->name('admin.login.post');
+
 
 // Admin dashboard and pages (protected)
 Route::middleware('admin.auth')->group(function () {
