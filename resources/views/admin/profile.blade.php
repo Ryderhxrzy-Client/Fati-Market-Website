@@ -1,159 +1,194 @@
 @extends('layouts.admin-dashboard')
 
-@section('title', 'Admin Profile')
+@section('title', 'Profile')
+@section('subtitle', 'Your account on Fati Market')
 
 @section('content')
+@php
+    $profilePic = session('admin_profile_picture');
+    $firstName  = $adminData['first_name'] ?? session('admin_first_name', '');
+    $lastName   = $adminData['last_name'] ?? session('admin_last_name', '');
+    $fullName   = trim($firstName . ' ' . $lastName) ?: ($adminData['name'] ?? 'Administrator');
+    $email      = $adminData['email'] ?? session('admin_data.email', '');
+    $initial    = strtoupper(substr($firstName ?: 'A', 0, 1));
+    $joined     = !empty($adminData['created_at']) ? date('M d, Y', strtotime($adminData['created_at'])) : null;
+@endphp
+
 <div class="space-y-6">
-    <!-- Profile Header -->
+    {{--
+        Real data only. The old page showed a made-up points breakdown,
+        "Two-factor: not enabled", "Last login: today at 10:30" and a form
+        that saved nothing. This mirrors the mobile profile: who is signed
+        in, a photo that can actually be changed, the live points balance,
+        and the store settings the admin reaches from here.
+    --}}
     <div class="fm-card">
-        <div class="h-32 bg-gradient-to-r from-green-500 to-blue-500"></div>
+        <div style="height: 120px; background: linear-gradient(135deg, var(--brand-800), var(--brand-500));"></div>
         <div class="px-6 pb-6">
-            <div class="flex flex-col md:flex-row md:items-end md:justify-between -mt-16 mb-4">
-                <div class="flex items-end gap-4 mb-4 md:mb-0">
-                    <div class="w-32 h-32 rounded-full bg-gradient-to-br from-green-400 to-blue-500 border-4 border-white shadow-lg"></div>
-                    <div>
-                        <h2 class="text-2xl font-bold text-gray-900">{{ $adminData['name'] ?? 'Admin User' }}</h2>
-                        <p class="text-gray-600">Administrator</p>
-                        <p class="text-sm text-gray-500 mt-1">Member since {{ $adminData['created_at'] ?? 'N/A' }}</p>
+            <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4" style="margin-top: -48px;">
+                <div class="flex items-end gap-4">
+                    @if($profilePic)
+                        <img src="{{ $profilePic }}" alt="" class="avatar" style="width: 96px; height: 96px; border: 4px solid #fff; box-shadow: var(--shadow); font-size: 32px;">
+                    @else
+                        <div class="avatar" style="width: 96px; height: 96px; border: 4px solid #fff; box-shadow: var(--shadow); font-size: 32px;">{{ $initial }}</div>
+                    @endif
+                    <div style="padding-bottom: 6px;">
+                        <h2 style="font-size: 20px; font-weight: 650; margin: 0;">{{ $fullName }}</h2>
+                        <p style="margin: 2px 0 0; font-size: 13px; color: var(--ink-500);">Store administrator{{ $joined ? ' · since ' . $joined : '' }}</p>
                     </div>
                 </div>
-                <button class="fm-btn primary">
-                    <i class="fas fa-camera mr-2"></i>Change Photo
-                </button>
+
+                <form method="POST" action="{{ route('admin.profile.picture') }}" enctype="multipart/form-data" id="photoForm" class="flex items-center gap-2">
+                    @csrf
+                    <input type="file" name="profile_picture" id="photoInput" accept="image/png,image/jpeg,image/webp" class="hidden" onchange="submitPhoto()">
+                    <button type="button" class="fm-btn ghost" onclick="document.getElementById('photoInput').click()" id="photoButton">
+                        <i class="fas fa-camera"></i>Change photo
+                    </button>
+                </form>
             </div>
+
+            @if(session('profile_success'))
+                <p role="status" class="fm-badge success mt-4">{{ session('profile_success') }}</p>
+            @endif
+            @error('profile_picture')
+                <p role="alert" class="fm-badge danger mt-4">{{ $message }}</p>
+            @enderror
         </div>
     </div>
 
-    <!-- Profile Info and Stats -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <!-- Profile Information -->
-        <div class="md:col-span-2 fm-card fm-card-body">
-            <h3 class="mb-6">Profile Information</h3>
-            <form class="space-y-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">First Name</label>
-                        <input type="text" value="{{ $adminData['first_name'] ?? '' }}" class="fm-input">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        <div class="lg:col-span-2 space-y-6">
+            <section class="fm-card">
+                <div class="fm-card-head"><h4>Account</h4></div>
+                <div class="fm-divided">
+                    <div class="flex items-center gap-4 px-5 py-3">
+                        <div class="stat-icon" style="background: var(--brand-100); color: var(--brand-700);"><i class="fas fa-user"></i></div>
+                        <div class="min-w-0">
+                            <p class="cell-sub">Full name</p>
+                            <p class="cell-title">{{ $fullName }}</p>
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
-                        <input type="text" value="{{ $adminData['last_name'] ?? '' }}" class="fm-input">
+                    <div class="flex items-center gap-4 px-5 py-3">
+                        <div class="stat-icon" style="background: var(--brand-100); color: var(--brand-700);"><i class="fas fa-envelope"></i></div>
+                        <div class="min-w-0">
+                            <p class="cell-sub">Email</p>
+                            <p class="cell-title truncate">{{ $email ?: '—' }}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4 px-5 py-3">
+                        <div class="stat-icon" style="background: var(--brand-100); color: var(--brand-700);"><i class="fas fa-id-badge"></i></div>
+                        <div class="min-w-0">
+                            <p class="cell-sub">Role</p>
+                            <p class="cell-title">Administrator{{ !empty($adminData['user_id']) ? ' · user #' . $adminData['user_id'] : '' }}</p>
+                        </div>
                     </div>
                 </div>
+            </section>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-                    <input type="email" value="{{ $adminData['email'] ?? '' }}" class="fm-input">
+            <section class="fm-card">
+                <div class="fm-card-head"><h4>Store</h4></div>
+                <div class="fm-divided">
+                    <a href="{{ route('admin.settings') }}#store-hours" class="flex items-center gap-4 px-5 py-3 hover:bg-gray-50 transition">
+                        <div class="stat-icon" style="background: var(--brand-100); color: var(--brand-700);"><i class="fas fa-clock"></i></div>
+                        <div class="min-w-0 flex-1">
+                            <p class="cell-title">Store hours &amp; booking slots</p>
+                            <p class="cell-sub">Opening times, open days and slot length</p>
+                        </div>
+                        <i class="fas fa-chevron-right" style="color: var(--ink-400);"></i>
+                    </a>
+                    <a href="{{ route('admin.settings') }}#gcash" class="flex items-center gap-4 px-5 py-3 hover:bg-gray-50 transition">
+                        <div class="stat-icon" style="background: var(--brand-100); color: var(--brand-700);"><i class="fas fa-wallet"></i></div>
+                        <div class="min-w-0 flex-1">
+                            <p class="cell-title">GCash payment settings</p>
+                            <p class="cell-sub">Account name, mobile number and payment QR</p>
+                        </div>
+                        <i class="fas fa-chevron-right" style="color: var(--ink-400);"></i>
+                    </a>
+                    <a href="{{ route('admin.settings') }}#location" class="flex items-center gap-4 px-5 py-3 hover:bg-gray-50 transition">
+                        <div class="stat-icon" style="background: var(--brand-100); color: var(--brand-700);"><i class="fas fa-location-dot"></i></div>
+                        <div class="min-w-0 flex-1">
+                            <p class="cell-title">Store location</p>
+                            <p class="cell-sub">Hollywood Terraces, Sumulong Hwy, Antipolo</p>
+                        </div>
+                        <i class="fas fa-chevron-right" style="color: var(--ink-400);"></i>
+                    </a>
+                    <a href="{{ route('admin.transactions.history') }}" class="flex items-center gap-4 px-5 py-3 hover:bg-gray-50 transition">
+                        <div class="stat-icon" style="background: var(--brand-100); color: var(--brand-700);"><i class="fas fa-receipt"></i></div>
+                        <div class="min-w-0 flex-1">
+                            <p class="cell-title">Transactions</p>
+                            <p class="cell-sub">Every order - pending, reserved, unpaid, completed</p>
+                        </div>
+                        <i class="fas fa-chevron-right" style="color: var(--ink-400);"></i>
+                    </a>
+                    <a href="{{ route('admin.students') }}" class="flex items-center gap-4 px-5 py-3 hover:bg-gray-50 transition">
+                        <div class="stat-icon" style="background: var(--brand-100); color: var(--brand-700);"><i class="fas fa-users"></i></div>
+                        <div class="min-w-0 flex-1">
+                            <p class="cell-title">Students</p>
+                            <p class="cell-sub">Approve, decline or block student accounts</p>
+                        </div>
+                        <i class="fas fa-chevron-right" style="color: var(--ink-400);"></i>
+                    </a>
                 </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-                    <input type="tel" value="{{ $adminData['phone'] ?? '' }}" placeholder="+1 (555) 000-0000" class="fm-input">
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Bio</label>
-                    <textarea rows="3" placeholder="Tell us about yourself..." class="fm-input"></textarea>
-                </div>
-
-                <div class="pt-4 border-t border-gray-200 flex gap-3">
-                    <button type="submit" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
-                        <i class="fas fa-save mr-2"></i>Save Changes
-                    </button>
-                    <button type="button" class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition font-medium text-gray-700">
-                        Cancel
-                    </button>
-                </div>
-            </form>
+            </section>
         </div>
 
-        <!-- Stats Sidebar -->
         <div class="space-y-6">
-            <!-- Wallet/Points -->
+            <div class="stat-card">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="stat-label">Points balance</p>
+                        <div class="stat-value" id="walletPoints"><span class="loading-spinner"></span></div>
+                        <p class="cell-sub" style="margin-top: 6px;">The store account's wallet, as the app shows it</p>
+                    </div>
+                    <div class="stat-icon" style="background: var(--reward-bg); color: var(--reward);">
+                        <i class="fas fa-star"></i>
+                    </div>
+                </div>
+            </div>
+
             <div class="fm-card fm-card-body">
-                <h3 class="mb-4">Platform Points</h3>
-                <div class="text-center">
-                    <div class="text-4xl font-bold text-green-600 mb-2">2,450</div>
-                    <p class="text-gray-600 text-sm">Total points earned</p>
-                </div>
-                <div class="mt-4 pt-4 border-t border-gray-200">
-                    <p class="text-xs text-gray-500 mb-2">Point Breakdown</p>
-                    <div class="space-y-2 text-sm">
-                        <div class="flex justify-between">
-                            <span class="text-gray-700">Transactions</span>
-                            <span class="font-semibold text-gray-900">1,200</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-700">Referrals</span>
-                            <span class="font-semibold text-gray-900">950</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-700">Bonuses</span>
-                            <span class="font-semibold text-gray-900">300</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Recent Activity -->
-            <div class="fm-card fm-card-body">
-                <h3 class="mb-4">Quick Info</h3>
-                <div class="space-y-3 text-sm">
-                    <div>
-                        <p class="text-gray-600">Email Verified</p>
-                        <p class="text-green-600 font-semibold flex items-center gap-2 mt-1">
-                            <i class="fas fa-check-circle"></i>Yes
-                        </p>
-                    </div>
-                    <div>
-                        <p class="text-gray-600">Two-Factor Auth</p>
-                        <p class="text-red-600 font-semibold flex items-center gap-2 mt-1">
-                            <i class="fas fa-times-circle"></i>Not Enabled
-                        </p>
-                    </div>
-                    <div>
-                        <p class="text-gray-600">Last Login</p>
-                        <p class="text-gray-900 font-semibold mt-1">Today at 10:30 AM</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Security Section -->
-    <div class="fm-card fm-card-body">
-        <h3 class="mb-6">Security Settings</h3>
-        <div class="space-y-4">
-            <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                <div>
-                    <h4 class="font-semibold text-gray-900">Change Password</h4>
-                    <p>Update your password regularly</p>
-                </div>
-                <button class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition text-sm font-medium">
-                    Change
-                </button>
-            </div>
-
-            <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                <div>
-                    <h4 class="font-semibold text-gray-900">Two-Factor Authentication</h4>
-                    <p>Enhance your account security</p>
-                </div>
-                <button class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium">
-                    Enable
-                </button>
-            </div>
-
-            <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                <div>
-                    <h4 class="font-semibold text-gray-900">Login Sessions</h4>
-                    <p>Manage active sessions</p>
-                </div>
-                <button class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition text-sm font-medium">
-                    View
-                </button>
+                <form method="POST" action="{{ route('admin.logout') }}">
+                    @csrf
+                    <button type="submit" class="fm-btn danger w-full">
+                        <i class="fas fa-arrow-right-from-bracket"></i>Sign out
+                    </button>
+                </form>
             </div>
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script>
+    function submitPhoto() {
+        const input = document.getElementById('photoInput');
+        if (!input.files.length) return;
+        if (input.files[0].size > 5 * 1024 * 1024) {
+            showToast('Choose a photo up to 5 MB.', 'error');
+            input.value = '';
+            return;
+        }
+        const button = document.getElementById('photoButton');
+        button.disabled = true;
+        button.innerHTML = '<span class="loading-spinner"></span>Uploading…';
+        document.getElementById('photoForm').submit();
+    }
+
+    (async function () {
+        const token = document.querySelector('meta[name="api-token"]')?.getAttribute('content') || '';
+        const target = document.getElementById('walletPoints');
+        try {
+            const response = await fetch('https://fati-api.alertaraqc.com/api/wallet', {
+                headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
+            const points = Number(payload.data?.wallet_points ?? 0);
+            target.textContent = points.toLocaleString();
+        } catch (error) {
+            target.textContent = '—';
+        }
+    })();
+</script>
+@endpush
 @endsection
