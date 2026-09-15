@@ -11,6 +11,8 @@
     Include this once per page and call openItemWorkflow(itemId).
 --}}
 
+@include('admin.partials.meetup-picker')
+
 <div id="workflowModal"
      onclick="if (event.target === this) closeItemWorkflow()"
      style="display: none; position: fixed; inset: 0; background: rgba(17,24,39,0.82); z-index: 70; align-items: center; justify-content: center; padding: 32px;">
@@ -145,9 +147,10 @@
 
             html += wfStep(
                 'Meet-up schedule',
-                'When the seller brings the item in.',
-                `<input id="wfMeetup" type="datetime-local" value="${wfAttr(wfToLocalInput(item.meetup_schedule))}" style="${inputStyle}">
-                 <button style="${buttonStyle}" onclick="wfSetMeetup()">Save schedule</button>`
+                'When the seller brings the item in: a day this month, in store hours, like the app.',
+                `<p style="margin: 0 0 8px; font-size: 13px; color: #1f2937;">${item.meetup_schedule ? 'Booked: <b>' + wfEscape(wfMeetupLabel(item.meetup_schedule)) + '</b>' : 'No meet-up booked yet.'}</p>
+                 <button style="${buttonStyle}" onclick="wfPickMeetup()">${item.meetup_schedule ? 'Change schedule' : 'Pick a day and time'}</button>
+                 ${item.meetup_schedule ? `<button style="${dangerStyle} margin-left: 6px;" onclick="wfClearMeetup()">Clear</button>` : ''}`
             );
         }
 
@@ -286,10 +289,22 @@
         wfPost('acquisition-price', { acquisition_price: price }, 'Acquisition price saved');
     };
 
-    window.wfSetMeetup = function () {
-        const schedule = wfValue('wfMeetup');
-        wfPost('meetup', { meetup_schedule: schedule || null }, 'Meet-up schedule saved');
+    window.wfPickMeetup = async function () {
+        const when = await FMMeetup.pick({ current: workflowItem?.meetup_schedule || null });
+        if (when === null) return;
+        wfPost('meetup', { meetup_schedule: when }, 'Meet-up schedule saved');
     };
+
+    window.wfClearMeetup = function () {
+        if (!confirm('Clear the meet-up schedule?')) return;
+        wfPost('meetup', { meetup_schedule: null }, 'Meet-up schedule cleared');
+    };
+
+    /** "Sep 16, 10:00 AM" from what the API sends. */
+    function wfMeetupLabel(value) {
+        const date = new Date(value);
+        return isNaN(date.getTime()) ? String(value) : date.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    }
 
     window.wfVerifyTurnover = async function () {
         if (workflowBusy) return;
