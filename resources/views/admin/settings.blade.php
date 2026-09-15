@@ -1,183 +1,59 @@
 @extends('layouts.admin-dashboard')
 
 @section('title', 'Settings')
+@section('subtitle', 'What the store tells buyers and sellers')
 
 @section('content')
 <div class="space-y-6">
-    @include('admin.partials.gcash-settings')
-    <!-- General Settings -->
-    <div class="fm-card">
-        <div class="px-6 py-4 border-b border-gray-200">
-            <h3>General Settings</h3>
-            <p>Manage your application preferences</p>
+    {{--
+        Only settings that exist. This page used to carry a dark-mode switch
+        wired to nothing, timezone and language pickers that saved nowhere,
+        API keys that did not exist and a "Delete admin account" button. The
+        three groups below are the ones the mobile app has, from the same
+        endpoints.
+    --}}
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+        <div class="space-y-6">
+            <div id="store-hours">
+                @include('admin.partials.store-hours-settings')
+            </div>
+            <div id="gcash">
+                @include('admin.partials.gcash-settings')
+            </div>
         </div>
-        <div class="p-6 space-y-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h4 class="font-semibold text-gray-900">Dark Mode</h4>
-                    <p>Enable dark theme for the admin panel</p>
+
+        <div class="space-y-6">
+            <div id="location">
+                @include('admin.partials.store-location')
+            </div>
+
+            <section class="fm-card" aria-labelledby="about-heading">
+                <div class="fm-card-head">
+                    <h4 id="about-heading">About this console</h4>
                 </div>
-                <button class="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200 transition" onclick="toggleDarkMode(this)">
-                    <span class="inline-block h-4 w-4 transform rounded-full bg-white transition translate-x-1"></span>
-                </button>
-            </div>
-
-            <div class="border-t border-gray-200 pt-6 flex items-center justify-between">
-                <div>
-                    <h4 class="font-semibold text-gray-900">Email Notifications</h4>
-                    <p>Receive notifications about important events</p>
-                </div>
-                <button class="relative inline-flex h-6 w-11 items-center rounded-full bg-green-500 transition">
-                    <span class="inline-block h-4 w-4 transform rounded-full bg-white transition translate-x-6"></span>
-                </button>
-            </div>
-
-            <div class="border-t border-gray-200 pt-6 flex items-center justify-between">
-                <div>
-                    <h4 class="font-semibold text-gray-900">Desktop Notifications</h4>
-                    <p>Get browser notifications in real-time</p>
-                </div>
-                <button class="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200 transition">
-                    <span class="inline-block h-4 w-4 transform rounded-full bg-white transition translate-x-1"></span>
-                </button>
-            </div>
-
-            <div class="border-t border-gray-200 pt-6">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Timezone</label>
-                <select class="fm-input">
-                    <option value="utc">UTC</option>
-                    <option value="est">Eastern Time (EST)</option>
-                    <option value="cst">Central Time (CST)</option>
-                    <option value="mst">Mountain Time (MST)</option>
-                    <option value="pst">Pacific Time (PST)</option>
-                </select>
-            </div>
-        </div>
-    </div>
-
-    <!-- Display Settings -->
-    <div class="fm-card">
-        <div class="px-6 py-4 border-b border-gray-200">
-            <h3>Display Settings</h3>
-            <p>Customize how the interface appears</p>
-        </div>
-        <div class="p-6 space-y-6">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Items Per Page</label>
-                <select class="fm-input">
-                    <option value="10">10 items</option>
-                    <option value="25">25 items</option>
-                    <option value="50">50 items</option>
-                    <option value="100">100 items</option>
-                </select>
-            </div>
-
-            <div class="border-t border-gray-200 pt-6">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Date Format</label>
-                <select class="fm-input">
-                    <option value="mdy">MM/DD/YYYY</option>
-                    <option value="dmy">DD/MM/YYYY</option>
-                    <option value="ymd">YYYY/MM/DD</option>
-                </select>
-            </div>
-
-            <div class="border-t border-gray-200 pt-6">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Language</label>
-                <select class="fm-input">
-                    <option value="en">English</option>
-                    <option value="es">Spanish</option>
-                    <option value="fr">French</option>
-                    <option value="de">German</option>
-                </select>
-            </div>
-        </div>
-    </div>
-
-    <!-- API Settings -->
-    <div class="fm-card">
-        <div class="px-6 py-4 border-b border-gray-200">
-            <h3>API Configuration</h3>
-            <p>Manage API settings and keys</p>
-        </div>
-        <div class="p-6 space-y-6">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">API Endpoint</label>
-                <div class="flex gap-2">
-                    <input type="text" value="https://fati-api.alertaraqc.com/api" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-gray-50">
-                    <button class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition text-sm font-medium">
-                        <i class="fas fa-copy"></i>
-                    </button>
-                </div>
-            </div>
-
-            <div class="border-t border-gray-200 pt-6">
-                <label class="block text-sm font-medium text-gray-700 mb-2">API Version</label>
-                <input type="text" value="v1" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-gray-50">
-            </div>
-
-            <div class="border-t border-gray-200 pt-6">
-                <h4 class="font-semibold text-gray-900 mb-3">API Keys</h4>
-                <p class="text-sm text-gray-600 mb-4">Your API keys are used for authentication. Keep them secure.</p>
-                <div class="space-y-3">
-                    <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                        <div>
-                            <p class="text-sm font-medium text-gray-900">Public Key</p>
-                            <p class="text-xs text-gray-500 mt-1">pk_live_abc123...</p>
-                        </div>
-                        <button class="px-3 py-1 text-red-600 hover:bg-red-50 rounded text-sm">
-                            Revoke
-                        </button>
+                <div class="fm-card-body space-y-3" style="font-size: 13.5px;">
+                    <div class="flex justify-between gap-4">
+                        <span style="color: var(--ink-500);">Store</span>
+                        <span class="font-medium">Ofelia's Store &middot; Fati Market</span>
                     </div>
+                    <div class="flex justify-between gap-4">
+                        <span style="color: var(--ink-500);">Institution</span>
+                        <span class="font-medium">Our Lady of Fatima University</span>
+                    </div>
+                    <div class="flex justify-between gap-4">
+                        <span style="color: var(--ink-500);">Signed in as</span>
+                        <span class="font-medium">{{ session('admin_data.email', 'Administrator') }}</span>
+                    </div>
+                    <div class="flex justify-between gap-4">
+                        <span style="color: var(--ink-500);">API</span>
+                        <span class="font-medium" style="font-family: ui-monospace, monospace; font-size: 12px;">fati-api.alertaraqc.com</span>
+                    </div>
+                    <p style="color: var(--ink-500); font-size: 12.5px; margin: 0; padding-top: 6px; border-top: 1px solid var(--line);">
+                        Every change here is live for the mobile app the moment it is saved.
+                    </p>
                 </div>
-                <button class="mt-4 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition text-sm font-medium">
-                    <i class="fas fa-plus mr-2"></i>Generate New Key
-                </button>
-            </div>
+            </section>
         </div>
-    </div>
-
-    <!-- Danger Zone -->
-    <div class="fm-card" style="border-color: #F3C7C3;">
-        <div class="px-6 py-4 border-b border-red-200 bg-red-50">
-            <h3 class="text-lg font-bold text-red-900">Danger Zone</h3>
-            <p class="text-sm text-red-800">Irreversible actions - proceed with caution</p>
-        </div>
-        <div class="p-6 space-y-4">
-            <button class="w-full px-4 py-3 border-2 border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition font-medium flex items-center justify-between">
-                <span>Reset All Settings</span>
-                <i class="fas fa-refresh"></i>
-            </button>
-            <button class="w-full px-4 py-3 border-2 border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition font-medium flex items-center justify-between">
-                <span>Clear Cache</span>
-                <i class="fas fa-trash"></i>
-            </button>
-            <button class="w-full px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium flex items-center justify-between">
-                <span>Delete Admin Account</span>
-                <i class="fas fa-exclamation-triangle"></i>
-            </button>
-        </div>
-    </div>
-
-    <!-- Save Button -->
-    <div class="flex gap-3 justify-end">
-        <button class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition font-medium text-gray-700">
-            Cancel
-        </button>
-        <button class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
-            <i class="fas fa-save mr-2"></i>Save Changes
-        </button>
     </div>
 </div>
-
-@push('scripts')
-<script>
-    function toggleDarkMode(button) {
-        button.classList.toggle('bg-gray-200');
-        button.classList.toggle('bg-green-500');
-        const span = button.querySelector('span');
-        span.classList.toggle('translate-x-1');
-        span.classList.toggle('translate-x-6');
-    }
-</script>
-@endpush
 @endsection
