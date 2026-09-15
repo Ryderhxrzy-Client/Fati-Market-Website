@@ -135,6 +135,6 @@ class AdminPagesRenderTest extends TestCase
 
     public function test_guest_is_redirected_from_admin_pages(): void
     {
-        $this->get('/counter')->assertRedirect('/');
+        $this->get('/counter')->assertRedirect('/admin/login');
     }
 }
