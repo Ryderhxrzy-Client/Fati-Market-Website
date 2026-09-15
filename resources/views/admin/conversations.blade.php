@@ -45,6 +45,10 @@
              bury the decision that thread exists for. -->
         <div id="offerPinned" class="offer-pinned" style="display: none;"></div>
 
+        <!-- The live order's decisions, pinned like the app's strip: one line
+             saying which order and where it stands, then its buttons. -->
+        <div id="orderPinned" class="order-pinned" style="display: none;"></div>
+
         <div id="messagesArea" class="chat-messages">
             <div class="fm-empty" style="padding: 60px 16px;">
                 <i class="fas fa-comments"></i>
@@ -90,6 +94,8 @@
 
 <!-- Context menus: one for a message, one for a conversation row -->
 <div id="ctxMenu" class="ctx-menu" hidden></div>
+
+@include('admin.partials.meetup-picker')
 @endsection
 
 @push('styles')
@@ -131,6 +137,10 @@
     .chat-head-id { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; }
     .chat-head .badges { display: flex; gap: 6px; align-items: center; margin-top: 3px; flex-wrap: wrap; }
     .offer-pinned { gap: 8px; flex-wrap: wrap; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--surface-sunk); flex-shrink: 0; }
+    .order-pinned { padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--brand-50); flex-shrink: 0; }
+    .order-pinned .op-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-700); }
+    .order-pinned .op-line b { color: var(--ink-900); }
+    .order-pinned .op-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
     .chat-messages { flex: 1; overflow-y: auto; padding: 16px 20px; background: var(--canvas); display: flex; flex-direction: column; gap: 4px; }
 
     .msg { display: flex; gap: 8px; align-items: flex-end; max-width: 72%; }
@@ -557,6 +567,7 @@ async function patchConversation(conv, patch) {
 function closeThread() {
     selectedConversation = null;
     writeThreadUrl(null);
+    renderPinnedOrder(null);
     currentMessages = [];
     clearReply();
     if (threadPoll) clearInterval(threadPoll);
@@ -673,6 +684,10 @@ function renderMessages(messages) {
         return;
     }
 
+    // The strip above the thread carries the newest order's open decisions.
+    const liveOrderMsg = [...messages].reverse().find(m => m.kind && m.kind !== 'text' && m.order && carriesActions(m));
+    renderPinnedOrder(liveOrderMsg ? liveOrderMsg.order : null);
+
     const pickupCards = messages.filter(m => m.kind && m.kind !== 'text' && m.order && pickupStageOf(m));
     latestPickupMessageId = pickupCards.length ? pickupCards[pickupCards.length - 1].message_id : null;
 
@@ -726,6 +741,25 @@ function renderMessages(messages) {
                 </div>
             </div>`;
     }
+}
+
+/** Buttons only, for the order the thread is about; the card tells the whole story. */
+function renderPinnedOrder(order) {
+    const bar = document.getElementById('orderPinned');
+    const actions = order ? (order.available_actions || []) : [];
+
+    if (!order || actions.length === 0) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+
+    bar.innerHTML = `
+        <div class="op-line">
+            <i class="fas fa-receipt" style="color: var(--brand-600);"></i>
+            <b>${escapeHtml(order.receipt_no || ('Order #' + order.transaction_id))}</b>
+            <span>&middot; ${peso(order.amount_due)} &middot; ${escapeHtml(paymentMethodLabel(order.payment_method))}</span>
+            ${paymentStateBadge(order)}
+            ${orderStatusBadge(order.status, order.payment_method)}
+        </div>
+        <div class="op-actions">${orderActionsHtml(order).replace('border-top: 1px solid var(--surface-sunk); padding-top: 12px;', '').replace('margin-top: 12px;', '')}</div>`;
+    bar.style.display = 'block';
 }
 
 function systemLineHtml(event) {
@@ -1320,21 +1354,16 @@ async function acceptOffer(itemId, askingPrice) {
     if (await itemPost(itemId, 'acquisition-price', { acquisition_price: price.trim() }, 'Could not accept the offer')) await loadThread();
 }
 
-/** When the seller comes in; the 6h/1h/30m reminders count down from it. */
+/**
+ * When the seller comes in: a day this month, a slot in store hours - the
+ * same picker and the same rules as the app. The 6h/1h/30m reminders count
+ * down from it.
+ */
 async function scheduleMeetup(itemId) {
-    const suggested = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    const pad = (n) => String(n).padStart(2, '0');
-    const suggestedValue = `${suggested.getFullYear()}-${pad(suggested.getMonth() + 1)}-${pad(suggested.getDate())}T10:00`;
-
-    const raw = await askModal({
-        title: 'Meet-up schedule',
-        body: 'When the seller brings the item in. They are told in chat, and reminded 6 hours, 1 hour and 30 minutes before.',
-        field: { label: 'Date and time', type: 'datetime-local', value: suggestedValue },
-        confirmLabel: 'Save schedule',
-    });
-    if (raw === null) return;
-    if (isNaN(new Date(raw.trim()).getTime())) { showToast('Pick a valid date and time.', 'error'); return; }
-    if (await itemPost(itemId, 'meetup', { meetup_schedule: raw.trim().replace('T', ' ') }, 'Could not save the schedule')) await loadThread();
+    const card = [...currentMessages].reverse().find(m => m.kind === 'item_listed' && m.item_card && Number(m.item_card.item_id) === Number(itemId));
+    const when = await FMMeetup.pick({ current: card?.item_card?.meetup_schedule || null });
+    if (when === null) return;
+    if (await itemPost(itemId, 'meetup', { meetup_schedule: when }, 'Could not save the schedule')) await loadThread();
 }
 
 /** The manual twin of the QR turnover: item received and seller paid, without the counter photographs. */
