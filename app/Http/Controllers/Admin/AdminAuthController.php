@@ -379,9 +379,21 @@ class AdminAuthController extends Controller
             return redirect()->route('admin.login');
         }
 
-        // The page loads its rows itself, so an approval can refresh the
-        // list without a round trip through this controller.
-        return view('admin.transactions.history');
+        // The page loads its rows itself; this one is the read-only record.
+        return view('admin.transactions.history', ['mode' => 'history']);
+    }
+
+    /**
+     * Every order with its open decisions - the counterpart of the mobile
+     * app's "Manage orders".
+     */
+    public function manageOrders(Request $request)
+    {
+        if (!Session::has('admin_token')) {
+            return redirect()->route('admin.login');
+        }
+
+        return view('admin.transactions.history', ['mode' => 'manage']);
     }
 
     /**
@@ -693,57 +705,36 @@ class AdminAuthController extends Controller
         }
 
         $token = Session::get('admin_token');
-        $reportData = ['total_markup' => 0, 'monthly_profit' => [], 'top_items' => []];
+        $reportData = ['total_profit' => null, 'profit_by_month' => [], 'top_items' => []];
 
         try {
-            // Fetch profit summary
-            $profitResponse = Http::timeout(30)
+            // The same report the mobile app draws: markup on every sold item,
+            // by month, and the items ranked by it. Pesos, not points.
+            $response = Http::timeout(30)
                 ->withHeaders([
                     'Accept' => 'application/json',
                     'Authorization' => 'Bearer ' . $token,
                 ])
-                ->get('https://fati-api.alertaraqc.com/api/admin/transactions/profit-summary');
+                ->get('https://fati-api.alertaraqc.com/api/admin/reports/profit');
 
-            if ($profitResponse->successful()) {
-                $profitData = $profitResponse->json()['data'] ?? [];
-                $reportData['total_markup'] = (int)($profitData['total_profit_points'] ?? 0);
-            }
+            if ($response->successful()) {
+                $data = $response->json()['data'] ?? [];
 
-            // Fetch sales report for monthly profit
-            $salesResponse = Http::timeout(30)
-                ->withHeaders([
-                    'Accept' => 'application/json',
-                    'Authorization' => 'Bearer ' . $token,
-                ])
-                ->get('https://fati-api.alertaraqc.com/api/admin/reports/sales');
-
-            if ($salesResponse->successful()) {
-                $salesData = $salesResponse->json()['data'] ?? [];
-                
-                // Map monthly sales data
-                $reportData['monthly_profit'] = array_map(function ($sale) {
-                    return [
-                        'month' => $sale['month'] ?? 'N/A',
-                        'count' => $sale['count'] ?? 0,
-                    ];
-                }, $salesData['sales_by_month'] ?? []);
-
-                // Map recent sales as top profitable items
-                $recentSales = $salesData['recent_sales'] ?? [];
-                $reportData['top_items'] = array_map(function ($sale) {
-                    return [
-                        'item_name' => $sale['item']['title'] ?? 'N/A',
-                        'markup_points' => $sale['item']['markup_points'] ?? 0,
-                        // The sale was the store's; the student it came from
-                        // is provenance, not the seller of record.
-                        'seller_email' => $sale['consigned_by']
-                            ?? ($sale['seller']['name'] ?? 'Ofelia Store'),
-                    ];
-                }, $recentSales);
+                $reportData['total_profit'] = $data['total_profit'] ?? null;
+                $reportData['profit_by_month'] = array_map(fn ($row) => [
+                    'month' => $row['month'] ?? 'N/A',
+                    'profit' => $row['profit'] ?? null,
+                ], $data['profit_by_month'] ?? []);
+                $reportData['top_items'] = array_map(fn ($item) => [
+                    'title' => $item['title'] ?? 'N/A',
+                    'seller_email' => $item['seller_email'] ?? 'N/A',
+                    'acquisition_price' => $item['acquisition_price'] ?? null,
+                    'public_price' => $item['public_price'] ?? null,
+                    'markup' => $item['markup'] ?? null,
+                ], $data['top_profitable_items'] ?? []);
             }
         } catch (\Exception $e) {
             \Log::error('Profit report fetch error: ' . $e->getMessage());
-            $reportData = ['total_markup' => 0, 'monthly_profit' => [], 'top_items' => []];
         }
 
         return view('admin.reports.profit', compact('reportData'));
