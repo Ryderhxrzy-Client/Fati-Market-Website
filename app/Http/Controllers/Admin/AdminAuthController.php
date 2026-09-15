@@ -379,43 +379,9 @@ class AdminAuthController extends Controller
             return redirect('/');
         }
 
-        $token = Session::get('admin_token');
-        $transactions = [];
-
-        try {
-            $response = Http::timeout(30)
-                ->withHeaders([
-                    'Accept' => 'application/json',
-                    'Authorization' => 'Bearer ' . $token,
-                ])
-                ->get('https://fati-api.alertaraqc.com/api/admin/transactions');
-
-            if ($response->successful()) {
-                $apiTransactions = $response->json()['data'] ?? [];
-                
-                // Transform API data to match view expectations
-                $transactions = array_map(function ($txn) {
-                    return [
-                        'transaction_id' => $txn['transaction_id'] ?? null,
-                        'item_title' => $txn['item']['title'] ?? 'N/A',
-                        'buyer_email' => $txn['buyer']['email'] ?? 'N/A',
-                        // The store sells what it owns; the student it came
-                        // from is provenance, shown separately.
-                        'seller_email' => $txn['seller']['name'] ?? ($txn['seller']['email'] ?? 'N/A'),
-                        'consigned_by' => $txn['consigned_by'] ?? null,
-                        'payment_method' => $txn['payment_method'] ?? 'N/A',
-                        'status' => $txn['status'] ?? 'pending',
-                        'points_used' => $txn['points_used'] ?? 0,
-                        'transaction_date' => $txn['transaction_date'] ?? null,
-                    ];
-                }, $apiTransactions);
-            }
-        } catch (\Exception $e) {
-            \Log::error('Transaction history fetch error: ' . $e->getMessage());
-            $transactions = [];
-        }
-
-        return view('admin.transactions.history', compact('transactions'));
+        // The page loads its rows itself, so an approval can refresh the
+        // list without a round trip through this controller.
+        return view('admin.transactions.history');
     }
 
     /**
@@ -964,6 +930,72 @@ class AdminAuthController extends Controller
 
         return view('admin.profile', compact('adminData'));
     }
+
+    /**
+     * The counter: scan a turnover or pickup QR, or type its code.
+     */
+    public function counter(Request $request)
+    {
+        if (!Session::has('admin_token')) {
+            return redirect('/');
+        }
+
+        return view('admin.counter');
+    }
+
+    /**
+     * Upload the admin's own profile photo, through the same API endpoint
+     * the mobile app uses, and keep the session's copy of the URL current.
+     */
+    public function updateProfilePicture(Request $request)
+    {
+        $request->validate([
+            'profile_picture' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+        ]);
+
+        $file = $request->file('profile_picture');
+        $stream = fopen($file->getRealPath(), 'rb');
+
+        try {
+            $response = Http::withToken(session('admin_token'))
+                ->acceptJson()
+                ->timeout(60)
+                ->attach('profile_picture', $stream, $file->getClientOriginalName())
+                ->post('https://fati-api.alertaraqc.com/api/profile/picture');
+
+            if (!$response->successful()) {
+                return back()->withErrors([
+                    'profile_picture' => $response->json('message') ?? 'The photo could not be uploaded. Please try again.',
+                ]);
+            }
+
+            $json = $response->json() ?? [];
+            $url = $json['profile_picture']
+                ?? $json['picture_url']
+                ?? $json['url']
+                ?? ($json['data']['profile_picture'] ?? null)
+                ?? ($json['data']['picture_url'] ?? null)
+                ?? ($json['user']['profile_picture'] ?? null);
+
+            if (!empty($url)) {
+                session()->put('admin_profile_picture', $url);
+                $adminData = session('admin_data', []);
+                $adminData['profile_picture'] = $url;
+                session()->put('admin_data', $adminData);
+            }
+
+            return redirect()->route('admin.profile')->with('profile_success', 'Profile photo updated.');
+        } catch (\Exception $e) {
+            \Log::error('Profile picture upload error: ' . $e->getMessage());
+
+            return back()->withErrors(['profile_picture' => 'Could not reach the server. Please try again.']);
+        } finally {
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+        }
+    }
+
 
     /**
      * Show settings page.
