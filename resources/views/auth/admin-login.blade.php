@@ -84,7 +84,7 @@
                 </div>
             @endif
 
-            <form method="POST" action="/" class="mt-6" id="loginForm">
+            <form method="POST" action="{{ route('admin.login.post') }}" class="mt-6" id="loginForm">
                 @csrf
 
                 <div class="mb-4">
@@ -165,7 +165,7 @@
         </div>
         <h3 class="text-[18px] font-semibold mb-1">You are signed in</h3>
         <p class="text-[13.5px] mb-6" style="color: var(--ink-500);">Taking you to the dashboard…</p>
-        <button class="auth-btn" onclick="window.location.href='/dashboard'">Go to dashboard</button>
+        <button class="auth-btn" onclick="window.location.href='{{ route('admin.dashboard') }}'">Go to dashboard</button>
     </div>
 </div>
 @endif
