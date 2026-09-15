@@ -1,87 +1,192 @@
 @extends('layouts.admin-dashboard')
 
-@section('title', 'Conversations')
+@section('title', 'Chat')
+@section('subtitle', 'Buyers and sellers, in one place')
 
 @section('content')
-<div style="display: flex; flex-direction: column; height: 100%; margin: -24px -24px -24px -24px; padding: 24px;">
-    <!-- Header -->
-    <div style="margin-bottom: 16px;">
-        <h3>Conversations</h3>
-        <p>Monitor and manage user conversations</p>
-    </div>
+{{--
+    The store's inbox, as the mobile app has it: pinned threads first, an
+    Archived shelf, a name of your own for a thread, delete-for-me; replies
+    with a quoted line (right-click a message), an emoji picker, and Enter to
+    send. Order and offer cards keep their decisions.
+--}}
+<div class="chat-shell">
+    <aside class="chat-list">
+        <div class="chat-list-head">
+            <span class="fm-search"><i class="fas fa-magnifying-glass"></i><input type="search" placeholder="Search people or items…" id="searchInput" class="fm-input"></span>
+            <div class="chat-filters" id="chatFilters">
+                <button class="chip on" data-filter="all">All</button>
+                <button class="chip" data-filter="unread">Unread <span class="n" id="unreadChipCount"></span></button>
+                <button class="chip" data-filter="archived">Archived</button>
+            </div>
+        </div>
+        <div id="conversationsList" class="chat-rows">
+            <div class="fm-empty" style="padding: 40px 16px;"><span class="loading-spinner"></span><p style="margin-top: 10px;">Loading conversations…</p></div>
+        </div>
+    </aside>
 
-    <!-- Search Bar -->
-    <div style="margin-bottom: 16px;">
-        <span class="fm-search"><i class="fas fa-magnifying-glass"></i><input type="search" placeholder="Search conversations..." id="searchInput" class="fm-input"></span>
-    </div>
-
-    <!-- Main Container -->
-    <div style="display: flex; gap: 16px; flex: 1; min-height: 0;">
-        <!-- Conversations List (Left) -->
-        <div style="width: 35%; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); display: flex; flex-direction: column; overflow: hidden;">
-            <div id="conversationsList" style="flex: 1; overflow-y: auto; border-right: 1px solid var(--line);">
-                <!-- Conversations will be loaded here -->
-                <div class="p-6 text-center text-gray-500">
-                    <i class="fas fa-spinner fa-spin text-2xl mb-2 block"></i>
-                    <p class="text-sm">Loading conversations...</p>
+    <section class="chat-pane">
+        <div id="chatHeader" class="chat-head">
+            <div class="chat-head-id">
+                <div class="avatar" style="width: 40px; height: 40px;"><i class="fas fa-comments"></i></div>
+                <div class="min-w-0">
+                    <p class="cell-title" style="margin: 0;">Select a conversation</p>
+                    <p class="cell-sub">Choose one from the list</p>
                 </div>
             </div>
         </div>
 
-        <!-- Chat Area (Right) -->
-        <div style="flex: 1; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); display: flex; flex-direction: column; overflow: hidden;">
-            <!-- Chat Header -->
-            <div id="chatHeader" class="px-6 py-4 border-b border-gray-200 flex justify-between items-center" style="flex-shrink: 0;">
-                <div class="flex items-center gap-3">
-                    <div class="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center">
-                        <i class="fas fa-user text-gray-600"></i>
-                    </div>
-                    <div>
-                        <p class="font-semibold text-gray-900 text-sm">Select a conversation</p>
-                        <p class="cell-sub">Choose from the list to start</p>
-                    </div>
-                </div>
-            </div>
+        <!-- Pinned offer actions: buttons only, so a long thread cannot
+             bury the decision that thread exists for. -->
+        <div id="offerPinned" class="offer-pinned" style="display: none;"></div>
 
-            <!-- Pinned offer actions: buttons only, so a long thread cannot
-                 bury the decision that thread exists for. -->
-            <div id="offerPinned"
-                 style="display: none; gap: 8px; flex-wrap: wrap; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--surface-sunk); flex-shrink: 0;"></div>
-
-            <!-- Messages Area -->
-            <div id="messagesArea" class="flex-1 overflow-y-auto p-6 space-y-4" style="background: #fafafa;">
-                <div class="text-center text-gray-500 mt-20">
-                    <i class="fas fa-comments text-4xl mb-3 block text-gray-300"></i>
-                    <p class="text-sm">Select a conversation to view messages</p>
-                </div>
-            </div>
-
-            <!-- Decision modal: replaces window.prompt / window.confirm -->
-            <div id="actionModal"
-                 onclick="if (event.target === this) actionModalDone(false)"
-                 style="display: none; position: fixed; inset: 0; background: rgba(12, 48, 33, 0.55); z-index: 80; align-items: center; justify-content: center; padding: 24px;">
-                <div id="actionModalBody" style="background: white; border-radius: 12px; max-width: 420px; width: 100%; padding: 20px; box-shadow: var(--shadow-lg);"></div>
-            </div>
-
-            <!-- Receipt lightbox / item panel -->
-            <div id="chatOverlay"
-                 onclick="if (event.target === this) closeOverlay()"
-                 style="display: none; position: fixed; inset: 0; background: rgba(12, 48, 33, 0.55); z-index: 60; align-items: center; justify-content: center; padding: 32px;">
-                <div id="chatOverlayBody" style="background: white; border-radius: 12px; max-width: 640px; width: 100%; max-height: 88vh; overflow-y: auto; padding: 24px;"></div>
-            </div>
-
-            <!-- Message Input -->
-            <div id="messageInput" class="px-6 py-4 border-t border-gray-200 hidden" style="flex-shrink: 0;">
-                <div class="flex gap-3">
-                    <input type="text" id="messageField" placeholder="Type a message..." class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
-                    <button onclick="sendMessage()" class="fm-btn primary">
-                        <i class="fas fa-paper-plane"></i>
-                    </button>
-                </div>
+        <div id="messagesArea" class="chat-messages">
+            <div class="fm-empty" style="padding: 60px 16px;">
+                <i class="fas fa-comments"></i>
+                <p>No conversation open</p>
+                <span>Pick one on the left to read and reply.</span>
             </div>
         </div>
-    </div>
+
+        <div id="composer" class="composer" hidden>
+            <div id="replyBar" class="reply-bar" hidden>
+                <div class="reply-bar-rule"></div>
+                <div class="min-w-0" style="flex: 1;">
+                    <p class="reply-bar-title" id="replyBarTitle"></p>
+                    <p class="reply-bar-text" id="replyBarText"></p>
+                </div>
+                <button class="row-btn" onclick="clearReply()" aria-label="Cancel reply"><i class="fas fa-xmark"></i></button>
+            </div>
+            <div id="emojiPanel" class="emoji-panel" hidden>
+                <div class="emoji-tabs" id="emojiTabs"></div>
+                <div class="emoji-grid" id="emojiGrid"></div>
+            </div>
+            <div class="composer-row">
+                <button class="row-btn" id="emojiButton" onclick="toggleEmoji()" aria-label="Emoji" title="Emoji"><i class="fas fa-face-smile"></i></button>
+                <textarea id="messageField" class="composer-input" rows="1" placeholder="Type a message… Enter to send, Shift+Enter for a new line"></textarea>
+                <button class="send-btn" id="sendButton" onclick="sendMessage()" aria-label="Send" title="Send"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+
+        <!-- Decision modal: replaces window.prompt / window.confirm -->
+        <div id="actionModal" onclick="if (event.target === this) actionModalDone(false)" class="chat-overlay" style="z-index: 80;">
+            <div id="actionModalBody" style="background: white; border-radius: 12px; max-width: 420px; width: 100%; padding: 20px; box-shadow: var(--shadow-lg);"></div>
+        </div>
+
+        <!-- Receipt lightbox / item panel -->
+        <div id="chatOverlay" onclick="if (event.target === this) closeOverlay()" class="chat-overlay" style="z-index: 60;">
+            <div id="chatOverlayBody" style="background: white; border-radius: 12px; max-width: 640px; width: 100%; max-height: 88vh; overflow-y: auto; padding: 24px;"></div>
+        </div>
+    </section>
 </div>
+
+<!-- Context menus: one for a message, one for a conversation row -->
+<div id="ctxMenu" class="ctx-menu" hidden></div>
+@endsection
+
+@push('styles')
+<style>
+    .chat-shell { display: flex; gap: 16px; height: calc(100vh - 64px - 48px); min-height: 480px; }
+    .chat-list { width: 340px; flex-shrink: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); display: flex; flex-direction: column; overflow: hidden; }
+    .chat-list-head { padding: 12px 12px 8px; border-bottom: 1px solid var(--line); }
+    .chat-filters { display: flex; gap: 6px; margin-top: 10px; }
+    .chip { padding: 5px 11px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-700); font-size: 12px; font-weight: 600; cursor: pointer; display: inline-flex; gap: 5px; align-items: center; }
+    .chip.on { background: var(--brand-600); border-color: var(--brand-600); color: #fff; }
+    .chip .n:empty { display: none; }
+    .chip .n { background: rgba(255,255,255,0.25); border-radius: 999px; padding: 0 6px; font-size: 11px; }
+    .chip:not(.on) .n { background: var(--danger); color: #fff; }
+    .chat-rows { flex: 1; overflow-y: auto; }
+    .conv-row { display: flex; gap: 12px; padding: 12px 14px; cursor: pointer; border-bottom: 1px solid var(--line); position: relative; transition: background-color 0.12s ease; }
+    .conv-row:hover { background: var(--surface-sunk); }
+    .conv-row.active { background: var(--brand-50); }
+    .conv-row.unread .conv-title { font-weight: 700; color: var(--ink-900); }
+    .conv-avatar { position: relative; flex-shrink: 0; width: 48px; height: 48px; }
+    .conv-avatar .avatar { width: 44px; height: 44px; }
+    .conv-avatar .item-thumb { position: absolute; right: -2px; bottom: -2px; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--surface); object-fit: cover; background: var(--surface-sunk); }
+    .conv-body { flex: 1; min-width: 0; }
+    .conv-top { display: flex; align-items: baseline; gap: 8px; }
+    .conv-title { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 600; color: var(--ink-800); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 5px; }
+    .conv-title .pin { color: var(--brand-600); font-size: 11px; }
+    .conv-time { font-size: 11px; color: var(--ink-400); white-space: nowrap; }
+    .conv-row.unread .conv-time { color: var(--brand-600); font-weight: 600; }
+    .conv-sub { font-size: 12px; color: var(--ink-500); margin-top: 2px; display: flex; gap: 6px; align-items: center; white-space: nowrap; overflow: hidden; }
+    .conv-sub .who { overflow: hidden; text-overflow: ellipsis; }
+    .conv-last { font-size: 12.5px; color: var(--ink-500); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .conv-row.unread .conv-last { color: var(--ink-800); font-weight: 500; }
+    .conv-count { background: var(--danger); color: #fff; font-size: 10.5px; font-weight: 700; border-radius: 999px; min-width: 18px; height: 18px; padding: 0 5px; display: inline-flex; align-items: center; justify-content: center; }
+    .conv-more { position: absolute; right: 8px; bottom: 8px; opacity: 0; }
+    .conv-row:hover .conv-more { opacity: 1; }
+    .section-label { padding: 8px 14px 4px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-400); }
+
+    .chat-pane { flex: 1; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); display: flex; flex-direction: column; overflow: hidden; }
+    .chat-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); flex-shrink: 0; }
+    .chat-head-id { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; }
+    .chat-head .badges { display: flex; gap: 6px; align-items: center; margin-top: 3px; flex-wrap: wrap; }
+    .offer-pinned { gap: 8px; flex-wrap: wrap; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--surface-sunk); flex-shrink: 0; }
+    .chat-messages { flex: 1; overflow-y: auto; padding: 18px 20px; background: var(--canvas); display: flex; flex-direction: column; gap: 6px; }
+
+    .msg { display: flex; gap: 8px; align-items: flex-end; max-width: 72%; }
+    .msg.me { align-self: flex-end; flex-direction: row-reverse; }
+    .msg.them { align-self: flex-start; }
+    .msg + .msg.same { margin-top: -2px; }
+    .msg .avatar { width: 28px; height: 28px; font-size: 11px; }
+    .msg .stack { display: flex; flex-direction: column; min-width: 0; }
+    .msg.me .stack { align-items: flex-end; }
+    .msg .sender { font-size: 11px; color: var(--ink-500); margin: 0 0 3px 4px; }
+    .bubble { position: relative; padding: 9px 13px; border-radius: 18px; font-size: 13.5px; line-height: 1.45; white-space: pre-wrap; word-break: break-word; cursor: context-menu; }
+    .msg.them .bubble { background: var(--surface); color: var(--ink-900); border-bottom-left-radius: 5px; box-shadow: var(--shadow-sm); }
+    .msg.me .bubble { background: var(--brand-600); color: #fff; border-bottom-right-radius: 5px; }
+    .bubble .quote { display: flex; gap: 8px; margin: -3px -5px 8px; padding: 6px 9px; border-radius: 10px; font-size: 12px; background: rgba(16, 21, 19, 0.06); }
+    .msg.me .bubble .quote { background: rgba(255,255,255,0.16); }
+    .bubble .quote .rule { width: 3px; border-radius: 3px; background: var(--brand-600); flex-shrink: 0; }
+    .msg.me .bubble .quote .rule { background: rgba(255,255,255,0.8); }
+    .bubble .quote .q-name { font-weight: 700; margin: 0; }
+    .bubble .quote .q-text { margin: 1px 0 0; opacity: 0.85; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .msg .time { font-size: 10.5px; color: var(--ink-400); margin: 3px 4px 0; }
+    .msg.me .time { text-align: right; }
+    .msg .reply-hint { opacity: 0; transition: opacity 0.15s ease; align-self: center; }
+    .msg:hover .reply-hint { opacity: 1; }
+    .card { align-self: flex-start; max-width: 440px; width: 100%; }
+    .card.me { align-self: flex-end; }
+    .day-sep { align-self: center; font-size: 11px; color: var(--ink-400); background: var(--surface); padding: 3px 10px; border-radius: 999px; margin: 8px 0; box-shadow: var(--shadow-sm); }
+
+    .composer { border-top: 1px solid var(--line); background: var(--surface); flex-shrink: 0; }
+    .composer-row { display: flex; align-items: flex-end; gap: 8px; padding: 10px 12px; }
+    .composer-input { flex: 1; resize: none; max-height: 120px; padding: 10px 14px; border: 1px solid var(--line-strong); border-radius: 20px; font-size: 13.5px; font-family: inherit; line-height: 1.4; background: var(--surface-sunk); }
+    .composer-input:focus { outline: none; border-color: var(--brand-500); background: var(--surface); box-shadow: 0 0 0 3px var(--brand-100); }
+    .send-btn { width: 40px; height: 40px; border-radius: 50%; border: none; background: var(--brand-600); color: #fff; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .reply-bar { display: flex; align-items: center; gap: 10px; padding: 8px 12px 0 16px; }
+    .reply-bar-rule { width: 3px; height: 34px; border-radius: 3px; background: var(--brand-600); flex-shrink: 0; }
+    .reply-bar-title { margin: 0; font-size: 12px; font-weight: 700; color: var(--brand-700); }
+    .reply-bar-text { margin: 1px 0 0; font-size: 12px; color: var(--ink-500); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .emoji-panel { border-bottom: 1px solid var(--line); }
+    .emoji-tabs { display: flex; gap: 4px; padding: 8px 10px 0; overflow-x: auto; }
+    .emoji-tabs button { border: none; background: none; padding: 6px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; color: var(--ink-600); cursor: pointer; white-space: nowrap; }
+    .emoji-tabs button.on { background: var(--brand-100); color: var(--brand-800); }
+    .emoji-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(36px, 1fr)); gap: 2px; padding: 8px 10px; height: 200px; overflow-y: auto; }
+    .emoji-grid button { border: none; background: none; font-size: 22px; line-height: 1; padding: 5px 0; border-radius: 8px; cursor: pointer; }
+    .emoji-grid button:hover { background: var(--surface-sunk); }
+    .emoji-grid .note { grid-column: 1 / -1; font-size: 12px; color: var(--ink-500); padding: 20px; text-align: center; }
+
+    .ctx-menu { position: fixed; z-index: 90; min-width: 200px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-lg); padding: 6px; }
+    .ctx-menu button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border-radius: var(--radius-sm); font-size: 13px; color: var(--ink-800); background: none; border: none; cursor: pointer; text-align: left; }
+    .ctx-menu button:hover { background: var(--surface-sunk); }
+    .ctx-menu button i { width: 15px; color: var(--ink-500); }
+    .ctx-menu button.danger, .ctx-menu button.danger i { color: var(--danger); }
+    .ctx-menu .title { padding: 6px 10px 8px; font-size: 11.5px; color: var(--ink-500); border-bottom: 1px solid var(--line); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
+
+    .chat-overlay { display: none; position: fixed; inset: 0; background: rgba(12, 48, 33, 0.55); align-items: center; justify-content: center; padding: 24px; }
+
+    @media (max-width: 900px) {
+        .chat-shell { flex-direction: column; height: auto; }
+        .chat-list { width: 100%; max-height: 40vh; }
+        .chat-pane { min-height: 60vh; }
+        .msg { max-width: 90%; }
+    }
+</style>
+@endpush
 
 @push('scripts')
 <script>
@@ -90,220 +195,396 @@ const API = 'https://fati-api.alertaraqc.com/api';
 let token = null;
 let selectedConversation = null;
 let allConversations = [];
+let currentMessages = [];
 let busyAction = false;
+let listFilter = 'all';
+let replyTarget = null;
+let listPoll = null;
+let threadPoll = null;
 
 // Item-status badge colours. An unknown status falls back to grey instead of
 // `undefined`, which used to paint a white badge with white text.
-const statusBadgeColor = {
-    public: '#10b981',
-    private: '#64748b',
-    pending: '#d97706',
-    acquired: '#7c3aed',
-    reserved: '#2563eb',
-    sold: '#dc2626',
-    rejected: '#b91c1c',
+const statusTone = {
+    public: 'success', private: '', pending: 'warning', acquired: 'brand', reserved: 'info', sold: '', rejected: 'danger',
 };
-const statusColor = (status) => statusBadgeColor[status] || '#64748b';
+const statusLabel = {
+    public: 'Available', private: 'Negotiating', pending: 'Negotiating', acquired: 'Acquired', reserved: 'Reserved', sold: 'Sold', rejected: 'Rejected',
+};
 
 function getToken() {
     const metaToken = document.querySelector('meta[name="api-token"]')?.getAttribute('content');
-    if (metaToken && metaToken.trim()) {
-        return metaToken;
-    }
-    return sessionStorage.getItem('admin_token') ||
-           localStorage.getItem('admin_token') ||
-           sessionStorage.getItem('token') ||
-           localStorage.getItem('token');
+    if (metaToken && metaToken.trim()) return metaToken;
+    return sessionStorage.getItem('admin_token') || localStorage.getItem('admin_token') || sessionStorage.getItem('token') || localStorage.getItem('token');
+}
+
+function authHeaders(json) {
+    const headers = { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' };
+    if (json) headers['Content-Type'] = 'application/json';
+    return headers;
+}
+
+function convKey(conv) { return `${conv.item_id}_${conv.other_user_id}`; }
+function convName(conv) { return conv.custom_name || conv.item_title || 'Conversation'; }
+function personName(conv) {
+    const email = conv.other_user_email || '';
+    return conv.first_name && conv.last_name ? `${conv.first_name} ${conv.last_name}` : (conv.first_name || conv.last_name || email.split('@')[0] || 'User');
+}
+function initials(name) { return name.split(' ').filter(Boolean).map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?'; }
+function itemBadge(status) {
+    const key = String(status || '').toLowerCase();
+    return `<span class="fm-badge ${statusTone[key] ?? ''}">${escapeHtml(statusLabel[key] || key || 'Item')}</span>`;
 }
 
 document.addEventListener('DOMContentLoaded', async function() {
     token = getToken();
-    console.log('Token available:', !!token);
 
     if (!token) {
         document.getElementById('messagesArea').innerHTML = `
-            <div class="text-center text-red-500 mt-20">
-                <i class="fas fa-lock text-4xl mb-3 block text-red-300"></i>
-                <p class="text-sm">Authentication required</p>
-                <p class="text-xs mt-2">Please log in again</p>
-            </div>
-        `;
+            <div class="fm-empty"><i class="fas fa-lock"></i><p>Authentication required</p><span>Please sign in again.</span></div>`;
         return;
     }
 
+    document.querySelectorAll('#chatFilters .chip').forEach(chip => chip.addEventListener('click', () => {
+        listFilter = chip.dataset.filter;
+        document.querySelectorAll('#chatFilters .chip').forEach(c => c.classList.toggle('on', c === chip));
+        renderConversations();
+    }));
+
+    const field = document.getElementById('messageField');
+    field.addEventListener('keydown', function (event) {
+        // Enter sends; Shift+Enter is a new line, as in Messenger.
+        if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+            event.preventDefault();
+            sendMessage();
+        }
+        if (event.key === 'Escape' && replyTarget) clearReply();
+    });
+    field.addEventListener('input', autosize);
+
+    document.addEventListener('click', hideCtxMenu);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideCtxMenu(); });
+    window.addEventListener('scroll', hideCtxMenu, true);
+
     await loadConversations();
+    // The list refreshes on its own, like the app's; the open thread too.
+    listPoll = setInterval(() => loadConversations(true), 15000);
 });
 
-async function loadConversations() {
-    try {
-        const response = await fetch(`${API}/conversations`, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/json'
-            }
-        });
+function autosize() {
+    const field = document.getElementById('messageField');
+    field.style.height = 'auto';
+    field.style.height = Math.min(field.scrollHeight, 120) + 'px';
+}
 
+// ── Conversations ────────────────────────────────────────────────────────
+
+async function loadConversations(quiet) {
+    try {
+        const response = await fetch(`${API}/conversations`, { headers: authHeaders() });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
         const data = await response.json();
-        const conversations = Array.isArray(data) ? data : (data.data || data.conversations || []);
-
-        allConversations = conversations;
-        renderConversations(conversations);
+        allConversations = Array.isArray(data) ? data : (data.data || data.conversations || []);
+        renderConversations();
     } catch (error) {
-        console.error('Error loading conversations:', error);
-        document.getElementById('messagesArea').innerHTML = `
-            <div class="text-center text-red-500 mt-20">
-                <i class="fas fa-exclamation-circle text-4xl mb-3 block text-red-300"></i>
-                <p class="text-sm font-medium">Error loading conversations</p>
-                <p class="text-xs mt-2">${error.message}</p>
-                ${error.message.includes('401') ? '<p class="text-xs mt-2 text-red-600">Please check your authentication token</p>' : ''}
-            </div>
-        `;
+        if (quiet) return;
+        document.getElementById('conversationsList').innerHTML = `
+            <div class="fm-empty"><i class="fas fa-cloud-slash"></i><p>Could not load conversations</p><span>${escapeHtml(error.message)}</span>
+            <div class="mt-4"><button class="fm-btn primary sm" onclick="loadConversations()">Try again</button></div></div>`;
     }
 }
 
-function renderConversations(conversations) {
-    const list = document.getElementById('conversationsList');
+function visibleConversations() {
+    const query = (document.getElementById('searchInput').value || '').trim().toLowerCase();
+    return allConversations.filter(conv => {
+        const archived = !!conv.is_archived;
+        if (listFilter === 'archived' ? !archived : archived) return false;
+        if (listFilter === 'unread' && !(Number(conv.unread_count) > 0)) return false;
+        if (!query) return true;
+        return [personName(conv), conv.item_title, conv.custom_name, conv.latest_message].join(' ').toLowerCase().includes(query);
+    });
+}
 
-    if (conversations.length === 0) {
-        list.innerHTML = `
-            <div class="p-6 text-center text-gray-500">
-                <i class="fas fa-inbox text-2xl mb-2 block text-gray-300"></i>
-                <p class="text-sm">No conversations found</p>
-            </div>
-        `;
+function renderConversations() {
+    const list = document.getElementById('conversationsList');
+    const unread = allConversations.filter(c => !c.is_archived).reduce((n, c) => n + (Number(c.unread_count) || 0), 0);
+    document.getElementById('unreadChipCount').textContent = unread > 0 ? String(unread) : '';
+
+    const rows = visibleConversations();
+
+    if (rows.length === 0) {
+        const message = listFilter === 'archived' ? ['Nothing archived', 'Right-click a conversation to archive it.']
+            : listFilter === 'unread' ? ['All caught up', 'You have read every message.']
+            : ['No conversations', 'Chats open when a student offers an item or asks about a listing.'];
+        list.innerHTML = `<div class="fm-empty"><i class="fas fa-inbox"></i><p>${message[0]}</p><span>${message[1]}</span></div>`;
         return;
     }
 
-    list.innerHTML = conversations.map((conv, index) => {
-        const userEmail = conv.other_user_email || 'Unknown';
-        const userName = conv.first_name && conv.last_name ?
-            `${conv.first_name} ${conv.last_name}` :
-            (conv.first_name || conv.last_name || userEmail.split('@')[0]);
-        const initials = userName.split(' ').map(n => n[0]).join('').toUpperCase();
-        const unreadCount = conv.unread_count || 0;
-        const lastMessage = conv.latest_message || 'No messages yet';
-        const itemTitle = conv.item_title || 'No item';
-        const itemStatus = conv.item_status || 'public';
-        const userType = userEmail.includes('student.fatima') ? 'Student' : 'User';
+    const pinned = rows.filter(c => c.is_pinned);
+    const rest = rows.filter(c => !c.is_pinned);
+    const section = (label) => `<div class="section-label">${label}</div>`;
 
-        return `
-            <div class="p-4 hover:bg-gray-50 cursor-pointer transition border-b border-gray-100 conversation-item"
-                 data-conv-index="${index}"
-                 data-item-id="${conv.item_id}"
-                 data-user-id="${conv.other_user_id}"
-                 style="display: flex; gap: 12px; align-items: flex-start;">
+    list.innerHTML = (pinned.length ? section('Pinned') + pinned.map(rowHtml).join('') : '')
+        + (pinned.length && rest.length ? section(listFilter === 'archived' ? 'Archived' : 'Recent') : '')
+        + rest.map(rowHtml).join('');
 
-                <div style="flex-shrink: 0;">
-                    ${conv.profile_picture ?
-                        `<img src="${conv.profile_picture}" alt="${userName}" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover;">` :
-                        `<div style="width: 44px; height: 44px; border-radius: 50%; background: var(--brand-600); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;">${initials}</div>`
-                    }
-                </div>
-
-                <div style="flex: 1; min-width: 0;">
-                    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
-                        <p style="font-weight: 600; color: var(--ink-900); margin: 0; font-size: 14px;">${userName}</p>
-                        ${unreadCount > 0 ? `<span style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; background: #ef4444; color: white; font-size: 11px; border-radius: 50%; font-weight: bold;">${unreadCount}</span>` : ''}
-                    </div>
-                    <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 4px;">
-                        <span style="background: ${statusColor(itemStatus)}; color: white; font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 600; text-transform: capitalize;">${itemStatus}</span>
-                        <span style="color: var(--ink-500); font-size: 11px;">•</span>
-                        <span style="color: var(--ink-500); font-size: 11px; font-weight: 500;">${userType}</span>
-                    </div>
-                    <p style="color: var(--ink-500); font-size: 12px; margin: 2px 0; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; font-weight: 500;">${itemTitle}</p>
-                    <p style="color: var(--ink-400); font-size: 12px; margin: 0; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;">${lastMessage}</p>
-                </div>
-
-                ${conv.item_photo ? `
-                    <div style="flex-shrink: 0;">
-                        <img src="${conv.item_photo}" alt="${itemTitle}" style="width: 60px; height: 60px; border-radius: 4px; object-fit: cover;">
-                    </div>
-                ` : ''}
-            </div>
-        `;
-    }).join('');
-
-    document.querySelectorAll('.conversation-item').forEach(item => {
-        item.addEventListener('click', function() {
-            loadConversationMessages(this);
+    list.querySelectorAll('.conv-row').forEach(row => {
+        row.addEventListener('click', () => openConversation(row.dataset.key));
+        row.addEventListener('contextmenu', (event) => {
+            event.preventDefault();
+            showConversationMenu(event.clientX, event.clientY, row.dataset.key);
+        });
+        row.querySelector('.conv-more').addEventListener('click', (event) => {
+            event.stopPropagation();
+            const rect = event.currentTarget.getBoundingClientRect();
+            showConversationMenu(rect.left, rect.bottom + 4, row.dataset.key);
         });
     });
 }
 
-async function loadConversationMessages(element) {
-    document.querySelectorAll('.conversation-item').forEach(i => {
-        i.style.backgroundColor = '';
-    });
-    element.style.backgroundColor = 'var(--surface-sunk)';
+function rowHtml(conv) {
+    const name = personName(conv);
+    const unreadCount = Number(conv.unread_count) || 0;
+    const key = convKey(conv);
+    const active = selectedConversation && convKey(selectedConversation) === key;
+    const lastMessage = conv.latest_message || 'No messages yet';
 
-    const convIndex = element.dataset.convIndex;
-    const itemId = element.dataset.itemId;
-    const userId = element.dataset.userId;
-
-    selectedConversation = allConversations[convIndex];
-
-    const userName = selectedConversation.first_name && selectedConversation.last_name ?
-        `${selectedConversation.first_name} ${selectedConversation.last_name}` :
-        (selectedConversation.first_name || selectedConversation.other_user_email.split('@')[0]);
-    const initials = userName.split(' ').map(n => n[0]).join('').toUpperCase();
-
-    const itemStatus = selectedConversation.item_status || 'public';
-    const userType = selectedConversation.other_user_email.includes('student.fatima') ? 'Student' : 'User';
-
-    document.getElementById('chatHeader').innerHTML = `
-        <div style="display: flex; gap: 12px; align-items: center; width: 100%;">
-            ${selectedConversation.profile_picture ?
-                `<img src="${selectedConversation.profile_picture}" alt="${userName}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover;">` :
-                `<div style="width: 48px; height: 48px; border-radius: 50%; background: var(--brand-600); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">${initials}</div>`
-            }
-            <div style="flex: 1;">
-                <p style="font-weight: 600; color: var(--ink-900); margin: 0; font-size: 14px;">${userName}</p>
-                <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px;">
-                    <span style="background: ${statusColor(itemStatus)}; color: white; font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 600; text-transform: capitalize;">${itemStatus}</span>
-                    <span style="color: var(--ink-500); font-size: 11px;">•</span>
-                    <span style="color: var(--ink-500); font-size: 11px; font-weight: 500;">${userType}</span>
-                </div>
-                <p style="color: var(--ink-500); font-size: 12px; margin: 4px 0 0 0;">${selectedConversation.item_title || 'Item'}</p>
+    return `
+        <div class="conv-row ${unreadCount > 0 ? 'unread' : ''} ${active ? 'active' : ''}" data-key="${escapeAttr(key)}">
+            <div class="conv-avatar">
+                ${conv.profile_picture
+                    ? `<img src="${escapeAttr(conv.profile_picture)}" alt="" class="avatar">`
+                    : `<div class="avatar">${escapeHtml(initials(name))}</div>`}
+                ${conv.item_photo ? `<img src="${escapeAttr(conv.item_photo)}" alt="" class="item-thumb">` : ''}
             </div>
-            ${selectedConversation.item_photo ? `
-                <img src="${selectedConversation.item_photo}" alt="${selectedConversation.item_title}" style="width: 56px; height: 56px; border-radius: 4px; object-fit: cover; flex-shrink: 0;">
-            ` : ''}
-        </div>
-    `;
+            <div class="conv-body">
+                <div class="conv-top">
+                    <span class="conv-title">${conv.is_pinned ? '<i class="fas fa-thumbtack pin"></i>' : ''}<span style="overflow: hidden; text-overflow: ellipsis;">${escapeHtml(convName(conv))}</span></span>
+                    <span class="conv-time">${escapeHtml(timeAgo(conv.last_message_at))}</span>
+                </div>
+                <div class="conv-sub">
+                    <span class="who">${escapeHtml(name)}</span>
+                    ${itemBadge(conv.item_status)}
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <span class="conv-last" style="flex: 1;">${escapeHtml(lastMessage)}</span>
+                    ${unreadCount > 0 ? `<span class="conv-count">${unreadCount > 99 ? '99+' : unreadCount}</span>` : ''}
+                </div>
+            </div>
+            <button class="row-btn conv-more" aria-label="Options"><i class="fas fa-ellipsis"></i></button>
+        </div>`;
+}
 
-    document.getElementById('messageInput').classList.remove('hidden');
+function findConversation(key) {
+    return allConversations.find(c => convKey(c) === key) || null;
+}
+
+function timeAgo(value) {
+    if (!value) return '';
+    const date = new Date(value);
+    if (isNaN(date.getTime())) return '';
+    const seconds = Math.round((Date.now() - date.getTime()) / 1000);
+    if (seconds < 60) return 'now';
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
+    if (seconds < 7 * 86400) return `${Math.floor(seconds / 86400)}d`;
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+
+// ── Conversation housekeeping: pin, rename, archive, delete ──────────────
+
+function showConversationMenu(x, y, key) {
+    const conv = findConversation(key);
+    if (!conv) return;
+
+    showCtxMenu(x, y, `
+        <div class="title">${escapeHtml(convName(conv))} &middot; ${escapeHtml(personName(conv))}</div>
+        <button onclick="conversationAction('${escapeAttr(key)}', 'pin')"><i class="fas fa-thumbtack"></i>${conv.is_pinned ? 'Unpin' : 'Pin to top'}</button>
+        <button onclick="conversationAction('${escapeAttr(key)}', 'rename')"><i class="fas fa-pen"></i>Rename conversation</button>
+        <button onclick="conversationAction('${escapeAttr(key)}', 'archive')"><i class="fas fa-box-archive"></i>${conv.is_archived ? 'Unarchive' : 'Archive'}</button>
+        <button class="danger" onclick="conversationAction('${escapeAttr(key)}', 'delete')"><i class="fas fa-trash"></i>Delete conversation</button>
+    `);
+}
+
+async function conversationAction(key, action) {
+    hideCtxMenu();
+    const conv = findConversation(key);
+    if (!conv) return;
+
+    if (action === 'rename') {
+        const name = await askModal({
+            title: 'Rename conversation',
+            body: 'Only you see this name. Leave it blank to use the item\'s title again.',
+            field: { label: 'Name', type: 'text', value: conv.custom_name || '', placeholder: conv.item_title || '' },
+            confirmLabel: 'Save',
+        });
+        if (name === null) return;
+        return patchConversation(conv, { custom_name: name.trim().slice(0, 80) });
+    }
+
+    if (action === 'pin') return patchConversation(conv, { is_pinned: !conv.is_pinned });
+    if (action === 'archive') return patchConversation(conv, { is_archived: !conv.is_archived });
+
+    if (action === 'delete') {
+        const confirmed = await askModal({
+            title: 'Delete this conversation?',
+            body: `"${convName(conv)}" is cleared from your list. ${personName(conv)} keeps their copy, and the chat comes back here if either of you writes again.`,
+            confirmLabel: 'Delete',
+            danger: true,
+        });
+        if (confirmed === null) return;
+
+        try {
+            const response = await fetch(`${API}/conversations/${conv.item_id}/${conv.other_user_id}`, { method: 'DELETE', headers: authHeaders() });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
+
+            allConversations = allConversations.filter(c => convKey(c) !== key);
+            if (selectedConversation && convKey(selectedConversation) === key) closeThread();
+            renderConversations();
+            showToast('Conversation deleted', 'success');
+        } catch (error) {
+            showToast(`Could not delete: ${error.message}`, 'error');
+        }
+    }
+}
+
+async function patchConversation(conv, patch) {
+    // Optimistic: the row moves at once, and only moves back if the server refused.
+    const before = { ...conv };
+    Object.assign(conv, patch);
+    if (patch.is_archived === true) conv.is_pinned = false;
+    if (patch.custom_name !== undefined) conv.custom_name = patch.custom_name || null;
+    renderConversations();
+    if (selectedConversation && convKey(selectedConversation) === convKey(conv)) renderHeader();
 
     try {
-        const response = await fetch(`${API}/messages/${itemId}?other_user_id=${userId}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/json'
-            }
+        const response = await fetch(`${API}/conversations/${conv.item_id}/${conv.other_user_id}`, {
+            method: 'PATCH', headers: authHeaders(true), body: JSON.stringify(patch),
         });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
 
+        Object.assign(conv, payload.data || {});
+        renderConversations();
+        showToast(patch.custom_name !== undefined ? 'Conversation renamed'
+            : patch.is_pinned !== undefined ? (conv.is_pinned ? 'Pinned' : 'Unpinned')
+            : (conv.is_archived ? 'Archived' : 'Back in the inbox'), 'success');
+    } catch (error) {
+        Object.assign(conv, before);
+        renderConversations();
+        showToast(`Could not update: ${error.message}`, 'error');
+    }
+}
+
+// ── The thread ───────────────────────────────────────────────────────────
+
+function closeThread() {
+    selectedConversation = null;
+    currentMessages = [];
+    clearReply();
+    if (threadPoll) clearInterval(threadPoll);
+    document.getElementById('composer').hidden = true;
+    document.getElementById('offerPinned').style.display = 'none';
+    document.getElementById('chatHeader').innerHTML = `
+        <div class="chat-head-id">
+            <div class="avatar" style="width: 40px; height: 40px;"><i class="fas fa-comments"></i></div>
+            <div class="min-w-0"><p class="cell-title" style="margin: 0;">Select a conversation</p><p class="cell-sub">Choose one from the list</p></div>
+        </div>`;
+    document.getElementById('messagesArea').innerHTML = `
+        <div class="fm-empty" style="padding: 60px 16px;"><i class="fas fa-comments"></i><p>No conversation open</p><span>Pick one on the left to read and reply.</span></div>`;
+}
+
+async function openConversation(key) {
+    const conv = findConversation(key);
+    if (!conv) return;
+
+    selectedConversation = conv;
+    clearReply();
+    renderConversations();
+    renderHeader();
+    document.getElementById('composer').hidden = false;
+    document.getElementById('messagesArea').innerHTML = '<div class="fm-empty" style="padding: 40px;"><span class="loading-spinner"></span></div>';
+
+    await loadThread();
+    markThreadRead(conv.item_id);
+    if (threadPoll) clearInterval(threadPoll);
+    threadPoll = setInterval(() => loadThread(true), 5000);
+    document.getElementById('messageField').focus();
+}
+
+function renderHeader() {
+    const conv = selectedConversation;
+    if (!conv) return;
+    const name = personName(conv);
+    const custom = conv.custom_name;
+
+    document.getElementById('chatHeader').innerHTML = `
+        <div class="chat-head-id">
+            ${conv.profile_picture
+                ? `<img src="${escapeAttr(conv.profile_picture)}" alt="" class="avatar" style="width: 42px; height: 42px;">`
+                : `<div class="avatar" style="width: 42px; height: 42px;">${escapeHtml(initials(name))}</div>`}
+            <div class="min-w-0" style="flex: 1;">
+                <p class="cell-title" style="margin: 0; display: flex; align-items: center; gap: 6px;">
+                    ${conv.is_pinned ? '<i class="fas fa-thumbtack" style="color: var(--brand-600); font-size: 11px;"></i>' : ''}
+                    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(custom || name)}</span>
+                </p>
+                <div class="badges">
+                    <span class="cell-sub">${escapeHtml(custom ? `${name} · ${conv.item_title || ''}` : (conv.item_title || 'Item'))}</span>
+                    ${itemBadge(conv.item_status)}
+                    ${conv.is_archived ? '<span class="fm-badge">Archived</span>' : ''}
+                </div>
+            </div>
+        </div>
+        <div style="display: flex; gap: 6px; align-items: center;">
+            ${conv.item_photo ? `<img src="${escapeAttr(conv.item_photo)}" alt="" style="width: 40px; height: 40px; border-radius: 8px; object-fit: cover; cursor: pointer;" onclick="openItem(${Number(conv.item_id)})">` : ''}
+            <button class="icon-btn" title="Options" aria-label="Conversation options" onclick="event.stopPropagation(); const r = this.getBoundingClientRect(); showConversationMenu(r.right - 200, r.bottom + 4, '${escapeAttr(convKey(conv))}')"><i class="fas fa-ellipsis-vertical"></i></button>
+        </div>`;
+}
+
+async function loadThread(quiet) {
+    const conv = selectedConversation;
+    if (!conv) return;
+
+    try {
+        const response = await fetch(`${API}/messages/${conv.item_id}?other_user_id=${conv.other_user_id}`, { headers: authHeaders() });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
         const data = await response.json();
         const messages = Array.isArray(data) ? data : (data.data || data.messages || []);
+        if (selectedConversation !== conv) return;
 
-        renderMessages(messages);
-        markThreadRead(itemId);
+        const changed = JSON.stringify(messages.map(m => [m.message_id, m.order?.status, m.order?.payment_status, m.item_card?.status]))
+            !== JSON.stringify(currentMessages.map(m => [m.message_id, m.order?.status, m.order?.payment_status, m.item_card?.status]));
+        currentMessages = messages;
+        if (!quiet || changed) renderMessages(messages);
     } catch (error) {
-        console.error('Error loading messages:', error);
+        if (quiet) return;
         document.getElementById('messagesArea').innerHTML = `
-            <div class="text-center text-red-500 mt-20">
-                <i class="fas fa-exclamation-circle text-4xl mb-3 block text-red-300"></i>
-                <p class="text-sm font-medium">Error loading messages</p>
-                <p class="text-xs mt-2">${error.message}</p>
-            </div>
-        `;
+            <div class="fm-empty"><i class="fas fa-cloud-slash"></i><p>Could not load messages</p><span>${escapeHtml(error.message)}</span>
+            <div class="mt-4"><button class="fm-btn primary sm" onclick="loadThread()">Try again</button></div></div>`;
+    }
+}
+
+/**
+ * Reading a thread clears its unread count, the same call the phone makes
+ * when a chat is opened. The sidebar badge follows.
+ */
+async function markThreadRead(itemId) {
+    try {
+        await fetch(`${API}/messages/${itemId}/read`, { method: 'POST', headers: authHeaders(true), body: '{}' });
+        const conv = allConversations.find(c => String(c.item_id) === String(itemId) && selectedConversation && c.other_user_id === selectedConversation.other_user_id);
+        if (conv) conv.unread_count = 0;
+        renderConversations();
+        if (typeof window.fmRefreshUnread === 'function') window.fmRefreshUnread();
+    } catch (error) {
+        // Not fatal: the badge catches up on the next poll.
     }
 }
 
 function renderMessages(messages) {
     const area = document.getElementById('messagesArea');
+    const stuckToBottom = area.scrollHeight - area.scrollTop - area.clientHeight < 80;
 
     // Pin the offer's buttons under the header, so scrolling cannot lose
     // them. The newest item_listed message carries the live listing.
@@ -311,58 +592,249 @@ function renderMessages(messages) {
     renderPinnedOffer(offerMsg ? offerMsg.item_card : null);
 
     if (messages.length === 0) {
-        area.innerHTML = `
-            <div class="text-center text-gray-500 mt-20">
-                <i class="fas fa-comments text-4xl mb-3 block text-gray-300"></i>
-                <p class="text-sm">No messages yet. Start the conversation!</p>
-            </div>
-        `;
+        area.innerHTML = `<div class="fm-empty" style="padding: 60px 16px;"><i class="fas fa-comments"></i><p>Say hello</p><span>Start the conversation about this item.</span></div>`;
         return;
     }
 
+    let lastDay = '';
+    let lastSender = null;
     area.innerHTML = messages.map(msg => {
         const isAdmin = msg.sender_id !== selectedConversation.other_user_id;
         const senderName = msg.sender_name || 'User';
-        const timestamp = new Date(msg.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const when = new Date(msg.sent_at);
+        const timestamp = isNaN(when.getTime()) ? '' : when.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const day = isNaN(when.getTime()) ? '' : when.toDateString();
+        let separator = '';
+        if (day && day !== lastDay) {
+            separator = `<div class="day-sep">${escapeHtml(dayLabel(when))}</div>`;
+            lastDay = day;
+            lastSender = null;
+        }
+        const same = lastSender === msg.sender_id;
+        lastSender = msg.sender_id;
 
-        // A checkout, a GCash receipt or an order decision. These carry the
-        // order itself, so they are drawn as a card that Ofelia can act on -
-        // the same decisions the mobile admin app offers, from the same
-        // server-supplied `available_actions`.
         if (msg.kind && msg.kind !== 'text' && msg.order) {
-            return renderOrderCard(msg, isAdmin, senderName, timestamp);
+            return separator + renderOrderCard(msg, isAdmin, senderName, timestamp);
         }
-
-        // A seller's fresh listing: the offer card, with the review decisions.
         if (msg.kind === 'item_listed' && msg.item_card) {
-            return renderItemOfferCard(msg, isAdmin, senderName, timestamp);
+            return separator + renderItemOfferCard(msg, isAdmin, senderName, timestamp);
         }
 
-        return `
-            <div style="display: flex; ${isAdmin ? 'justify-content: flex-end;' : 'justify-content: flex-start;'} margin-bottom: 12px;">
-                <div style="display: flex; gap: 8px; ${isAdmin ? 'flex-direction: row-reverse;' : ''} max-width: 70%;">
-                    ${msg.sender_profile_picture ?
-                        `<img src="${msg.sender_profile_picture}" alt="${senderName}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex-shrink: 0;">` :
-                        `<div style="width: 32px; height: 32px; border-radius: 50%; ${isAdmin ? 'background: var(--brand-600);' : 'background: var(--line-strong);'} color: white; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; flex-shrink: 0;">${senderName[0]}</div>`
-                    }
-                    <div style="display: flex; flex-direction: column; ${isAdmin ? 'align-items: flex-end;' : 'align-items: flex-start;'}">
-                        <p style="font-size: 11px; color: var(--ink-500); margin-bottom: 2px;">${senderName}</p>
-                        <div style="background: ${isAdmin ? 'var(--brand-600);' : 'var(--line);'} color: ${isAdmin ? 'white;' : 'var(--ink-900);'} border-radius: 8px; padding: 8px 12px; word-wrap: break-word;">
-                            <p style="font-size: 13px; margin: 0;">${escapeHtml(msg.message)}</p>
-                        </div>
-                        <p style="font-size: 11px; color: ${isAdmin ? 'var(--brand-600);' : 'var(--ink-400);'} margin-top: 4px;">${timestamp}</p>
+        return separator + `
+            <div class="msg ${isAdmin ? 'me' : 'them'} ${same ? 'same' : ''}" data-id="${Number(msg.message_id)}">
+                ${isAdmin ? '' : (msg.sender_profile_picture
+                    ? `<img src="${escapeAttr(msg.sender_profile_picture)}" alt="" class="avatar" style="${same ? 'visibility: hidden;' : ''}">`
+                    : `<div class="avatar" style="${same ? 'visibility: hidden;' : ''}">${escapeHtml(initials(senderName))}</div>`)}
+                <div class="stack">
+                    ${!isAdmin && !same ? `<p class="sender">${escapeHtml(senderName)}</p>` : ''}
+                    <div class="bubble" oncontextmenu="showMessageMenu(event, ${Number(msg.message_id)})">
+                        ${msg.reply_to ? quoteHtml(msg.reply_to, isAdmin) : ''}${escapeHtml(msg.message)}
                     </div>
+                    <p class="time" title="${escapeAttr(msg.sent_at || '')}">${escapeHtml(timestamp)}</p>
                 </div>
-            </div>
-        `;
+                <button class="row-btn reply-hint" title="Reply" onclick="startReply(${Number(msg.message_id)})"><i class="fas fa-reply"></i></button>
+            </div>`;
     }).join('');
 
-    area.scrollTop = area.scrollHeight;
+    if (stuckToBottom || !area.dataset.scrolled) {
+        area.scrollTop = area.scrollHeight;
+        area.dataset.scrolled = '1';
+    }
+}
+
+function dayLabel(date) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const that = new Date(date); that.setHours(0, 0, 0, 0);
+    const diff = Math.round((today - that) / 86400000);
+    if (diff === 0) return 'Today';
+    if (diff === 1) return 'Yesterday';
+    return date.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+function quoteHtml(quote, mine) {
+    const who = quote.sender_id === selectedConversation.other_user_id ? personName(selectedConversation) : 'You';
+    return `<div class="quote"><div class="rule"></div><div class="min-w-0"><p class="q-name">${escapeHtml(quote.sender_name || who)}</p><p class="q-text">${escapeHtml(quote.message || quote.kind || '')}</p></div></div>`;
+}
+
+// ── Replies ──────────────────────────────────────────────────────────────
+
+function previewOf(msg) {
+    if (msg.kind && msg.kind !== 'text' && msg.order) return { order_placed: 'Order placed', payment_submitted: 'Payment sent', order_update: 'Order update' }[msg.kind] || 'Order card';
+    if (msg.kind === 'item_listed') return 'Item offer';
+    if (msg.kind === 'item_acquired') return 'Item received';
+    return msg.message || '';
+}
+
+function showMessageMenu(event, messageId) {
+    event.preventDefault();
+    const msg = currentMessages.find(m => Number(m.message_id) === Number(messageId));
+    if (!msg) return;
+
+    showCtxMenu(event.clientX, event.clientY, `
+        <button onclick="startReply(${Number(messageId)})"><i class="fas fa-reply"></i>Reply</button>
+        <button onclick="copyMessage(${Number(messageId)})"><i class="fas fa-copy"></i>Copy text</button>
+    `);
+}
+
+function startReply(messageId) {
+    hideCtxMenu();
+    const msg = currentMessages.find(m => Number(m.message_id) === Number(messageId));
+    if (!msg) return;
+
+    replyTarget = msg;
+    const mine = msg.sender_id !== selectedConversation.other_user_id;
+    document.getElementById('replyBarTitle').textContent = `Replying to ${mine ? 'yourself' : (msg.sender_name || personName(selectedConversation))}`;
+    document.getElementById('replyBarText').textContent = previewOf(msg);
+    document.getElementById('replyBar').hidden = false;
+    document.getElementById('messageField').focus();
+}
+
+function clearReply() {
+    replyTarget = null;
+    const bar = document.getElementById('replyBar');
+    if (bar) bar.hidden = true;
+}
+
+function copyMessage(messageId) {
+    hideCtxMenu();
+    const msg = currentMessages.find(m => Number(m.message_id) === Number(messageId));
+    if (!msg) return;
+    const text = previewOf(msg);
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(() => showToast('Copied', 'success'));
+}
+
+function showCtxMenu(x, y, html) {
+    const menu = document.getElementById('ctxMenu');
+    menu.innerHTML = html;
+    menu.hidden = false;
+    const width = menu.offsetWidth, height = menu.offsetHeight;
+    menu.style.left = Math.min(x, window.innerWidth - width - 8) + 'px';
+    menu.style.top = Math.min(y, window.innerHeight - height - 8) + 'px';
+}
+
+function hideCtxMenu() {
+    const menu = document.getElementById('ctxMenu');
+    if (menu) menu.hidden = true;
+}
+
+// ── Emoji ────────────────────────────────────────────────────────────────
+// EmojiHub, the same free API the mobile app uses; a CDN copy of the Unicode
+// emoji list stands in if it cannot be reached. Both are cached per session.
+
+const EMOJI_CATEGORIES = [
+    ['Smileys', 'smileys-and-people'], ['Animals', 'animals-and-nature'], ['Food', 'food-and-drink'],
+    ['Travel', 'travel-and-places'], ['Activities', 'activities'], ['Objects', 'objects'], ['Symbols', 'symbols'], ['Flags', 'flags'],
+];
+const emojiCache = {};
+let emojiTab = 'smileys-and-people';
+
+function toggleEmoji() {
+    const panel = document.getElementById('emojiPanel');
+    panel.hidden = !panel.hidden;
+    document.getElementById('emojiButton').classList.toggle('on', !panel.hidden);
+    if (!panel.hidden) {
+        renderEmojiTabs();
+        loadEmojis(emojiTab);
+    }
+}
+
+function renderEmojiTabs() {
+    document.getElementById('emojiTabs').innerHTML = EMOJI_CATEGORIES.map(([label, slug]) =>
+        `<button class="${slug === emojiTab ? 'on' : ''}" onclick="emojiTab='${slug}'; renderEmojiTabs(); loadEmojis('${slug}')">${label}</button>`).join('');
+}
+
+function htmlCodeToChar(code) {
+    const point = Number(String(code).replace('&#', '').replace(';', ''));
+    return Number.isFinite(point) ? String.fromCodePoint(point) : '';
+}
+
+async function loadEmojis(slug) {
+    const grid = document.getElementById('emojiGrid');
+    if (emojiCache[slug]) return renderEmojis(emojiCache[slug]);
+
+    const stored = sessionStorage.getItem('fm_emoji_' + slug);
+    if (stored) { emojiCache[slug] = JSON.parse(stored); return renderEmojis(emojiCache[slug]); }
+
+    grid.innerHTML = '<div class="note"><span class="loading-spinner"></span></div>';
+    let chars = [];
+    try {
+        const response = await fetch(`https://emojihub.yurace.pro/api/all/category/${slug}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const list = await response.json();
+        chars = list.map(e => (e.htmlCode || []).map(htmlCodeToChar).join('')).filter(Boolean);
+    } catch (error) {
+        try {
+            const fallback = await fetch('https://cdn.jsdelivr.net/npm/unicode-emoji-json@0.6.0/data-by-group.json');
+            const groups = await fallback.json();
+            const wanted = { 'smileys-and-people': ['Smileys & Emotion', 'People & Body'], 'animals-and-nature': ['Animals & Nature'], 'food-and-drink': ['Food & Drink'],
+                'travel-and-places': ['Travel & Places'], 'activities': ['Activities'], 'objects': ['Objects'], 'symbols': ['Symbols'], 'flags': ['Flags'] }[slug] || [];
+            const rows = Array.isArray(groups) ? groups.filter(g => wanted.includes(g.name)).flatMap(g => g.emojis || []) : wanted.flatMap(name => groups[name] || []);
+            chars = rows.map(e => e.emoji).filter(Boolean);
+        } catch (e) {
+            grid.innerHTML = '<div class="note">Emoji could not be loaded right now.</div>';
+            return;
+        }
+    }
+    emojiCache[slug] = chars;
+    try { sessionStorage.setItem('fm_emoji_' + slug, JSON.stringify(chars)); } catch (e) {}
+    renderEmojis(chars);
+}
+
+function renderEmojis(chars) {
+    document.getElementById('emojiGrid').innerHTML = chars.slice(0, 400).map(c =>
+        `<button type="button" onclick="insertEmoji(this.textContent)">${c}</button>`).join('');
+}
+
+function insertEmoji(char) {
+    const field = document.getElementById('messageField');
+    const start = field.selectionStart ?? field.value.length;
+    const end = field.selectionEnd ?? field.value.length;
+    field.value = field.value.slice(0, start) + char + field.value.slice(end);
+    field.selectionStart = field.selectionEnd = start + char.length;
+    field.focus();
+    autosize();
+}
+
+// ── Sending ──────────────────────────────────────────────────────────────
+
+async function sendMessage() {
+    if (!selectedConversation) return;
+
+    const field = document.getElementById('messageField');
+    const message = field.value.trim();
+    if (!message) return;
+
+    const button = document.getElementById('sendButton');
+    button.disabled = true;
+    const quoted = replyTarget;
+
+    try {
+        const body = { receiver_id: selectedConversation.other_user_id, message };
+        if (quoted) body.reply_to_message_id = quoted.message_id;
+
+        const response = await fetch(`${API}/messages/${selectedConversation.item_id}`, {
+            method: 'POST', headers: authHeaders(true), body: JSON.stringify(body),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
+
+        field.value = '';
+        autosize();
+        clearReply();
+        document.getElementById('emojiPanel').hidden = true;
+        await loadThread();
+        loadConversations(true);
+    } catch (error) {
+        showToast('Could not send: ' + error.message, 'error');
+    } finally {
+        button.disabled = false;
+        field.focus();
+    }
 }
 
 // ── Order cards ──────────────────────────────────────────────────────────
 
-const PESO = '\u20B1';
+const PESO = '₱';
 
 function peso(amount) {
     const value = Number(amount);
@@ -371,8 +843,7 @@ function peso(amount) {
 }
 
 function paymentMethodLabel(method) {
-    return { gcash: 'GCash', points_full: 'Points only', cash: 'Cash at store' }[method]
-        || (method || 'Unknown');
+    return { gcash: 'GCash', points_full: 'Points only', cash: 'Cash at store' }[method] || (method || 'Unknown');
 }
 
 /**
@@ -383,51 +854,37 @@ function paymentMethodLabel(method) {
  * about.
  */
 function paymentStateBadge(order, statusAt) {
-    // The thread is a history: a card keeps the state it recorded, so the
-    // order card still reads "not paid yet" after the receipt card arrives.
     const status = statusAt || order.payment_status;
     const map = {
-        verified: [order.is_full_points_checkout ? 'Paid with points' : 'Paid', '#065f46', '#d1fae5'],
-        proof_submitted: ['Checking payment', '#92400e', '#fef3c7'],
-        rejected: ['Payment declined', '#991b1b', '#fee2e2'],
+        verified: [order.is_full_points_checkout ? 'Paid with points' : 'Paid', 'success'],
+        proof_submitted: ['Checking payment', 'warning'],
+        rejected: ['Payment declined', 'danger'],
     };
-    // Cash is handed over at the counter, so an unpaid cash order is not late -
-    // it is either waiting for Ofelia to approve it or waiting to be collected.
     const unpaid = order.payment_method === 'cash'
-        ? (order.status === 'pending_payment'
-            ? ['Waiting for approval', '#92400e', '#fef3c7']
-            : ['Pay on pickup', '#1e40af', '#dbeafe'])
-        : ['Not paid yet', '#92400e', '#fef3c7'];
-
-    const [label, colour, background] = map[status] || unpaid;
-
-    return badge(label, colour, background);
+        ? (order.status === 'pending_payment' ? ['Waiting for approval', 'warning'] : ['Pay on pickup', 'info'])
+        : ['Not paid yet', 'warning'];
+    const [label, tone] = map[status] || unpaid;
+    return badge(label, tone);
 }
 
 function orderStatusBadge(status, paymentMethod) {
-    // `pending_payment` means two different things: a GCash buyer still owes
-    // the money, while a cash buyer owes nothing yet and is waiting on Ofelia.
-    const awaiting = paymentMethod === 'cash'
-        ? ['Awaiting admin approval', '#92400e', '#fef3c7']
-        : ['Awaiting payment', '#92400e', '#fef3c7'];
-
+    const awaiting = paymentMethod === 'cash' ? ['Awaiting admin approval', 'warning'] : ['Awaiting payment', 'warning'];
     const map = {
         pending_payment: awaiting,
-        payment_proof_submitted: ['Proof submitted', '#1e40af', '#dbeafe'],
-        payment_verified: ['Payment verified', '#1e40af', '#dbeafe'],
-        reserved: ['Reserved', '#1e40af', '#dbeafe'],
-        ready_for_pickup: ['Ready for pickup', '#3730a3', '#e0e7ff'],
-        completed: ['Completed', '#065f46', '#d1fae5'],
-        cancelled: ['Cancelled', 'var(--ink-700)', 'var(--surface-sunk)'],
-        rejected: ['Rejected', '#991b1b', '#fee2e2'],
+        payment_proof_submitted: ['Proof submitted', 'info'],
+        payment_verified: ['Payment verified', 'info'],
+        reserved: ['Reserved', 'info'],
+        ready_for_pickup: ['Ready for pickup', 'brand'],
+        completed: ['Completed', 'success'],
+        cancelled: ['Cancelled', ''],
+        rejected: ['Rejected', 'danger'],
     };
-    const [label, colour, background] = map[status] || [status, 'var(--ink-700)', 'var(--surface-sunk)'];
-
-    return badge(label, colour, background);
+    const [label, tone] = map[status] || [status, ''];
+    return badge(label, tone);
 }
 
-function badge(label, colour, background) {
-    return `<span style="background: ${background}; color: ${colour}; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap;">${escapeHtml(label)}</span>`;
+function badge(label, tone) {
+    return `<span class="fm-badge ${tone || ''}">${escapeHtml(label)}</span>`;
 }
 
 function summaryRow(label, value, strong) {
@@ -435,8 +892,20 @@ function summaryRow(label, value, strong) {
         <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 13px; padding: 3px 0;">
             <span style="color: var(--ink-500);">${escapeHtml(label)}</span>
             <span style="color: var(--ink-900); ${strong ? 'font-weight: 700;' : ''} text-align: right;">${escapeHtml(value)}</span>
-        </div>
-    `;
+        </div>`;
+}
+
+function cardShell(isAdmin, icon, heading, meta, body, footer) {
+    return `
+        <div class="card ${isAdmin ? 'me' : ''}">
+            <div style="background: white; border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow-sm); overflow: hidden;">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--surface-sunk); border-bottom: 1px solid var(--line);">
+                    <span style="font-size: 12px; font-weight: 700; color: var(--brand-700);"><i class="fas ${icon}"></i> ${escapeHtml(heading)}</span>
+                    <span style="font-size: 11px; color: var(--ink-500);">${escapeHtml(meta)}</span>
+                </div>
+                <div style="padding: 14px;">${body}<p style="margin: 8px 0 0 0; font-size: 11px; color: var(--ink-400);">${escapeHtml(footer)}</p></div>
+            </div>
+        </div>`;
 }
 
 function renderOrderCard(msg, isAdmin, senderName, timestamp) {
@@ -449,63 +918,36 @@ function renderOrderCard(msg, isAdmin, senderName, timestamp) {
         order_update: ['fa-bell', 'Order update'],
     }[msg.kind] || ['fa-receipt', 'Order'];
 
-    return `
-        <div style="display: flex; ${isAdmin ? 'justify-content: flex-end;' : 'justify-content: flex-start;'} margin-bottom: 12px;">
-            <div style="max-width: 420px; width: 100%; background: white; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden;">
-
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--surface-sunk); border-bottom: 1px solid var(--line);">
-                    <span style="font-size: 12px; font-weight: 700; color: var(--brand-700);">
-                        <i class="fas ${heading[0]}"></i> ${heading[1]}
-                    </span>
-                    <span style="font-size: 11px; color: var(--ink-500);">${escapeHtml(order.receipt_no || ('#' + order.transaction_id))}</span>
-                </div>
-
-                <div style="padding: 14px;">
-                    <div onclick="openItem(${order.item_id})"
-                         style="display: flex; gap: 10px; align-items: center; cursor: pointer; margin-bottom: 12px;">
-                        ${photo
-                            ? `<img src="${escapeAttr(photo)}" alt="" style="width: 56px; height: 56px; border-radius: 6px; object-fit: cover; flex-shrink: 0;">`
-                            : `<div style="width: 56px; height: 56px; border-radius: 6px; background: var(--surface-sunk); display: flex; align-items: center; justify-content: center; color: var(--ink-400); flex-shrink: 0;"><i class="fas fa-image"></i></div>`}
-                        <div style="min-width: 0;">
-                            <p style="margin: 0; font-size: 13px; font-weight: 600; color: var(--ink-900);">${escapeHtml(item.title || ('Item #' + order.item_id))}</p>
-                            <p style="margin: 2px 0 0 0; font-size: 12px; color: var(--ink-500);">${peso(order.amount_due)} due</p>
-                            <p style="margin: 2px 0 0 0; font-size: 11px; color: var(--brand-600); font-weight: 600;">Click to view item</p>
-                        </div>
-                    </div>
-
-                    <div style="border-top: 1px solid var(--surface-sunk); padding-top: 8px;">
-                        ${summaryRow('Price', peso(order.subtotal))}
-                        ${order.points_used > 0 ? summaryRow(order.points_used + ' point(s) used', '-' + peso(order.points_discount_amount)) : ''}
-                        ${summaryRow('Amount due', peso(order.amount_due), true)}
-                        ${summaryRow('Payment', paymentMethodLabel(order.payment_method))}
-                        ${order.payment_reference ? summaryRow('Reference', order.payment_reference) : ''}
-                    </div>
-
-                    <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px;">
-                        ${paymentStateBadge(order, msg.payment_status_at)}
-                        ${orderStatusBadge(msg.order_status_at || order.status, order.payment_method)}
-                    </div>
-
-                    ${order.payment_proof ? `
-                        <img src="${escapeAttr(order.payment_proof)}" alt="Payment receipt"
-                             data-proof="${escapeAttr(order.payment_proof)}"
-                             data-reference="${escapeAttr(order.payment_reference || '')}"
-                             onclick="openProof(this.dataset.proof, this.dataset.reference)"
-                             style="margin-top: 10px; width: 100%; height: 150px; object-fit: cover; border-radius: 8px; cursor: pointer;">
-                        <p style="margin: 4px 0 0 0; font-size: 11px; color: var(--ink-500);">Click the receipt to see it in full</p>
-                    ` : ''}
-
-                    ${msg.kind === 'order_update' ? `
-                        <p style="margin: 10px 0 0 0; padding: 8px 10px; background: var(--surface-sunk); border-radius: 6px; font-size: 12px; color: var(--ink-700); white-space: pre-line;">${escapeHtml(msg.message)}</p>
-                    ` : ''}
-
-                    ${carriesActions(msg) ? orderActionsHtml(order) : ''}
-
-                    <p style="margin: 8px 0 0 0; font-size: 11px; color: var(--ink-400);">${escapeHtml(senderName)} &middot; ${timestamp}</p>
-                </div>
+    const body = `
+        <div onclick="openItem(${order.item_id})" style="display: flex; gap: 10px; align-items: center; cursor: pointer; margin-bottom: 12px;">
+            ${photo
+                ? `<img src="${escapeAttr(photo)}" alt="" style="width: 56px; height: 56px; border-radius: 6px; object-fit: cover; flex-shrink: 0;">`
+                : `<div class="thumb" style="width: 56px; height: 56px;"><i class="fas fa-image"></i></div>`}
+            <div style="min-width: 0;">
+                <p style="margin: 0; font-size: 13px; font-weight: 600; color: var(--ink-900);">${escapeHtml(item.title || ('Item #' + order.item_id))}</p>
+                <p style="margin: 2px 0 0 0; font-size: 12px; color: var(--ink-500);">${peso(order.amount_due)} due</p>
+                <p style="margin: 2px 0 0 0; font-size: 11px; color: var(--brand-600); font-weight: 600;">Click to view item</p>
             </div>
         </div>
-    `;
+        <div style="border-top: 1px solid var(--surface-sunk); padding-top: 8px;">
+            ${summaryRow('Price', peso(order.subtotal))}
+            ${order.points_used > 0 ? summaryRow(order.points_used + ' point(s) used', '-' + peso(order.points_discount_amount)) : ''}
+            ${summaryRow('Amount due', peso(order.amount_due), true)}
+            ${summaryRow('Payment', paymentMethodLabel(order.payment_method))}
+            ${order.payment_reference ? summaryRow('Reference', order.payment_reference) : ''}
+        </div>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px;">
+            ${paymentStateBadge(order, msg.payment_status_at)}
+            ${orderStatusBadge(msg.order_status_at || order.status, order.payment_method)}
+        </div>
+        ${order.payment_proof ? `
+            <img src="${escapeAttr(order.payment_proof)}" alt="Payment receipt" data-proof="${escapeAttr(order.payment_proof)}" data-reference="${escapeAttr(order.payment_reference || '')}"
+                 onclick="openProof(this.dataset.proof, this.dataset.reference)" style="margin-top: 10px; width: 100%; height: 150px; object-fit: cover; border-radius: 8px; cursor: pointer;">
+            <p style="margin: 4px 0 0 0; font-size: 11px; color: var(--ink-500);">Click the receipt to see it in full</p>` : ''}
+        ${msg.kind === 'order_update' ? `<p style="margin: 10px 0 0 0; padding: 8px 10px; background: var(--surface-sunk); border-radius: 6px; font-size: 12px; color: var(--ink-700); white-space: pre-line;">${escapeHtml(msg.message)}</p>` : ''}
+        ${carriesActions(msg) ? orderActionsHtml(order) : ''}`;
+
+    return cardShell(isAdmin, heading[0], heading[1], order.receipt_no || ('#' + order.transaction_id), body, `${senderName} · ${timestamp}`);
 }
 
 /**
@@ -515,8 +957,7 @@ function renderOrderCard(msg, isAdmin, senderName, timestamp) {
  * the receipt if the buyer sent one, otherwise the order itself.
  */
 function carriesActions(msg) {
-    return msg.kind === 'payment_submitted'
-        || (msg.kind === 'order_placed' && !msg.order.payment_proof);
+    return msg.kind === 'payment_submitted' || (msg.kind === 'order_placed' && !msg.order.payment_proof);
 }
 
 /**
@@ -532,52 +973,25 @@ function orderActionsHtml(order) {
     const id = order.transaction_id;
     const buttons = [];
 
-    // Two shapes of approval, and the server offers exactly one of them:
-    // confirming GCash money that has landed, or accepting a cash order whose
-    // bill is settled at the counter when the buyer collects the item.
-    if (actions.includes('verify_payment')) {
-        buttons.push(actionButton(id, 'verify-payment', 'Approve', 'var(--brand-600)', false));
-    }
-    if (actions.includes('approve_order')) {
-        buttons.push(actionButton(id, 'approve-order', 'Approve', 'var(--brand-600)', false));
-    }
-    if (actions.includes('complete')) {
-        buttons.push(actionButton(id, 'complete', 'Complete', 'var(--brand-600)', false));
-    }
-    if (actions.includes('mark_ready_for_pickup')) {
-        buttons.push(actionButton(id, 'ready-for-pickup', 'Ready for pickup', 'var(--info)', false));
-    }
+    if (actions.includes('verify_payment')) buttons.push(actionButton(id, 'verify-payment', 'Approve', 'primary'));
+    if (actions.includes('approve_order')) buttons.push(actionButton(id, 'approve-order', 'Approve', 'primary'));
+    if (actions.includes('complete')) buttons.push(actionButton(id, 'complete', 'Complete', 'primary'));
+    if (actions.includes('mark_ready_for_pickup')) buttons.push(actionButton(id, 'ready-for-pickup', 'Ready for pickup', 'ghost'));
+    if (actions.includes('reject_payment')) buttons.push(actionButton(id, 'reject-payment', 'Decline', 'danger'));
+    else if (actions.includes('cancel')) buttons.push(actionButton(id, 'cancel', 'Cancel order', 'danger'));
 
-    // Declining a submitted proof and cancelling an order are the same button
-    // to Ofelia; which endpoint it hits depends on where the order stands.
-    if (actions.includes('reject_payment')) {
-        buttons.push(actionButton(id, 'reject-payment', 'Decline', 'var(--danger)', true));
-    } else if (actions.includes('cancel')) {
-        buttons.push(actionButton(id, 'cancel', 'Cancel order', 'var(--danger)', true));
-    }
-
-    return `
-        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; border-top: 1px solid var(--surface-sunk); padding-top: 12px;">
-            ${buttons.join('')}
-        </div>
-    `;
+    return `<div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; border-top: 1px solid var(--surface-sunk); padding-top: 12px;">${buttons.join('')}</div>`;
 }
 
-function actionButton(id, endpoint, label, colour, outlined) {
-    const style = outlined
-        ? `background: white; color: ${colour}; border: 1px solid ${colour};`
-        : `background: ${colour}; color: white; border: 1px solid ${colour};`;
-
+function actionButton(id, endpoint, label, tone) {
     // Endpoint and label are both fixed strings chosen just above, so single
     // quotes inside the attribute are safe here.
-    return `<button onclick="runOrderAction(${id}, '${endpoint}', '${label}')"
-                    style="${style} font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 6px; cursor: pointer;">${escapeHtml(label)}</button>`;
+    return `<button class="fm-btn ${tone} sm" onclick="runOrderAction(${id}, '${endpoint}', '${label}')">${escapeHtml(label)}</button>`;
 }
 
 async function runOrderAction(transactionId, endpoint, label) {
     if (busyAction) return;
 
-    // Declining and cancelling both tell the buyer why, in this same thread.
     const needsReason = endpoint === 'reject-payment' || endpoint === 'cancel';
     let reason = null;
 
@@ -590,15 +1004,10 @@ async function runOrderAction(transactionId, endpoint, label) {
             danger: true,
         });
         if (reason === null) return;
-        if (!reason.trim()) {
-            showToast('A reason is required.', 'error');
-            return;
-        }
+        if (!reason.trim()) { showToast('A reason is required.', 'error'); return; }
     } else {
         const confirmed = await askModal({
             title: `${label} this order?`,
-            // Approving a cash order settles nothing, and saying so here stops
-            // it being read as "the money came in".
             body: endpoint === 'approve-order'
                 ? 'The item is held and the buyer gets their pickup code. It is not marked paid - the cash is taken when they collect it.'
                 : 'The buyer sees the result in this conversation right away.',
@@ -608,40 +1017,18 @@ async function runOrderAction(transactionId, endpoint, label) {
     }
 
     busyAction = true;
-
     try {
         const response = await fetch(`${API}/admin/transactions/${transactionId}/${endpoint}`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(needsReason ? { reason: reason.trim() } : {}),
+            method: 'POST', headers: authHeaders(true), body: JSON.stringify(needsReason ? { reason: reason.trim() } : {}),
         });
-
         const payload = await response.json().catch(() => ({}));
-
-        if (!response.ok) {
-            throw new Error(payload.message || `HTTP ${response.status}`);
-        }
-
-        await refreshThread();
+        if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
+        await loadThread();
     } catch (error) {
-        alert(`Could not ${label.toLowerCase()}: ${error.message}`);
+        showToast(`Could not ${label.toLowerCase()}: ${error.message}`, 'error');
     } finally {
         busyAction = false;
     }
-}
-
-/** Re-read the open thread so the card shows the decision that was just made. */
-async function refreshThread() {
-    if (!selectedConversation) return;
-
-    const selector = `.conversation-item[data-item-id="${selectedConversation.item_id}"][data-user-id="${selectedConversation.other_user_id}"]`;
-    const element = document.querySelector(selector);
-
-    if (element) await loadConversationMessages(element);
 }
 
 // ── The decision modal ───────────────────────────────────────────────────
@@ -650,44 +1037,39 @@ let actionModalResolve = null;
 
 /**
  * One modal for every decision. Resolves with the field's value on confirm
- * (an empty string when there is no field), or null on cancel - the exact
- * contract window.prompt had, minus the browser chrome.
+ * (an empty string when there is no field), or null on cancel.
  */
 function askModal({ title, body, field, confirmLabel, danger }) {
     return new Promise((resolve) => {
         actionModalResolve = resolve;
 
         const fieldHtml = !field ? '' : field.type === 'textarea'
-            ? `<textarea id="actionModalInput" rows="3" placeholder="${escapeAttr(field.placeholder || '')}"
-                        style="width: 100%; margin-top: 12px; padding: 8px 12px; border: 1px solid var(--line-strong); border-radius: 8px; font-size: 13.5px; font-family: inherit;">${escapeHtml(field.value || '')}</textarea>`
-            : `<input id="actionModalInput" type="${field.type || 'text'}" value="${escapeAttr(field.value || '')}"
-                     placeholder="${escapeAttr(field.placeholder || '')}"
-                     style="width: 100%; margin-top: 12px; padding: 8px 12px; border: 1px solid var(--line-strong); border-radius: 8px; font-size: 13.5px; font-family: inherit;">`;
+            ? `<textarea id="actionModalInput" rows="3" class="fm-input" style="margin-top: 10px;" placeholder="${escapeAttr(field.placeholder || '')}">${escapeHtml(field.value || '')}</textarea>`
+            : `<input id="actionModalInput" type="${field.type || 'text'}" class="fm-input" style="margin-top: 10px;" value="${escapeAttr(field.value || '')}" placeholder="${escapeAttr(field.placeholder || '')}">`;
 
         document.getElementById('actionModalBody').innerHTML = `
             <h4 style="margin: 0; font-size: 16px; font-weight: 700; color: var(--ink-900);">${escapeHtml(title)}</h4>
             <p style="margin: 8px 0 0 0; font-size: 13px; color: var(--ink-600);">${escapeHtml(body || '')}</p>
-            ${field && field.label ? `<label style="display: block; margin-top: 12px; font-size: 12.5px; font-weight: 600; color: var(--ink-700);">${escapeHtml(field.label)}</label>` : ''}
+            ${field && field.label ? `<label class="fm-label" style="margin-top: 12px;">${escapeHtml(field.label)}</label>` : ''}
             ${fieldHtml}
             <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;">
-                <button onclick="actionModalDone(false)"
-                        style="background: white; color: var(--ink-700); border: 1px solid var(--line-strong); font-size: 13px; font-weight: 600; padding: 8px 15px; border-radius: 8px; cursor: pointer;">Cancel</button>
-                <button onclick="actionModalDone(true)"
-                        style="background: ${danger ? 'var(--danger)' : '#16a34a'}; color: white; border: none; font-size: 13px; font-weight: 600; padding: 8px 15px; border-radius: 8px; cursor: pointer;">${escapeHtml(confirmLabel || 'Confirm')}</button>
-            </div>
-        `;
+                <button class="fm-btn ghost" onclick="actionModalDone(false)">Cancel</button>
+                <button class="fm-btn ${danger ? 'danger' : 'primary'}" onclick="actionModalDone(true)">${escapeHtml(confirmLabel || 'Confirm')}</button>
+            </div>`;
 
         document.getElementById('actionModal').style.display = 'flex';
-        setTimeout(() => document.getElementById('actionModalInput')?.focus(), 60);
+        setTimeout(() => {
+            const input = document.getElementById('actionModalInput');
+            input?.focus();
+            input?.addEventListener('keydown', (e) => { if (e.key === 'Enter' && input.tagName !== 'TEXTAREA') actionModalDone(true); });
+        }, 60);
     });
 }
 
 function actionModalDone(confirmed) {
     const input = document.getElementById('actionModalInput');
     const value = input ? input.value : '';
-
     document.getElementById('actionModal').style.display = 'none';
-
     const resolve = actionModalResolve;
     actionModalResolve = null;
     if (resolve) resolve(confirmed ? value : null);
@@ -703,65 +1085,35 @@ function renderItemOfferCard(msg, isAdmin, senderName, timestamp) {
     // move is scheduling the turnover, not deciding again.
     const accepted = pending && item.acquisition_price;
 
-    return `
-        <div style="display: flex; ${isAdmin ? 'justify-content: flex-end;' : 'justify-content: flex-start;'} margin-bottom: 12px;">
-            <div style="max-width: 420px; width: 100%; background: white; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden;">
-
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--surface-sunk); border-bottom: 1px solid var(--line);">
-                    <span style="font-size: 12px; font-weight: 700; color: var(--brand-700);">
-                        <i class="fas fa-tag"></i> Item offer
-                    </span>
-                    <span style="font-size: 11px; color: var(--ink-500);">Item #${item.item_id}</span>
-                </div>
-
-                <div style="padding: 14px;">
-                    <div onclick="openItem(${item.item_id})"
-                         style="display: flex; gap: 10px; align-items: center; cursor: pointer; margin-bottom: 12px;">
-                        ${photo
-                            ? `<img src="${escapeAttr(photo)}" alt="" style="width: 56px; height: 56px; border-radius: 6px; object-fit: cover; flex-shrink: 0;">`
-                            : `<div style="width: 56px; height: 56px; border-radius: 6px; background: var(--surface-sunk); display: flex; align-items: center; justify-content: center; color: var(--ink-400); flex-shrink: 0;"><i class="fas fa-image"></i></div>`}
-                        <div style="min-width: 0;">
-                            <p style="margin: 0; font-size: 13px; font-weight: 600; color: var(--ink-900);">${escapeHtml(item.title || ('Item #' + item.item_id))}</p>
-                            <p style="margin: 2px 0 0 0; font-size: 12px; color: var(--ink-500);">Asking ${peso(item.seller_asking_price)}</p>
-                            <p style="margin: 2px 0 0 0; font-size: 11px; color: var(--brand-600); font-weight: 600;">Click to view item</p>
-                        </div>
-                    </div>
-
-                    <div style="border-top: 1px solid var(--surface-sunk); padding-top: 8px;">
-                        ${summaryRow('Asking price', peso(item.seller_asking_price), true)}
-                        ${item.acquisition_price ? summaryRow('Store offer', peso(item.acquisition_price)) : ''}
-                        ${item.meetup_schedule ? summaryRow('Meet-up', new Date(item.meetup_schedule).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })) : ''}
-                    </div>
-
-                    <div style="margin-top: 10px;">${badge(item.status || 'pending', '#374151', '#f3f4f6')}</div>
-
-                    ${item.rejected_reason ? `
-                        <p style="margin: 10px 0 0 0; padding: 8px 10px; background: var(--danger-bg, #FCE8E6); border-radius: 6px; font-size: 12px; color: var(--danger);">${escapeHtml(item.rejected_reason)}</p>
-                    ` : ''}
-
-                    ${accepted ? `
-                        <div style="display: flex; gap: 8px; margin-top: 12px; border-top: 1px solid var(--surface-sunk); padding-top: 12px;">
-                            <button onclick="scheduleMeetup(${item.item_id})"
-                                    style="background: white; color: var(--brand-700); border: 1px solid var(--brand-600); font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 6px; cursor: pointer;">
-                                ${item.meetup_schedule ? 'Change schedule' : 'Set schedule'}
-                            </button>
-                            <button onclick="acquireItem(${item.item_id})"
-                                    style="background: #16a34a; color: white; border: 1px solid #16a34a; font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 6px; cursor: pointer;">Mark acquired</button>
-                        </div>
-                    ` : pending ? `
-                        <div style="display: flex; gap: 8px; margin-top: 12px; border-top: 1px solid var(--surface-sunk); padding-top: 12px;">
-                            <button onclick="acceptOffer(${item.item_id}, '${escapeAttr(item.seller_asking_price || '')}')"
-                                    style="background: #16a34a; color: white; border: 1px solid #16a34a; font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 6px; cursor: pointer;">Accept &middot; set price</button>
-                            <button onclick="rejectOffer(${item.item_id})"
-                                    style="background: white; color: var(--danger); border: 1px solid var(--danger); font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 6px; cursor: pointer;">Reject</button>
-                        </div>
-                    ` : ''}
-
-                    <p style="margin: 8px 0 0 0; font-size: 11px; color: var(--ink-400);">${escapeHtml(senderName)} &middot; ${timestamp}</p>
-                </div>
+    const body = `
+        <div onclick="openItem(${item.item_id})" style="display: flex; gap: 10px; align-items: center; cursor: pointer; margin-bottom: 12px;">
+            ${photo
+                ? `<img src="${escapeAttr(photo)}" alt="" style="width: 56px; height: 56px; border-radius: 6px; object-fit: cover; flex-shrink: 0;">`
+                : `<div class="thumb" style="width: 56px; height: 56px;"><i class="fas fa-image"></i></div>`}
+            <div style="min-width: 0;">
+                <p style="margin: 0; font-size: 13px; font-weight: 600; color: var(--ink-900);">${escapeHtml(item.title || ('Item #' + item.item_id))}</p>
+                <p style="margin: 2px 0 0 0; font-size: 12px; color: var(--ink-500);">Asking ${peso(item.seller_asking_price)}</p>
+                <p style="margin: 2px 0 0 0; font-size: 11px; color: var(--brand-600); font-weight: 600;">Click to view item</p>
             </div>
         </div>
-    `;
+        <div style="border-top: 1px solid var(--surface-sunk); padding-top: 8px;">
+            ${summaryRow('Asking price', peso(item.seller_asking_price), true)}
+            ${item.acquisition_price ? summaryRow('Store offer', peso(item.acquisition_price)) : ''}
+            ${item.meetup_schedule ? summaryRow('Meet-up', new Date(item.meetup_schedule).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })) : ''}
+        </div>
+        <div style="margin-top: 10px;">${itemBadge(item.status || 'pending')}</div>
+        ${item.rejected_reason ? `<p style="margin: 10px 0 0 0; padding: 8px 10px; background: var(--danger-bg); border-radius: 6px; font-size: 12px; color: var(--danger);">${escapeHtml(item.rejected_reason)}</p>` : ''}
+        ${accepted ? `
+            <div style="display: flex; gap: 8px; margin-top: 12px; border-top: 1px solid var(--surface-sunk); padding-top: 12px;">
+                <button class="fm-btn ghost sm" onclick="scheduleMeetup(${item.item_id})">${item.meetup_schedule ? 'Change schedule' : 'Set schedule'}</button>
+                <button class="fm-btn primary sm" onclick="acquireItem(${item.item_id})">Mark acquired</button>
+            </div>` : pending ? `
+            <div style="display: flex; gap: 8px; margin-top: 12px; border-top: 1px solid var(--surface-sunk); padding-top: 12px;">
+                <button class="fm-btn primary sm" onclick="acceptOffer(${item.item_id}, '${escapeAttr(item.seller_asking_price || '')}')">Accept &middot; set price</button>
+                <button class="fm-btn danger sm" onclick="rejectOffer(${item.item_id})">Reject</button>
+            </div>` : ''}`;
+
+    return cardShell(isAdmin, 'fa-tag', 'Item offer', 'Item #' + item.item_id, body, `${senderName} · ${timestamp}`);
 }
 
 /**
@@ -773,37 +1125,34 @@ function renderPinnedOffer(item) {
     const bar = document.getElementById('offerPinned');
     const pending = item && (item.status || '').toLowerCase() === 'pending';
 
-    if (!pending) {
-        bar.style.display = 'none';
-        bar.innerHTML = '';
-        return;
-    }
-
-    const pinnedButton = (onclick, label, solid, danger) => `
-        <button onclick="${onclick}"
-                style="${solid
-                    ? 'background: #16a34a; color: white; border: 1px solid #16a34a;'
-                    : danger
-                        ? 'background: white; color: var(--danger); border: 1px solid var(--danger);'
-                        : 'background: white; color: var(--brand-700); border: 1px solid var(--brand-600);'}
-                       font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 6px; cursor: pointer;">${label}</button>`;
+    if (!pending) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
 
     bar.innerHTML = item.acquisition_price
-        ? pinnedButton(`scheduleMeetup(${item.item_id})`, item.meetup_schedule ? 'Change schedule' : 'Set schedule', false, false)
-            + pinnedButton(`acquireItem(${item.item_id})`, 'Mark acquired', true, false)
-        : pinnedButton(`acceptOffer(${item.item_id}, '${escapeAttr(item.seller_asking_price || '')}')`, 'Accept offer', true, false)
-            + pinnedButton(`rejectOffer(${item.item_id})`, 'Reject', false, true);
-
+        ? `<button class="fm-btn ghost sm" onclick="scheduleMeetup(${item.item_id})">${item.meetup_schedule ? 'Change schedule' : 'Set schedule'}</button>
+           <button class="fm-btn primary sm" onclick="acquireItem(${item.item_id})">Mark acquired</button>`
+        : `<button class="fm-btn primary sm" onclick="acceptOffer(${item.item_id}, '${escapeAttr(item.seller_asking_price || '')}')">Accept offer</button>
+           <button class="fm-btn danger sm" onclick="rejectOffer(${item.item_id})">Reject</button>`;
     bar.style.display = 'flex';
 }
 
-/**
- * Accepting an offer is setting the acquisition price - the same first step
- * the inventory workflow takes, against the same endpoint.
- */
-async function acceptOffer(itemId, askingPrice) {
+async function itemPost(itemId, path, body, failLabel) {
     if (busyAction) return;
+    busyAction = true;
+    try {
+        const response = await fetch(`${API}/admin/items/${itemId}/${path}`, { method: 'POST', headers: authHeaders(true), body: JSON.stringify(body) });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
+        return payload;
+    } catch (error) {
+        showToast(`${failLabel}: ${error.message}`, 'error');
+        return null;
+    } finally {
+        busyAction = false;
+    }
+}
 
+/** Accepting an offer is setting the acquisition price - the same first step the inventory workflow takes. */
+async function acceptOffer(itemId, askingPrice) {
     const price = await askModal({
         title: 'Accept this offer',
         body: 'Set the acquisition price - what the store pays the seller. The QR code and the meet-up come after this.',
@@ -811,45 +1160,13 @@ async function acceptOffer(itemId, askingPrice) {
         confirmLabel: 'Accept offer',
     });
     if (price === null) return;
-    if (!price.trim() || isNaN(Number(price))) {
-        showToast('Enter a valid peso amount, e.g. 300 or 299.50.', 'error');
-        return;
-    }
-
-    busyAction = true;
-
-    try {
-        const response = await fetch(`${API}/admin/items/${itemId}/acquisition-price`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ acquisition_price: price.trim() }),
-        });
-        const payload = await response.json().catch(() => ({}));
-
-        if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
-
-        await refreshThread();
-    } catch (error) {
-        alert(`Could not accept the offer: ${error.message}`);
-    } finally {
-        busyAction = false;
-    }
+    if (!price.trim() || isNaN(Number(price))) { showToast('Enter a valid peso amount, e.g. 300 or 299.50.', 'error'); return; }
+    if (await itemPost(itemId, 'acquisition-price', { acquisition_price: price.trim() }, 'Could not accept the offer')) await loadThread();
 }
 
-/**
- * When the seller comes in. Sent to the same endpoint the mobile card and the
- * inventory workflow use; the 6h/1h/30m reminders count down from it.
- */
+/** When the seller comes in; the 6h/1h/30m reminders count down from it. */
 async function scheduleMeetup(itemId) {
-    if (busyAction) return;
-
-    // Tomorrow at 10:00, as a starting point the picker can adjust.
     const suggested = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    suggested.setHours(10, 0, 0, 0);
     const pad = (n) => String(n).padStart(2, '0');
     const suggestedValue = `${suggested.getFullYear()}-${pad(suggested.getMonth() + 1)}-${pad(suggested.getDate())}T10:00`;
 
@@ -860,87 +1177,25 @@ async function scheduleMeetup(itemId) {
         confirmLabel: 'Save schedule',
     });
     if (raw === null) return;
-
-    const when = new Date(raw.trim());
-    if (isNaN(when.getTime())) {
-        showToast('Pick a valid date and time.', 'error');
-        return;
-    }
-
-    busyAction = true;
-
-    try {
-        const response = await fetch(`${API}/admin/items/${itemId}/meetup`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ meetup_schedule: raw.trim().replace('T', ' ') }),
-        });
-        const payload = await response.json().catch(() => ({}));
-
-        if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
-
-        await refreshThread();
-    } catch (error) {
-        alert(`Could not save the schedule: ${error.message}`);
-    } finally {
-        busyAction = false;
-    }
+    if (isNaN(new Date(raw.trim()).getTime())) { showToast('Pick a valid date and time.', 'error'); return; }
+    if (await itemPost(itemId, 'meetup', { meetup_schedule: raw.trim().replace('T', ' ') }, 'Could not save the schedule')) await loadThread();
 }
 
-/**
- * The manual twin of the QR turnover: marks the item received and the seller
- * paid, without the counter photographs. The scan flow remains the path that
- * attaches proof.
- */
+/** The manual twin of the QR turnover: item received and seller paid, without the counter photographs. */
 async function acquireItem(itemId) {
-    if (busyAction) return;
-
     const confirmed = await askModal({
         title: 'Mark as acquired',
-        body: 'Confirm the item is physically in the store and the seller was handed their cash. Scanning their QR does the same with photos attached.',
+        body: 'Confirm the item is physically in the store and the seller was handed their cash. Scanning their QR at the counter does the same with photos attached.',
         confirmLabel: 'Mark acquired',
     });
     if (confirmed === null) return;
-
-    busyAction = true;
-
-    try {
-        const headers = {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-        };
-
-        const response = await fetch(`${API}/admin/items/${itemId}/verify-turnover`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({}),
-        });
-        const payload = await response.json().catch(() => ({}));
-
-        if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
-
-        await fetch(`${API}/admin/items/${itemId}/seller-payout`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({}),
-        });
-
-        await refreshThread();
-    } catch (error) {
-        alert(`Could not mark the item acquired: ${error.message}`);
-    } finally {
-        busyAction = false;
+    if (await itemPost(itemId, 'verify-turnover', {}, 'Could not mark the item acquired')) {
+        await itemPost(itemId, 'seller-payout', {}, 'Could not record the payout');
+        await loadThread();
     }
 }
 
 async function rejectOffer(itemId) {
-    if (busyAction) return;
-
     const reason = await askModal({
         title: 'Reject this offer',
         body: 'The seller is told in this chat why their offer was turned down.',
@@ -949,33 +1204,8 @@ async function rejectOffer(itemId) {
         danger: true,
     });
     if (reason === null) return;
-    if (!reason.trim()) {
-        showToast('A reason is required.', 'error');
-        return;
-    }
-
-    busyAction = true;
-
-    try {
-        const response = await fetch(`${API}/admin/items/${itemId}/reject`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ reason: reason.trim() }),
-        });
-        const payload = await response.json().catch(() => ({}));
-
-        if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
-
-        await refreshThread();
-    } catch (error) {
-        alert(`Could not reject the offer: ${error.message}`);
-    } finally {
-        busyAction = false;
-    }
+    if (!reason.trim()) { showToast('A reason is required.', 'error'); return; }
+    if (await itemPost(itemId, 'reject', { reason: reason.trim() }, 'Could not reject the offer')) await loadThread();
 }
 
 // ── Overlays ─────────────────────────────────────────────────────────────
@@ -993,12 +1223,11 @@ function closeOverlay() {
 function openProof(url, reference) {
     showOverlay(`
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <h4 style="margin: 0; font-size: 16px; font-weight: 700; color: var(--ink-900);">Payment receipt</h4>
+            <h4 style="margin: 0; font-size: 16px; font-weight: 700;">Payment receipt</h4>
             <button onclick="closeOverlay()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: var(--ink-500);">&times;</button>
         </div>
         ${reference ? `<p style="margin: 0 0 12px 0; font-size: 13px; color: var(--ink-700);">Reference: <strong>${escapeHtml(reference)}</strong></p>` : ''}
-        <img src="${escapeAttr(url)}" alt="Payment receipt" style="width: 100%; border-radius: 8px;">
-    `);
+        <img src="${escapeAttr(url)}" alt="Payment receipt" style="width: 100%; border-radius: 8px;">`);
 }
 
 /** The listing behind an order, opened from the card's photo. */
@@ -1006,10 +1235,7 @@ async function openItem(itemId) {
     showOverlay('<p style="font-size: 13px; color: var(--ink-500);">Loading item...</p>');
 
     try {
-        const response = await fetch(`${API}/items/${itemId}`, {
-            headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
-        });
-
+        const response = await fetch(`${API}/items/${itemId}`, { headers: authHeaders() });
         const payload = await response.json();
         if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
 
@@ -1018,126 +1244,40 @@ async function openItem(itemId) {
 
         showOverlay(`
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-                <h4 style="margin: 0; font-size: 18px; font-weight: 700; color: var(--ink-900);">${escapeHtml(item.title || 'Item')}</h4>
+                <h4 style="margin: 0; font-size: 18px; font-weight: 700;">${escapeHtml(item.title || 'Item')}</h4>
                 <button onclick="closeOverlay()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: var(--ink-500);">&times;</button>
             </div>
-
-            ${photos.length ? `<div style="display: flex; gap: 8px; overflow-x: auto; margin-bottom: 12px;">
-                ${photos.map(url => `<img src="${escapeAttr(url)}" alt="" style="height: 180px; border-radius: 8px; object-fit: cover;">`).join('')}
-            </div>` : ''}
-
+            ${photos.length ? `<div style="display: flex; gap: 8px; overflow-x: auto; margin-bottom: 12px;">${photos.map(url => `<img src="${escapeAttr(url)}" alt="" style="height: 180px; border-radius: 8px; object-fit: cover;">`).join('')}</div>` : ''}
             <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 12px;">
                 <span style="font-size: 20px; font-weight: 700; color: var(--brand-700);">${peso(item.public_price || item.seller_asking_price || 0)}</span>
-                ${badge(item.status || 'unknown', 'var(--ink-700)', 'var(--surface-sunk)')}
-                ${item.reward_points ? badge(`Earn ${item.reward_points} point(s)`, '#92400e', '#fef3c7') : ''}
+                ${itemBadge(item.status || 'unknown')}
+                ${item.reward_points ? badge(`Earn ${item.reward_points} point(s)`, 'reward') : ''}
             </div>
-
             ${item.description ? `<p style="font-size: 13px; color: var(--ink-700); white-space: pre-line;">${escapeHtml(item.description)}</p>` : ''}
-
             <div style="border-top: 1px solid var(--surface-sunk); margin-top: 12px; padding-top: 10px;">
                 ${item.acquisition_price ? summaryRow('Acquisition price', peso(item.acquisition_price)) : ''}
                 ${item.markup ? summaryRow('Markup', peso(item.markup)) : ''}
                 ${item.seller_email ? summaryRow('Seller', item.seller_email) : ''}
-            </div>
-        `);
+            </div>`);
     } catch (error) {
-        showOverlay(`
-            <p style="font-size: 13px; color: var(--danger);">Could not load the item: ${escapeHtml(error.message)}</p>
-            <button onclick="closeOverlay()" style="margin-top: 12px; background: var(--brand-600); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Close</button>
-        `);
+        showOverlay(`<p style="font-size: 13px; color: var(--danger);">Could not load the item: ${escapeHtml(error.message)}</p>
+            <button class="fm-btn primary" style="margin-top: 12px;" onclick="closeOverlay()">Close</button>`);
     }
 }
 
-/**
- * Reading a thread clears its unread count, the same call the phone makes
- * when a chat is opened. The sidebar badge follows.
- */
-async function markThreadRead(itemId) {
-    try {
-        await fetch(`${API}/messages/${itemId}/read`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-            },
-            body: '{}',
-        });
-        const conv = allConversations.find(c => String(c.item_id) === String(itemId));
-        if (conv) conv.unread_count = 0;
-        const row = document.querySelector(`.conversation-item[data-item-id="${itemId}"] span[style*="ef4444"]`);
-        if (row) row.remove();
-        if (typeof window.fmRefreshUnread === 'function') window.fmRefreshUnread();
-    } catch (error) {
-        // Not fatal: the badge catches up on the next poll.
-    }
-}
-
-
-async function sendMessage() {
-    if (!selectedConversation) return;
-
-    const messageField = document.getElementById('messageField');
-    const message = messageField.value.trim();
-
-    if (!message) return;
-
-    try {
-        const response = await fetch(`${API}/messages/${selectedConversation.item_id}`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                receiver_id: selectedConversation.other_user_id,
-                message: message
-            })
-        });
-
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-        messageField.value = '';
-        await loadConversationMessages(document.querySelector('.conversation-item[style*="background"]') || document.querySelector('.conversation-item'));
-    } catch (error) {
-        console.error('Error sending message:', error);
-        alert('Error sending message: ' + error.message);
-    }
-}
-
-document.getElementById('searchInput').addEventListener('keyup', function(e) {
-    const searchTerm = e.target.value.toLowerCase();
-    const filtered = allConversations.filter(conv => {
-        const userName = conv.first_name && conv.last_name ?
-            `${conv.first_name} ${conv.last_name}` :
-            (conv.first_name || conv.other_user_email.split('@')[0]);
-        const itemTitle = conv.item_title || '';
-        return userName.toLowerCase().includes(searchTerm) || itemTitle.toLowerCase().includes(searchTerm);
-    });
-    renderConversations(filtered);
-});
+document.getElementById('searchInput').addEventListener('input', renderConversations);
 
 function escapeHtml(text) {
     const div = document.createElement('div');
-    div.textContent = text;
+    div.textContent = text ?? '';
     return div.innerHTML;
 }
 
-/**
- * The same, for a value being written into a double-quoted HTML attribute.
- *
- * escapeHtml leaves quotes alone, which is fine between tags and not fine
- * inside one - a stray quote there ends the attribute early.
- */
+/** The same, for a value written into a double-quoted HTML attribute. */
 function escapeAttr(value) {
     return String(value ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
+        .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+        .replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 </script>
 @endpush
-@endsection
