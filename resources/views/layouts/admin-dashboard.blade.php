@@ -719,6 +719,9 @@
                     <i class="fas fa-comments"></i><span>Chat</span>
                     <span class="nav-count" id="unreadCount" style="display: none;">0</span>
                 </a>
+                <a href="{{ route('admin.counter') }}" class="sidebar-link" data-route="admin.counter">
+                    <i class="fas fa-qrcode"></i><span>Counter &middot; scan</span>
+                </a>
                 <a href="{{ route('admin.students') }}" class="sidebar-link" data-route="admin.students">
                     <i class="fas fa-users"></i><span>Students</span>
                 </a>
@@ -755,6 +758,22 @@
 
                 <div class="flex items-center gap-2">
                     @yield('actions')
+
+                    <div class="relative">
+                        <button class="icon-btn" onclick="toggleNotifMenu(event)" aria-label="Notifications" style="position: relative;">
+                            <i class="fas fa-bell"></i>
+                            <span class="nav-count" id="notifBadge" style="display: none; position: absolute; top: -6px; right: -6px; margin: 0;">0</span>
+                        </button>
+                        <div class="menu-pop" id="notifMenu" style="min-width: 320px; max-width: 360px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px 10px; border-bottom: 1px solid var(--line); margin-bottom: 4px;">
+                                <div style="font-size: 13px; font-weight: 600;">Notifications</div>
+                                <button onclick="clearNotifications(event)" style="font-size: 11.5px; color: var(--ink-500); background: none; border: none; cursor: pointer; padding: 0;">Clear</button>
+                            </div>
+                            <div id="notifList" style="max-height: 360px; overflow-y: auto;">
+                                <p style="padding: 14px 10px; font-size: 12.5px; color: var(--ink-500); margin: 0;">Nothing new. Chat messages and order updates land here while this tab is open.</p>
+                            </div>
+                        </div>
+                    </div>
 
                     <div class="relative">
                         <button onclick="toggleProfileMenu(event)" aria-label="Account">
@@ -897,6 +916,162 @@
             }
         });
     </script>
+    <script>
+        /*
+         * What the phone gets as a push, the browser gets by asking: unread
+         * chats from /conversations for the badge, and new chat messages and
+         * order events from /notifications/chat for the bell. Neither marks
+         * anything read - opening the conversation does that.
+         */
+        (function () {
+            const API = 'https://fati-api.alertaraqc.com/api';
+            const token = document.querySelector('meta[name="api-token"]')?.getAttribute('content') || '';
+            if (!token) return;
+
+            const headers = { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' };
+            const CURSOR_KEY = 'fm_notif_cursor';
+            const ITEMS_KEY = 'fm_notif_items';
+            const onChatPage = (document.querySelector('meta[name="current-route"]')?.getAttribute('content') || '') === 'admin.conversations';
+
+            function esc(text) {
+                const div = document.createElement('div');
+                div.textContent = text ?? '';
+                return div.innerHTML;
+            }
+
+            function readItems() {
+                try { return JSON.parse(sessionStorage.getItem(ITEMS_KEY) || '[]'); } catch (e) { return []; }
+            }
+
+            function writeItems(items) {
+                try { sessionStorage.setItem(ITEMS_KEY, JSON.stringify(items.slice(0, 30))); } catch (e) {}
+            }
+
+            function renderList() {
+                const items = readItems();
+                const list = document.getElementById('notifList');
+                const badge = document.getElementById('notifBadge');
+                const unseen = items.filter(i => !i.seen).length;
+
+                badge.textContent = unseen > 9 ? '9+' : String(unseen);
+                badge.style.display = unseen > 0 ? 'inline-flex' : 'none';
+
+                if (items.length === 0) {
+                    list.innerHTML = '<p style="padding: 14px 10px; font-size: 12.5px; color: var(--ink-500); margin: 0;">Nothing new. Chat messages and order updates land here while this tab is open.</p>';
+                    return;
+                }
+
+                list.innerHTML = items.map(item => `
+                    <a href="${esc(item.href)}" style="display: flex; gap: 10px; align-items: flex-start; padding: 9px 10px; border-radius: var(--radius-sm); ${item.seen ? '' : 'background: var(--brand-50);'}">
+                        <i class="fas ${item.icon}" style="margin-top: 3px; color: var(--brand-600);"></i>
+                        <span style="min-width: 0; flex: 1;">
+                            <span style="display: block; font-size: 13px; font-weight: 600; color: var(--ink-900); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${esc(item.title)}</span>
+                            <span style="display: block; font-size: 12px; color: var(--ink-600); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${esc(item.body)}</span>
+                            <span style="display: block; font-size: 11px; color: var(--ink-400);">${esc(item.when)}</span>
+                        </span>
+                    </a>
+                `).join('');
+            }
+
+            window.toggleNotifMenu = function (event) {
+                event.stopPropagation();
+                document.getElementById('profileMenu')?.classList.remove('open');
+                const menu = document.getElementById('notifMenu');
+                menu.classList.toggle('open');
+                if (menu.classList.contains('open')) {
+                    writeItems(readItems().map(i => ({ ...i, seen: true })));
+                    renderList();
+                }
+            };
+
+            window.clearNotifications = function (event) {
+                event.stopPropagation();
+                writeItems([]);
+                renderList();
+            };
+
+            document.addEventListener('click', () => document.getElementById('notifMenu')?.classList.remove('open'));
+
+            function describe(m) {
+                const when = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const chatHref = '{{ route('admin.conversations') }}';
+                const ordersHref = '{{ route('admin.transactions.history') }}';
+
+                if (m.type === 'chat_message') {
+                    return {
+                        icon: 'fa-comment',
+                        title: `${m.sender_name || 'New message'}${m.item_title ? ' · ' + m.item_title : ''}`,
+                        body: m.message || '',
+                        href: chatHref,
+                        when,
+                    };
+                }
+                if (['order_placed', 'payment_proof_submitted', 'order_update', 'item_update', 'meetup_reminder'].includes(m.type)) {
+                    return {
+                        icon: m.type === 'meetup_reminder' ? 'fa-calendar-check' : 'fa-receipt',
+                        title: m.title || 'Order update',
+                        body: m.body || m.item_title || '',
+                        href: m.type === 'item_update' || m.type === 'meetup_reminder' ? chatHref : ordersHref,
+                        when,
+                    };
+                }
+                return null;
+            }
+
+            async function pollNotifications() {
+                try {
+                    const cursor = sessionStorage.getItem(CURSOR_KEY);
+                    const response = await fetch(`${API}/notifications/chat${cursor ? '?after_id=' + encodeURIComponent(cursor) : ''}`, { headers });
+                    if (!response.ok) return;
+
+                    const data = (await response.json()).data || {};
+                    const messages = Array.isArray(data.messages) ? data.messages : [];
+                    const fresh = cursor !== null;
+                    const items = readItems();
+                    let shown = 0;
+
+                    for (const m of messages) {
+                        const entry = describe(m);
+                        if (!entry) continue;
+                        // A chat message while the chat page is open is already on screen.
+                        if (onChatPage && m.type === 'chat_message') continue;
+                        items.unshift({ ...entry, seen: false });
+                        if (fresh && shown < 3 && typeof showToast === 'function') {
+                            showToast(`${entry.title}: ${entry.body}`.slice(0, 140), 'info');
+                            shown++;
+                        }
+                    }
+
+                    if (messages.length) writeItems(items);
+                    if (data.cursor !== undefined && data.cursor !== null) sessionStorage.setItem(CURSOR_KEY, String(data.cursor));
+                    renderList();
+                } catch (e) {
+                    // Offline or signed out: try again next tick.
+                }
+            }
+
+            window.fmRefreshUnread = async function () {
+                try {
+                    const response = await fetch(`${API}/conversations`, { headers });
+                    if (!response.ok) return;
+                    const payload = await response.json();
+                    const conversations = Array.isArray(payload) ? payload : (payload.data || payload.conversations || []);
+                    const unread = conversations.reduce((sum, c) => sum + (Number(c.unread_count) || 0), 0);
+                    const badge = document.getElementById('unreadCount');
+                    if (!badge) return;
+                    badge.textContent = unread > 99 ? '99+' : String(unread);
+                    badge.style.display = unread > 0 ? 'inline-flex' : 'none';
+                } catch (e) {}
+            };
+
+            renderList();
+            window.fmRefreshUnread();
+            pollNotifications();
+            setInterval(pollNotifications, 30000);
+            setInterval(window.fmRefreshUnread, 60000);
+        })();
+    </script>
+
     @stack('scripts')
 </body>
 </html>
