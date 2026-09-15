@@ -18,6 +18,10 @@ Route::post('/admin/login', [AdminAuthController::class, 'login'])->name('admin.
 Route::middleware('admin.auth')->group(function () {
     Route::get('/dashboard', [AdminAuthController::class, 'dashboard'])->name('admin.dashboard');
 
+    // The counter: scan a seller's turnover QR or a buyer's pickup QR, the
+    // way the mobile app's Scan tab does.
+    Route::get('/counter', [AdminAuthController::class, 'counter'])->name('admin.counter');
+
     // Inventory Management
     Route::get('/inventory/private-offers', [AdminAuthController::class, 'privateOffers'])->name('admin.private-offers');
     Route::get('/inventory/acquired-items', [AdminAuthController::class, 'acquiredItems'])->name('admin.acquired-items');
@@ -48,8 +52,6 @@ Route::middleware('admin.auth')->group(function () {
     // Home reports route (optional): keep it, but do not mark it as the same as acquired/sold.
     Route::get('/reports', [AdminAuthController::class, 'itemsAcquiredReport'])->name('admin.reports');
 
-
-
     // Categories
     Route::get('/categories', [AdminAuthController::class, 'categories'])->name('admin.categories');
 
@@ -64,6 +66,7 @@ Route::middleware('admin.auth')->group(function () {
 
     // Profile & Settings
     Route::get('/profile', [AdminAuthController::class, 'profile'])->name('admin.profile');
+    Route::post('/profile/picture', [AdminAuthController::class, 'updateProfilePicture'])->name('admin.profile.picture');
     Route::get('/settings', [\App\Http\Controllers\Admin\GcashSettingsController::class, 'show'])->name('admin.settings');
     Route::post('/settings/gcash', [\App\Http\Controllers\Admin\GcashSettingsController::class, 'update'])->name('admin.settings.gcash.update');
     Route::post('/logout', [AdminAuthController::class, 'logout'])->name('admin.logout');
