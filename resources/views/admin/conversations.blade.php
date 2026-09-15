@@ -289,6 +289,7 @@ async function loadConversationMessages(element) {
         const messages = Array.isArray(data) ? data : (data.data || data.messages || []);
 
         renderMessages(messages);
+        markThreadRead(itemId);
     } catch (error) {
         console.error('Error loading messages:', error);
         document.getElementById('messagesArea').innerHTML = `
@@ -1046,6 +1047,32 @@ async function openItem(itemId) {
         `);
     }
 }
+
+/**
+ * Reading a thread clears its unread count, the same call the phone makes
+ * when a chat is opened. The sidebar badge follows.
+ */
+async function markThreadRead(itemId) {
+    try {
+        await fetch(`${API}/messages/${itemId}/read`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+            body: '{}',
+        });
+        const conv = allConversations.find(c => String(c.item_id) === String(itemId));
+        if (conv) conv.unread_count = 0;
+        const row = document.querySelector(`.conversation-item[data-item-id="${itemId}"] span[style*="ef4444"]`);
+        if (row) row.remove();
+        if (typeof window.fmRefreshUnread === 'function') window.fmRefreshUnread();
+    } catch (error) {
+        // Not fatal: the badge catches up on the next poll.
+    }
+}
+
 
 async function sendMessage() {
     if (!selectedConversation) return;
