@@ -112,10 +112,10 @@
                         </div>
                         <i class="fas fa-chevron-right" style="color: var(--ink-400);"></i>
                     </a>
-                    <a href="{{ route('admin.transactions.history') }}" class="flex items-center gap-4 px-5 py-3 hover:bg-gray-50 transition">
+                    <a href="{{ route('admin.transactions.manage') }}" class="flex items-center gap-4 px-5 py-3 hover:bg-gray-50 transition">
                         <div class="stat-icon" style="background: var(--brand-100); color: var(--brand-700);"><i class="fas fa-receipt"></i></div>
                         <div class="min-w-0 flex-1">
-                            <p class="cell-title">Transactions</p>
+                            <p class="cell-title">Manage orders</p>
                             <p class="cell-sub">Every order - pending, reserved, unpaid, completed</p>
                         </div>
                         <i class="fas fa-chevron-right" style="color: var(--ink-400);"></i>

@@ -30,6 +30,9 @@ Route::middleware('admin.auth')->group(function () {
     Route::get('/inventory/sold-items', [AdminAuthController::class, 'soldItems'])->name('admin.sold-items');
 
     // Transactions
+    // The same list twice, as on the mobile app: "Manage orders" carries the
+    // decisions, "Transaction history" is the read-only record.
+    Route::get('/transactions/manage', [AdminAuthController::class, 'manageOrders'])->name('admin.transactions.manage');
     Route::get('/transactions/history', [AdminAuthController::class, 'transactionHistory'])->name('admin.transactions.history');
     Route::get('/transactions/points-given', [AdminAuthController::class, 'pointsGiven'])->name('admin.transactions.points-given');
     Route::get('/transactions/points-received', [AdminAuthController::class, 'pointsReceived'])->name('admin.transactions.points-received');

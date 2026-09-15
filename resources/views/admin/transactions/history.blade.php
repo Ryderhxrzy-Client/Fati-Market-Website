@@ -1,7 +1,8 @@
 @extends('layouts.admin-dashboard')
 
-@section('title', 'All orders')
-@section('subtitle', 'Every order - pending, reserved, unpaid, completed')
+@php($manage = ($mode ?? 'history') === 'manage')
+@section('title', $manage ? 'Manage orders' : 'Transaction history')
+@section('subtitle', $manage ? 'Approve, decline, stage and complete every order' : 'Every order on record - pending, reserved, unpaid, completed')
 
 @section('actions')
     <a href="{{ route('admin.counter') }}" class="fm-btn ghost">
@@ -74,6 +75,8 @@
 <script>
     const API = 'https://fati-api.alertaraqc.com/api';
     const token = document.querySelector('meta[name="api-token"]')?.getAttribute('content') || '';
+    // "Manage orders" offers the decisions; "Transaction history" only shows them.
+    const MANAGE = @json($manage);
 
     const FILTERS = [
         ['', 'All'],
@@ -160,7 +163,7 @@
             const item = order.item || {};
             const buyer = order.buyer || {};
             const photo = (item.photos && item.photos[0]) || null;
-            const open = (order.available_actions || []).length > 0;
+            const open = MANAGE && (order.available_actions || []).length > 0;
 
             return `
                 <tr style="cursor: pointer;" onclick="openOrder(${Number(order.transaction_id)})">
@@ -203,7 +206,7 @@
             if (index !== -1) orders[index] = updated;
             renderChips();
             renderRows();
-        });
+        }, { readOnly: !MANAGE });
     }
 
     document.getElementById('searchInput').addEventListener('input', function (e) {

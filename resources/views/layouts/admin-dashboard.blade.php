@@ -636,27 +636,27 @@
                     <i class="fas fa-chart-line"></i><span>Dashboard</span>
                 </a>
 
-                <div class="nav-overline">Inventory</div>
+                <div class="nav-overline">Store</div>
 
                 <button class="sidebar-link" aria-expanded="false" onclick="toggleMenu(this)">
-                    <i class="fas fa-box"></i><span>Items</span>
+                    <i class="fas fa-box"></i><span>Inventory</span>
                     <i class="fas fa-chevron-down nav-chevron"></i>
                 </button>
                 <div class="submenu"><div>
                     <a href="{{ route('admin.private-offers') }}" class="sidebar-link" data-route="admin.private-offers">
-                        <i class="fas fa-inbox"></i><span>Offers to review</span>
+                        <i class="fas fa-inbox"></i><span>Private offers</span>
                     </a>
                     <a href="{{ route('admin.acquired-items') }}" class="sidebar-link" data-route="admin.acquired-items">
-                        <i class="fas fa-warehouse"></i><span>Acquired</span>
+                        <i class="fas fa-warehouse"></i><span>Acquired items</span>
                     </a>
                     <a href="{{ route('admin.public-listings') }}" class="sidebar-link" data-route="admin.public-listings">
-                        <i class="fas fa-globe"></i><span>Published</span>
+                        <i class="fas fa-globe"></i><span>Public listings</span>
                     </a>
                     <a href="{{ route('admin.reserved-items') }}" class="sidebar-link" data-route="admin.reserved-items">
-                        <i class="fas fa-clock"></i><span>Reserved</span>
+                        <i class="fas fa-clock"></i><span>Reserved items</span>
                     </a>
                     <a href="{{ route('admin.sold-items') }}" class="sidebar-link" data-route="admin.sold-items">
-                        <i class="fas fa-circle-check"></i><span>Sold</span>
+                        <i class="fas fa-circle-check"></i><span>Sold items</span>
                     </a>
                 </div></div>
 
@@ -665,20 +665,23 @@
                     <i class="fas fa-chevron-down nav-chevron"></i>
                 </button>
                 <div class="submenu"><div>
-                    <a href="{{ route('admin.transactions.history') }}" class="sidebar-link" data-route="admin.transactions.history">
-                        <i class="fas fa-receipt"></i><span>All orders</span>
-                    </a>
-                    <a href="{{ route('admin.transactions.cash') }}" class="sidebar-link" data-route="admin.transactions.cash">
-                        <i class="fas fa-money-bill-wave"></i><span>Cash</span>
-                    </a>
-                    <a href="{{ route('admin.transactions.trade') }}" class="sidebar-link" data-route="admin.transactions.trade">
-                        <i class="fas fa-right-left"></i><span>Trade</span>
+                    <a href="{{ route('admin.transactions.manage') }}" class="sidebar-link" data-route="admin.transactions.manage">
+                        <i class="fas fa-receipt"></i><span>Manage orders</span>
                     </a>
                     <a href="{{ route('admin.transactions.points-given') }}" class="sidebar-link" data-route="admin.transactions.points-given">
                         <i class="fas fa-arrow-up"></i><span>Points given</span>
                     </a>
                     <a href="{{ route('admin.transactions.points-received') }}" class="sidebar-link" data-route="admin.transactions.points-received">
                         <i class="fas fa-arrow-down"></i><span>Points received</span>
+                    </a>
+                    <a href="{{ route('admin.transactions.cash') }}" class="sidebar-link" data-route="admin.transactions.cash">
+                        <i class="fas fa-money-bill-wave"></i><span>Cash transactions</span>
+                    </a>
+                    <a href="{{ route('admin.transactions.trade') }}" class="sidebar-link" data-route="admin.transactions.trade">
+                        <i class="fas fa-right-left"></i><span>Points-only orders</span>
+                    </a>
+                    <a href="{{ route('admin.transactions.history') }}" class="sidebar-link" data-route="admin.transactions.history">
+                        <i class="fas fa-clock-rotate-left"></i><span>Transaction history</span>
                     </a>
                     <a href="{{ route('admin.transactions.profit') }}" class="sidebar-link" data-route="admin.transactions.profit">
                         <i class="fas fa-sack-dollar"></i><span>Profit summary</span>
@@ -702,7 +705,7 @@
                         <i class="fas fa-coins"></i><span>Profit from markup</span>
                     </a>
                     <a href="{{ route('admin.reports.categories') }}" class="sidebar-link" data-route="admin.reports.categories">
-                        <i class="fas fa-list"></i><span>Top categories</span>
+                        <i class="fas fa-list"></i><span>Most sold category</span>
                     </a>
                     <a href="{{ route('admin.reports.users') }}" class="sidebar-link" data-route="admin.reports.users">
                         <i class="fas fa-user-check"></i><span>Active users</span>
@@ -710,7 +713,7 @@
                 </div></div>
 
                 <a href="{{ route('admin.activity') }}" class="sidebar-link" data-route="admin.activity">
-                    <i class="fas fa-clock-rotate-left"></i><span>Activity log</span>
+                    <i class="fas fa-clock-rotate-left"></i><span>Activity logs</span>
                 </a>
 
                 <div class="nav-overline">Manage</div>
@@ -995,7 +998,7 @@
             function describe(m) {
                 const when = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 const chatHref = '{{ route('admin.conversations') }}';
-                const ordersHref = '{{ route('admin.transactions.history') }}';
+                const ordersHref = '{{ route('admin.transactions.manage') }}';
 
                 if (m.type === 'chat_message') {
                     return {

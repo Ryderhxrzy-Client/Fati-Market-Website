@@ -1,6 +1,6 @@
 @extends('layouts.admin-dashboard')
 
-@section('title', 'Categories Report')
+@section('title', 'Most sold category')
 @section('subtitle', 'View most sold categories and performance')
 
 @section('content')

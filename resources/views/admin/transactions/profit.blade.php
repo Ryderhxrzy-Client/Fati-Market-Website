@@ -1,6 +1,6 @@
 @extends('layouts.admin-dashboard')
 
-@section('title', 'Profit Summary')
+@section('title', 'Profit summary')
 @section('subtitle', 'View profit metrics and transaction statistics')
 
 @section('content')

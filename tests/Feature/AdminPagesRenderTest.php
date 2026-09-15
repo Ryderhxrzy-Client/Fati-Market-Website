@@ -74,6 +74,7 @@ class AdminPagesRenderTest extends TestCase
             ['/inventory/reserved-items'],
             ['/inventory/sold-items'],
             ['/transactions/history'],
+            ['/transactions/manage'],
             ['/transactions/cash'],
             ['/transactions/trade'],
             ['/transactions/points-given'],

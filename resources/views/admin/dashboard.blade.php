@@ -197,7 +197,7 @@
                         <span class="flex items-center gap-3"><i class="fas fa-inbox" style="color: var(--brand-600); width: 16px;"></i>Review offers</span>
                         <i class="fas fa-chevron-right" style="color: var(--ink-400);"></i>
                     </a>
-                    <a href="{{ route('admin.transactions.history') }}" class="flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition">
+                    <a href="{{ route('admin.transactions.manage') }}" class="flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition">
                         <span class="flex items-center gap-3"><i class="fas fa-receipt" style="color: var(--brand-600); width: 16px;"></i>Orders to approve</span>
                         <i class="fas fa-chevron-right" style="color: var(--ink-400);"></i>
                     </a>

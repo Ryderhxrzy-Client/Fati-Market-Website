@@ -1,6 +1,6 @@
 @extends('layouts.admin-dashboard')
 
-@section('title', 'Points Given')
+@section('title', 'Points given')
 @section('subtitle', 'View all points given by users')
 
 @section('content')

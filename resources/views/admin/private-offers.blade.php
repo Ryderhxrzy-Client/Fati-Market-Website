@@ -1,6 +1,6 @@
 @extends('layouts.admin-dashboard')
 
-@section('title', 'Private Offers')
+@section('title', 'Private offers')
 @section('subtitle', 'Items marked as private/exclusive offers')
 
 @section('content')
@@ -237,7 +237,7 @@ const token = document.querySelector('meta[name="api-token"]')?.getAttribute('co
     document.querySelectorAll('.edit-item-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const itemData = JSON.parse(atob(this.getAttribute('data-item-data')));
-            showEditModal(itemData);
+            openItemEdit(itemData);
         });
     });
 
@@ -450,4 +450,6 @@ const token = document.querySelector('meta[name="api-token"]')?.getAttribute('co
     });
 </script>
 @endpush
+
+@include('admin.partials.item-edit')
 @endsection

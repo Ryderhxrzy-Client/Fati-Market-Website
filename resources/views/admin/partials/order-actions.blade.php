@@ -28,6 +28,7 @@ window.FMOrders = (function () {
 
     let current = null;
     let onChange = null;
+    let readOnly = false;
     let busy = false;
     let askResolve = null;
 
@@ -112,7 +113,7 @@ window.FMOrders = (function () {
 
     /** The buttons for the decisions the server says are still open. */
     function actionsHtml(order) {
-        const actions = order.available_actions || [];
+        const actions = readOnly ? [] : (order.available_actions || []);
         const buttons = [];
         const solid = 'fm-btn primary sm';
         const ghost = 'fm-btn ghost sm';
@@ -320,9 +321,10 @@ window.FMOrders = (function () {
         }
     }
 
-    function open(order, changeHandler) {
+    function open(order, changeHandler, options) {
         current = order;
         onChange = changeHandler || null;
+        readOnly = !!(options && options.readOnly);
         render();
     }
 

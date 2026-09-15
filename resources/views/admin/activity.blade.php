@@ -1,6 +1,6 @@
 @extends('layouts.admin-dashboard')
 
-@section('title', 'Activity Logs')
+@section('title', 'Activity logs')
 
 @section('content')
 <div class="space-y-6">
