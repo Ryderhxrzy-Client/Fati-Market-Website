@@ -207,7 +207,20 @@
             );
         }
 
+        // ── Photos ───────────────────────────────────────────────────────
+        // The listing's pictures, as the mobile photo editor manages them.
+        // The server refuses to remove the last one and to touch a listing
+        // that is already on sale, and says so.
+        html += wfStep(
+            'Photos',
+            isPublic ? 'A published listing keeps its photos. Unpublish it first to change them.' : 'Add or remove the pictures buyers will see. The first one is the cover.',
+            `<div id="wfPhotos" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;"><span style="font-size: 12px; color: #6b7280;">Loading photos…</span></div>
+             ${isPublic ? '' : `<input id="wfPhotoFiles" type="file" accept="image/*" multiple style="${inputStyle}">
+             <button style="${buttonStyle}" onclick="wfUploadPhotos()">Upload photos</button>`}`
+        );
+
         document.getElementById('workflowBody').innerHTML = html;
+        wfLoadPhotos();
     }
 
     /** The API sends ISO timestamps; the datetime-local input wants no zone. */
@@ -368,6 +381,87 @@
 
         wfPost('unpublish', {}, 'Item removed from the catalog');
     };
+
+    window.wfLoadPhotos = async function () {
+        const host = document.getElementById('wfPhotos');
+        if (!host || !workflowItem) return;
+
+        try {
+            const response = await fetch(`${WF_API}/admin/items/${workflowItem.item_id}/photos`, {
+                headers: { 'Authorization': `Bearer ${wfToken()}`, 'Accept': 'application/json' },
+            });
+            const payload = await response.json().catch(() => ({}));
+
+            if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
+
+            const photos = payload.data || [];
+            const isPublic = (workflowItem.status || '').toLowerCase() === 'public';
+
+            host.innerHTML = photos.length ? photos.map(photo => `
+                <div style="position: relative; width: 96px; height: 96px;">
+                    <img src="${wfAttr(photo.photo_url)}" alt="" style="width: 96px; height: 96px; object-fit: cover; border-radius: 8px; border: 1px solid #e5e7eb;">
+                    ${isPublic ? '' : `<button title="Remove photo" onclick="wfDeletePhoto(${Number(photo.photo_id)})"
+                        style="position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%; border: none; background: rgba(17,24,39,0.75); color: white; cursor: pointer; font-size: 12px;">&times;</button>`}
+                </div>
+            `).join('') : '<span style="font-size: 12px; color: #6b7280;">No photos yet.</span>';
+        } catch (error) {
+            host.innerHTML = `<span style="font-size: 12px; color: #b91c1c;">${wfEscape(error.message)}</span>`;
+        }
+    };
+
+    window.wfUploadPhotos = async function () {
+        const input = document.getElementById('wfPhotoFiles');
+        const files = input ? Array.from(input.files || []) : [];
+        if (!files.length) return wfNotify('Choose one or more photos first.', 'error');
+        if (workflowBusy) return;
+        workflowBusy = true;
+
+        const body = new FormData();
+        files.forEach(file => body.append('photos[]', file, file.name));
+
+        try {
+            const response = await fetch(`${WF_API}/admin/items/${workflowItem.item_id}/photos`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${wfToken()}`, 'Accept': 'application/json' },
+                body,
+            });
+            const payload = await response.json().catch(() => ({}));
+
+            if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
+
+            input.value = '';
+            wfNotify(files.length === 1 ? 'Photo added' : `${files.length} photos added`, 'success');
+            wfLoadPhotos();
+        } catch (error) {
+            wfNotify(error.message, 'error');
+        } finally {
+            workflowBusy = false;
+        }
+    };
+
+    window.wfDeletePhoto = async function (photoId) {
+        if (!confirm('Remove this photo from the listing?')) return;
+        if (workflowBusy) return;
+        workflowBusy = true;
+
+        try {
+            const response = await fetch(`${WF_API}/admin/items/${workflowItem.item_id}/photos/${photoId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${wfToken()}`, 'Accept': 'application/json' },
+            });
+            const payload = await response.json().catch(() => ({}));
+
+            if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
+
+            wfNotify('Photo removed', 'success');
+            wfLoadPhotos();
+        } catch (error) {
+            wfNotify(error.message, 'error');
+        } finally {
+            workflowBusy = false;
+        }
+    };
+
 
     window.wfReject = function () {
         const reason = wfValue('wfRejectReason');
