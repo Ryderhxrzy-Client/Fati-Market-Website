@@ -69,5 +69,8 @@ Route::middleware('admin.auth')->group(function () {
     Route::post('/profile/picture', [AdminAuthController::class, 'updateProfilePicture'])->name('admin.profile.picture');
     Route::get('/settings', [\App\Http\Controllers\Admin\GcashSettingsController::class, 'show'])->name('admin.settings');
     Route::post('/settings/gcash', [\App\Http\Controllers\Admin\GcashSettingsController::class, 'update'])->name('admin.settings.gcash.update');
-    Route::post('/logout', [AdminAuthController::class, 'logout'])->name('admin.logout');
+    // Signing out is a POST from the sidebar form, but a proxy that redirects
+    // http to https turns that into a GET, which used to be a 405 page. Both
+    // verbs end the session.
+    Route::match(['get', 'post'], '/logout', [AdminAuthController::class, 'logout'])->name('admin.logout');
 });
