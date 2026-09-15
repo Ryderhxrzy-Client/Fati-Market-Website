@@ -147,12 +147,12 @@ class AdminAuthController extends Controller
      */
     public function logout(Request $request)
     {
-        Session::forget(['admin_token', 'admin_data', 'login_timestamp']);
+        Session::forget(['admin_token', 'admin_data', 'login_timestamp', 'admin_profile_picture', 'admin_first_name', 'admin_last_name']);
         Session::invalidate();
         Session::regenerateToken();
 
-        return redirect('/')
-            ->with('success', 'Logged out successfully.');
+        return redirect()->route('admin.login')
+            ->with('success', 'You have been signed out.');
     }
     
     /**
@@ -164,7 +164,7 @@ class AdminAuthController extends Controller
         $adminData = session()->get('admin_data');
 
         if (empty($token) || empty($adminData)) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         try {
@@ -183,7 +183,7 @@ class AdminAuthController extends Controller
     public function privateOffers(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -221,7 +221,7 @@ class AdminAuthController extends Controller
     public function acquiredItems(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -250,7 +250,7 @@ class AdminAuthController extends Controller
     public function publicListings(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -279,7 +279,7 @@ class AdminAuthController extends Controller
     public function reservedItems(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -308,7 +308,7 @@ class AdminAuthController extends Controller
     public function soldItems(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -337,7 +337,7 @@ class AdminAuthController extends Controller
     public function students(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -364,7 +364,7 @@ class AdminAuthController extends Controller
     public function conversations(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         return view('admin.conversations');
@@ -376,7 +376,7 @@ class AdminAuthController extends Controller
     public function transactionHistory(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         // The page loads its rows itself, so an approval can refresh the
@@ -390,7 +390,7 @@ class AdminAuthController extends Controller
     public function pointsGiven(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -419,7 +419,7 @@ class AdminAuthController extends Controller
     public function pointsReceived(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -448,7 +448,7 @@ class AdminAuthController extends Controller
     public function cashTransactions(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -477,7 +477,7 @@ class AdminAuthController extends Controller
     public function tradeTransactions(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -506,7 +506,7 @@ class AdminAuthController extends Controller
     public function profitSummary(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -550,7 +550,7 @@ class AdminAuthController extends Controller
     public function itemsAcquiredReport(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -602,7 +602,7 @@ class AdminAuthController extends Controller
     public function itemsSoldReport(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -641,7 +641,7 @@ class AdminAuthController extends Controller
     public function totalProfitReport(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -689,7 +689,7 @@ class AdminAuthController extends Controller
     public function profitReport(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -755,7 +755,7 @@ class AdminAuthController extends Controller
     public function categoriesReport(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -804,7 +804,7 @@ class AdminAuthController extends Controller
     public function usersReport(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -868,7 +868,7 @@ class AdminAuthController extends Controller
     public function categories(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -896,7 +896,7 @@ class AdminAuthController extends Controller
     public function activity(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -923,7 +923,7 @@ class AdminAuthController extends Controller
     public function profile(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $adminData = Session::get('admin_data');
@@ -937,7 +937,7 @@ class AdminAuthController extends Controller
     public function counter(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         return view('admin.counter');
@@ -1003,7 +1003,7 @@ class AdminAuthController extends Controller
     public function settings(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         return view('admin.settings');
