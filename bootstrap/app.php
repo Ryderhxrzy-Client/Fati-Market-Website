@@ -11,6 +11,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // The site runs behind the host's proxy, so the scheme and host it
+        // forwards are what route() must build URLs from - otherwise the
+        // login form posts to http://, the proxy answers with a redirect,
+        // and the browser re-sends it as a GET.
+        $middleware->trustProxies(at: '*');
+
         $middleware->alias([
             'admin.auth' => \App\Http\Middleware\AdminAuthMiddleware::class,
         ]);
