@@ -17,6 +17,11 @@
             <div class="chat-filters" id="chatFilters">
                 <button class="chip on" data-filter="all">All</button>
                 <button class="chip" data-filter="unread">Unread <span class="n" id="unreadChipCount"></span></button>
+                <button class="chip" data-filter="negotiating">Negotiating</button>
+                <button class="chip" data-filter="available">Available</button>
+                <button class="chip" data-filter="reserved">Reserved</button>
+                <button class="chip" data-filter="sold">Sold</button>
+                <button class="chip" data-filter="rejected">Rejected</button>
                 <button class="chip" data-filter="archived">Archived</button>
             </div>
         </div>
@@ -58,7 +63,10 @@
                 <button class="row-btn" onclick="clearReply()" aria-label="Cancel reply"><i class="fas fa-xmark"></i></button>
             </div>
             <div id="emojiPanel" class="emoji-panel" hidden>
-                <div class="emoji-tabs" id="emojiTabs"></div>
+                <div class="emoji-head">
+                    <div class="emoji-tabs" id="emojiTabs"></div>
+                    <button class="row-btn" onclick="closeEmoji()" aria-label="Close emoji picker" title="Close"><i class="fas fa-xmark"></i></button>
+                </div>
                 <div class="emoji-grid" id="emojiGrid"></div>
             </div>
             <div class="composer-row">
@@ -89,7 +97,7 @@
     .chat-shell { display: flex; gap: 16px; height: calc(100vh - 64px - 48px); min-height: 480px; }
     .chat-list { width: 340px; flex-shrink: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); display: flex; flex-direction: column; overflow: hidden; }
     .chat-list-head { padding: 12px 12px 8px; border-bottom: 1px solid var(--line); }
-    .chat-filters { display: flex; gap: 6px; margin-top: 10px; }
+    .chat-filters { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
     .chip { padding: 5px 11px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-700); font-size: 12px; font-weight: 600; cursor: pointer; display: inline-flex; gap: 5px; align-items: center; }
     .chip.on { background: var(--brand-600); border-color: var(--brand-600); color: #fff; }
     .chip .n:empty { display: none; }
@@ -123,32 +131,51 @@
     .chat-head-id { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; }
     .chat-head .badges { display: flex; gap: 6px; align-items: center; margin-top: 3px; flex-wrap: wrap; }
     .offer-pinned { gap: 8px; flex-wrap: wrap; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--surface-sunk); flex-shrink: 0; }
-    .chat-messages { flex: 1; overflow-y: auto; padding: 18px 20px; background: var(--canvas); display: flex; flex-direction: column; gap: 6px; }
+    .chat-messages { flex: 1; overflow-y: auto; padding: 16px 20px; background: var(--canvas); display: flex; flex-direction: column; gap: 4px; }
 
     .msg { display: flex; gap: 8px; align-items: flex-end; max-width: 72%; }
     .msg.me { align-self: flex-end; flex-direction: row-reverse; }
     .msg.them { align-self: flex-start; }
     .msg + .msg.same { margin-top: -2px; }
     .msg .avatar { width: 28px; height: 28px; font-size: 11px; }
-    .msg .stack { display: flex; flex-direction: column; min-width: 0; }
+    /* Children keep their own width: a long sender name must not stretch the bubble. */
+    .msg .stack { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; max-width: 100%; }
+    .msg .stack > * { max-width: 100%; }
+    .bubble { width: fit-content; }
     .msg.me .stack { align-items: flex-end; }
-    .msg .sender { font-size: 11px; color: var(--ink-500); margin: 0 0 3px 4px; }
-    .bubble { position: relative; padding: 9px 13px; border-radius: 18px; font-size: 13.5px; line-height: 1.45; white-space: pre-wrap; word-break: break-word; cursor: context-menu; }
+    .msg .sender { font-size: 11px; color: var(--ink-500); margin: 0 0 3px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
+    .bubble { position: relative; padding: 8px 12px; border-radius: 18px; font-size: 13.5px; line-height: 1.4; word-break: break-word; cursor: context-menu; }
+    .bubble .text { white-space: pre-wrap; }
     .msg.them .bubble { background: var(--surface); color: var(--ink-900); border-bottom-left-radius: 5px; box-shadow: var(--shadow-sm); }
     .msg.me .bubble { background: var(--brand-600); color: #fff; border-bottom-right-radius: 5px; }
-    .bubble .quote { display: flex; gap: 8px; margin: -3px -5px 8px; padding: 6px 9px; border-radius: 10px; font-size: 12px; background: rgba(16, 21, 19, 0.06); }
-    .msg.me .bubble .quote { background: rgba(255,255,255,0.16); }
-    .bubble .quote .rule { width: 3px; border-radius: 3px; background: var(--brand-600); flex-shrink: 0; }
-    .msg.me .bubble .quote .rule { background: rgba(255,255,255,0.8); }
-    .bubble .quote .q-name { font-weight: 700; margin: 0; }
-    .bubble .quote .q-text { margin: 1px 0 0; opacity: 0.85; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    /* The quoted line sits above the bubble, the way Messenger draws a reply,
+       and the bubble overlaps its bottom edge. */
+    .reply-caption { font-size: 11px; color: var(--ink-400); margin: 0 6px 3px; display: flex; align-items: center; gap: 5px; }
+    .quote-above { display: flex; gap: 8px; max-width: 100%; margin-bottom: -10px; padding: 6px 11px 15px; border-radius: 14px; background: var(--surface-sunk); border: 1px solid var(--line); font-size: 12px; color: var(--ink-600); }
+    .msg.me .quote-above { background: var(--brand-50); border-color: var(--brand-100); }
+    .quote-above .rule { width: 3px; border-radius: 3px; background: var(--brand-600); flex-shrink: 0; }
+    .quote-above .q-name { font-weight: 700; margin: 0; color: var(--ink-700); }
+    .quote-above .q-text { margin: 1px 0 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
     .msg .time { font-size: 10.5px; color: var(--ink-400); margin: 3px 4px 0; }
     .msg.me .time { text-align: right; }
-    .msg .reply-hint { opacity: 0; transition: opacity 0.15s ease; align-self: center; }
+    .msg .line { display: flex; align-items: center; gap: 4px; max-width: 100%; }
+    .msg.me .line { flex-direction: row-reverse; }
+    .msg .reply-hint { opacity: 0; transition: opacity 0.15s ease; flex-shrink: 0; width: 28px; height: 28px; }
     .msg:hover .reply-hint { opacity: 1; }
     .card { align-self: flex-start; max-width: 440px; width: 100%; }
     .card.me { align-self: flex-end; }
     .day-sep { align-self: center; font-size: 11px; color: var(--ink-400); background: var(--surface); padding: 3px 10px; border-radius: 999px; margin: 8px 0; box-shadow: var(--shadow-sm); }
+    /* Something that happened to the thread itself - a rename - said in the middle, the way Messenger does. */
+    .system-line { align-self: center; max-width: 80%; text-align: center; font-size: 12px; color: var(--ink-500); margin: 6px 0; display: flex; align-items: center; gap: 6px; }
+    .system-line i { color: var(--brand-600); font-size: 11px; }
+    .system-line b { color: var(--ink-700); font-weight: 600; }
+    /* Where to collect the order, on the cards that reach the pickup stage. */
+    .loc-block { margin-top: 12px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface-sunk); }
+    .loc-block iframe { display: block; width: 100%; height: 150px; border: 0; }
+    .loc-block .loc-body { padding: 10px 12px; }
+    .loc-block .loc-name { margin: 0; font-size: 13px; font-weight: 700; color: var(--ink-900); display: flex; align-items: center; gap: 6px; }
+    .loc-block .loc-addr { margin: 2px 0 8px; font-size: 12px; color: var(--ink-600); }
+    .loc-block .loc-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 
     .composer { border-top: 1px solid var(--line); background: var(--surface); flex-shrink: 0; }
     .composer-row { display: flex; align-items: flex-end; gap: 8px; padding: 10px 12px; }
@@ -162,7 +189,8 @@
     .reply-bar-text { margin: 1px 0 0; font-size: 12px; color: var(--ink-500); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     .emoji-panel { border-bottom: 1px solid var(--line); }
-    .emoji-tabs { display: flex; gap: 4px; padding: 8px 10px 0; overflow-x: auto; }
+    .emoji-head { display: flex; align-items: center; gap: 6px; padding: 6px 8px 0 6px; }
+    .emoji-tabs { display: flex; gap: 4px; padding: 2px 4px 0; overflow-x: auto; flex: 1; min-width: 0; }
     .emoji-tabs button { border: none; background: none; padding: 6px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; color: var(--ink-600); cursor: pointer; white-space: nowrap; }
     .emoji-tabs button.on { background: var(--brand-100); color: var(--brand-800); }
     .emoji-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(36px, 1fr)); gap: 2px; padding: 8px 10px; height: 200px; overflow-y: auto; }
@@ -224,6 +252,24 @@ function authHeaders(json) {
 }
 
 function convKey(conv) { return `${conv.item_id}_${conv.other_user_id}`; }
+
+/** A readable, reload-proof address for a thread: ids first, then the names for people. */
+function threadSlug(conv) {
+    const words = `${personName(conv)} ${convName(conv)}`.toLowerCase().normalize('NFD').replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-').slice(0, 60);
+    return `${conv.item_id}-${conv.other_user_id}${words ? '-' + words : ''}`;
+}
+
+function threadFromUrl() {
+    const value = new URLSearchParams(window.location.search).get('thread') || '';
+    const match = value.match(/^(\d+)-(\d+)/);
+    return match ? `${match[1]}_${match[2]}` : null;
+}
+
+function writeThreadUrl(conv) {
+    const url = new URL(window.location.href);
+    if (conv) url.searchParams.set('thread', threadSlug(conv)); else url.searchParams.delete('thread');
+    history.replaceState(null, '', url.pathname + (url.search || '') + url.hash);
+}
 function convName(conv) { return conv.custom_name || conv.item_title || 'Conversation'; }
 function personName(conv) {
     const email = conv.other_user_email || '';
@@ -261,11 +307,18 @@ document.addEventListener('DOMContentLoaded', async function() {
     });
     field.addEventListener('input', autosize);
 
-    document.addEventListener('click', hideCtxMenu);
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideCtxMenu(); });
+    document.addEventListener('click', (e) => {
+        hideCtxMenu();
+        // A click anywhere outside the picker or its button closes it.
+        if (!e.target.closest('#emojiPanel') && !e.target.closest('#emojiButton')) closeEmoji();
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { hideCtxMenu(); closeEmoji(); } });
     window.addEventListener('scroll', hideCtxMenu, true);
 
     await loadConversations();
+    // Reopen the thread named in the address, so a reload lands where it was.
+    const wanted = threadFromUrl();
+    if (wanted && findConversation(wanted)) openConversation(wanted);
     // The list refreshes on its own, like the app's; the open thread too.
     listPoll = setInterval(() => loadConversations(true), 15000);
 });
@@ -300,6 +353,9 @@ function visibleConversations() {
         const archived = !!conv.is_archived;
         if (listFilter === 'archived' ? !archived : archived) return false;
         if (listFilter === 'unread' && !(Number(conv.unread_count) > 0)) return false;
+        // The item's stage, in the words the list already uses for its badge.
+        const stage = { pending: 'negotiating', private: 'negotiating', public: 'available', reserved: 'reserved', sold: 'sold', rejected: 'rejected' }[String(conv.item_status || '').toLowerCase()] || '';
+        if (['negotiating', 'available', 'reserved', 'sold', 'rejected'].includes(listFilter) && stage !== listFilter) return false;
         if (!query) return true;
         return [personName(conv), conv.item_title, conv.custom_name, conv.latest_message].join(' ').toLowerCase().includes(query);
     });
@@ -315,6 +371,7 @@ function renderConversations() {
     if (rows.length === 0) {
         const message = listFilter === 'archived' ? ['Nothing archived', 'Right-click a conversation to archive it.']
             : listFilter === 'unread' ? ['All caught up', 'You have read every message.']
+            : listFilter !== 'all' ? [`No ${listFilter} items`,'No conversation is about an item in that stage right now.']
             : ['No conversations', 'Chats open when a student offers an item or asks about a listing.'];
         list.innerHTML = `<div class="fm-empty"><i class="fas fa-inbox"></i><p>${message[0]}</p><span>${message[1]}</span></div>`;
         return;
@@ -419,7 +476,14 @@ async function conversationAction(key, action) {
             confirmLabel: 'Save',
         });
         if (name === null) return;
-        return patchConversation(conv, { custom_name: name.trim().slice(0, 80) });
+        const cleaned = name.trim().slice(0, 80);
+        if (cleaned === (conv.custom_name || '')) return;
+        const lastMessage = selectedConversation && convKey(selectedConversation) === key && currentMessages.length
+            ? currentMessages[currentMessages.length - 1].message_id : 0;
+        recordThreadEvent(conv, { name: cleaned, after: lastMessage, at: new Date().toISOString() });
+        const result = await patchConversation(conv, { custom_name: cleaned });
+        if (selectedConversation && convKey(selectedConversation) === key) renderMessages(currentMessages);
+        return result;
     }
 
     if (action === 'pin') return patchConversation(conv, { is_pinned: !conv.is_pinned });
@@ -455,6 +519,15 @@ async function patchConversation(conv, patch) {
     Object.assign(conv, patch);
     if (patch.is_archived === true) conv.is_pinned = false;
     if (patch.custom_name !== undefined) conv.custom_name = patch.custom_name || null;
+    // Archiving from the inbox: jump to the Archived shelf so the row is seen landing there.
+    if (patch.is_archived === true && listFilter !== 'archived') {
+        listFilter = 'archived';
+        document.querySelectorAll('#chatFilters .chip').forEach(c => c.classList.toggle('on', c.dataset.filter === 'archived'));
+    }
+    if (patch.is_archived === false && listFilter === 'archived') {
+        listFilter = 'all';
+        document.querySelectorAll('#chatFilters .chip').forEach(c => c.classList.toggle('on', c.dataset.filter === 'all'));
+    }
     renderConversations();
     if (selectedConversation && convKey(selectedConversation) === convKey(conv)) renderHeader();
 
@@ -467,13 +540,15 @@ async function patchConversation(conv, patch) {
 
         Object.assign(conv, payload.data || {});
         renderConversations();
+        if (selectedConversation && convKey(selectedConversation) === convKey(conv)) writeThreadUrl(conv);
         showToast(patch.custom_name !== undefined ? 'Conversation renamed'
             : patch.is_pinned !== undefined ? (conv.is_pinned ? 'Pinned' : 'Unpinned')
-            : (conv.is_archived ? 'Archived' : 'Back in the inbox'), 'success');
+            : (conv.is_archived ? 'Archived - find it under the Archived tab' : 'Back in the inbox'), 'success');
     } catch (error) {
         Object.assign(conv, before);
         renderConversations();
-        showToast(`Could not update: ${error.message}`, 'error');
+        if (selectedConversation && convKey(selectedConversation) === convKey(conv)) renderHeader();
+        showToast(`Could not update: ${error.message}${/404/.test(error.message) ? ' (the API does not have the chat update deployed yet)' : ''}`, 'error');
     }
 }
 
@@ -481,6 +556,7 @@ async function patchConversation(conv, patch) {
 
 function closeThread() {
     selectedConversation = null;
+    writeThreadUrl(null);
     currentMessages = [];
     clearReply();
     if (threadPoll) clearInterval(threadPoll);
@@ -500,6 +576,7 @@ async function openConversation(key) {
     if (!conv) return;
 
     selectedConversation = conv;
+    writeThreadUrl(conv);
     clearReply();
     renderConversations();
     renderHeader();
@@ -596,9 +673,26 @@ function renderMessages(messages) {
         return;
     }
 
+    const pickupCards = messages.filter(m => m.kind && m.kind !== 'text' && m.order && pickupStageOf(m));
+    latestPickupMessageId = pickupCards.length ? pickupCards[pickupCards.length - 1].message_id : null;
+
+    // Renames are this person's own, so the thread keeps them itself: each
+    // sits after the line that was last when it happened.
+    const events = threadEvents(selectedConversation);
+    const lastId = messages.length ? Number(messages[messages.length - 1].message_id) : 0;
+    const eventsAfter = (id) => events.filter(e => Number(e.after) === Number(id)).map(systemLineHtml).join('');
+    const orphaned = events.filter(e => !messages.some(m => Number(m.message_id) === Number(e.after))).map(systemLineHtml).join('');
+
     let lastDay = '';
     let lastSender = null;
-    area.innerHTML = messages.map(msg => {
+    area.innerHTML = orphaned + messages.map(msg => renderOne(msg) + eventsAfter(msg.message_id)).join('');
+
+    if (stuckToBottom || !area.dataset.scrolled) {
+        area.scrollTop = area.scrollHeight;
+        area.dataset.scrolled = '1';
+    }
+
+    function renderOne(msg) {
         const isAdmin = msg.sender_id !== selectedConversation.other_user_id;
         const senderName = msg.sender_name || 'User';
         const when = new Date(msg.sent_at);
@@ -627,19 +721,31 @@ function renderMessages(messages) {
                     : `<div class="avatar" style="${same ? 'visibility: hidden;' : ''}">${escapeHtml(initials(senderName))}</div>`)}
                 <div class="stack">
                     ${!isAdmin && !same ? `<p class="sender">${escapeHtml(senderName)}</p>` : ''}
-                    <div class="bubble" oncontextmenu="showMessageMenu(event, ${Number(msg.message_id)})">
-                        ${msg.reply_to ? quoteHtml(msg.reply_to, isAdmin) : ''}${escapeHtml(msg.message)}
-                    </div>
+                    ${msg.reply_to ? quoteHtml(msg.reply_to, isAdmin) : ''}<div class="line"><div class="bubble" oncontextmenu="showMessageMenu(event, ${Number(msg.message_id)})"><span class="text">${escapeHtml(msg.message)}</span></div><button class="row-btn reply-hint" title="Reply" onclick="startReply(${Number(msg.message_id)})"><i class="fas fa-reply"></i></button></div>
                     <p class="time" title="${escapeAttr(msg.sent_at || '')}">${escapeHtml(timestamp)}</p>
                 </div>
-                <button class="row-btn reply-hint" title="Reply" onclick="startReply(${Number(msg.message_id)})"><i class="fas fa-reply"></i></button>
             </div>`;
-    }).join('');
-
-    if (stuckToBottom || !area.dataset.scrolled) {
-        area.scrollTop = area.scrollHeight;
-        area.dataset.scrolled = '1';
     }
+}
+
+function systemLineHtml(event) {
+    const when = new Date(event.at);
+    const stamp = isNaN(when.getTime()) ? '' : ' · ' + when.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    const text = event.name
+        ? `You renamed the conversation to <b>${escapeHtml(event.name)}</b>`
+        : 'You removed the conversation name';
+    return `<div class="system-line"><i class="fas fa-pen"></i><span>${text}${escapeHtml(stamp)}</span></div>`;
+}
+
+function threadEvents(conv) {
+    if (!conv) return [];
+    try { return JSON.parse(localStorage.getItem('fm_thread_events_' + convKey(conv)) || '[]'); } catch (e) { return []; }
+}
+
+function recordThreadEvent(conv, event) {
+    const events = threadEvents(conv);
+    events.push(event);
+    try { localStorage.setItem('fm_thread_events_' + convKey(conv), JSON.stringify(events.slice(-30))); } catch (e) {}
 }
 
 function dayLabel(date) {
@@ -652,8 +758,12 @@ function dayLabel(date) {
 }
 
 function quoteHtml(quote, mine) {
-    const who = quote.sender_id === selectedConversation.other_user_id ? personName(selectedConversation) : 'You';
-    return `<div class="quote"><div class="rule"></div><div class="min-w-0"><p class="q-name">${escapeHtml(quote.sender_name || who)}</p><p class="q-text">${escapeHtml(quote.message || quote.kind || '')}</p></div></div>`;
+    const other = personName(selectedConversation);
+    const quotedTheirs = quote.sender_id === selectedConversation.other_user_id;
+    const quotedName = quotedTheirs ? (quote.sender_name || other) : 'You';
+    const caption = `${mine ? 'You' : other} replied to ${quotedTheirs ? (mine ? quotedName : 'themselves') : (mine ? 'yourself' : 'you')}`;
+    return `<p class="reply-caption"><i class="fas fa-reply" style="font-size: 10px;"></i>${escapeHtml(caption)}</p>`
+        + `<div class="quote-above"><div class="rule"></div><div class="min-w-0"><p class="q-name">${escapeHtml(quotedName)}</p><p class="q-text">${escapeHtml(quote.message || quote.kind || '')}</p></div></div>`;
 }
 
 // ── Replies ──────────────────────────────────────────────────────────────
@@ -730,12 +840,19 @@ let emojiTab = 'smileys-and-people';
 
 function toggleEmoji() {
     const panel = document.getElementById('emojiPanel');
-    panel.hidden = !panel.hidden;
-    document.getElementById('emojiButton').classList.toggle('on', !panel.hidden);
-    if (!panel.hidden) {
-        renderEmojiTabs();
-        loadEmojis(emojiTab);
-    }
+    if (!panel.hidden) return closeEmoji();
+    panel.hidden = false;
+    document.getElementById('emojiButton').classList.add('on');
+    renderEmojiTabs();
+    loadEmojis(emojiTab);
+}
+
+function closeEmoji() {
+    const panel = document.getElementById('emojiPanel');
+    if (!panel || panel.hidden) return;
+    panel.hidden = true;
+    document.getElementById('emojiButton').classList.remove('on');
+    document.getElementById('messageField').focus();
 }
 
 function renderEmojiTabs() {
@@ -821,7 +938,7 @@ async function sendMessage() {
         field.value = '';
         autosize();
         clearReply();
-        document.getElementById('emojiPanel').hidden = true;
+        closeEmoji();
         await loadThread();
         loadConversations(true);
     } catch (error) {
@@ -835,6 +952,44 @@ async function sendMessage() {
 // ── Order cards ──────────────────────────────────────────────────────────
 
 const PESO = '₱';
+
+// The same fixed pin the mobile app and the settings page show.
+const STORE = {
+    name: "Ofelia's Store",
+    address: 'Hollywood Terraces, Sumulong Hwy, Antipolo, 1870, Rizal',
+    lat: '14.619292',
+    lng: '121.151418',
+};
+STORE.embed = `https://maps.google.com/maps?q=${STORE.lat},${STORE.lng}&z=16&output=embed`;
+STORE.maps = `https://www.google.com/maps/search/?api=1&query=${STORE.lat},${STORE.lng}`;
+STORE.directions = `https://www.google.com/maps/dir/?api=1&destination=${STORE.lat},${STORE.lng}`;
+
+/** The stages at which the buyer has to come to the store. */
+const PICKUP_STAGES = ['payment_verified', 'reserved', 'ready_for_pickup'];
+
+let latestPickupMessageId = null;
+
+function pickupStageOf(msg) {
+    const order = msg.order || {};
+    const stage = msg.kind === 'order_update' ? (msg.order_status_at || order.status) : order.status;
+    return PICKUP_STAGES.includes(stage);
+}
+
+/** Where to collect: the map on the newest pickup card, the address and buttons on every one. */
+function locationHtml(withMap) {
+    return `
+        <div class="loc-block">
+            ${withMap ? `<iframe title="Map of ${escapeAttr(STORE.name)}" src="${escapeAttr(STORE.embed)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>` : ''}
+            <div class="loc-body">
+                <p class="loc-name"><i class="fas fa-location-dot" style="color: var(--brand-600);"></i>Pick up at ${escapeHtml(STORE.name)}</p>
+                <p class="loc-addr">${escapeHtml(STORE.address)}</p>
+                <div class="loc-actions">
+                    <a class="fm-btn primary sm" href="${escapeAttr(STORE.directions)}" target="_blank" rel="noopener"><i class="fas fa-diamond-turn-right"></i>Directions</a>
+                    <a class="fm-btn ghost sm" href="${escapeAttr(STORE.maps)}" target="_blank" rel="noopener"><i class="fas fa-map"></i>Open in Maps</a>
+                </div>
+            </div>
+        </div>`;
+}
 
 function peso(amount) {
     const value = Number(amount);
@@ -945,6 +1100,7 @@ function renderOrderCard(msg, isAdmin, senderName, timestamp) {
                  onclick="openProof(this.dataset.proof, this.dataset.reference)" style="margin-top: 10px; width: 100%; height: 150px; object-fit: cover; border-radius: 8px; cursor: pointer;">
             <p style="margin: 4px 0 0 0; font-size: 11px; color: var(--ink-500);">Click the receipt to see it in full</p>` : ''}
         ${msg.kind === 'order_update' ? `<p style="margin: 10px 0 0 0; padding: 8px 10px; background: var(--surface-sunk); border-radius: 6px; font-size: 12px; color: var(--ink-700); white-space: pre-line;">${escapeHtml(msg.message)}</p>` : ''}
+        ${pickupStageOf(msg) ? locationHtml(Number(msg.message_id) === Number(latestPickupMessageId)) : ''}
         ${carriesActions(msg) ? orderActionsHtml(order) : ''}`;
 
     return cardShell(isAdmin, heading[0], heading[1], order.receipt_no || ('#' + order.transaction_id), body, `${senderName} · ${timestamp}`);

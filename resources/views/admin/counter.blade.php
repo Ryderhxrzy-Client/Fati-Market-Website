@@ -15,24 +15,31 @@
         <div class="fm-card-head">
             <div>
                 <h4>Scan a code</h4>
-                <p class="cell-sub" style="margin-top: 2px;">Hold the phone's QR up to the camera.</p>
+                <p class="cell-sub" style="margin-top: 2px;">Hold the phone's QR up to the camera, or type the receipt number from the buyer's order.</p>
             </div>
-            <button class="fm-btn ghost sm" id="cameraToggle" onclick="toggleCamera()"><i class="fas fa-camera"></i>Start camera</button>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <select id="cameraSelect" class="fm-input" style="width: auto; min-width: 150px; display: none;" onchange="switchCamera(this.value)" title="Camera"></select>
+                <button class="fm-btn ghost sm" id="cameraToggle" onclick="toggleCamera()"><i class="fas fa-camera"></i>Start camera</button>
+            </div>
         </div>
         <div style="position: relative; background: #0b0f0d; aspect-ratio: 4 / 3;">
             <video id="camVideo" playsinline muted style="width: 100%; height: 100%; object-fit: cover; display: block;"></video>
             <canvas id="camCanvas" hidden></canvas>
             <div id="camHint" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.75); font-size: 13px; text-align: center; padding: 24px;">
-                <span><i class="fas fa-qrcode" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>Start the camera, or type the code below.</span>
+                <span><i class="fas fa-qrcode" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>Start the camera and show the phone's QR to it, type the code below, or read a photo of the QR.</span>
             </div>
             <div style="position: absolute; left: 50%; top: 50%; width: 56%; aspect-ratio: 1; transform: translate(-50%, -50%); border: 2px solid rgba(255,255,255,0.65); border-radius: 14px; pointer-events: none;"></div>
         </div>
         <div class="fm-card-body">
             <form onsubmit="lookupTyped(event)" class="flex gap-2">
-                <input id="codeInput" class="fm-input" placeholder="Or paste the code: FMITEM1.… or FMORD…" autocomplete="off">
+                <input id="codeInput" class="fm-input" placeholder="Or type the receipt number (FM-000015), the order number, or the QR text" autocomplete="off">
                 <button type="submit" class="fm-btn primary"><i class="fas fa-magnifying-glass"></i>Look up</button>
             </form>
             <p id="camStatus" class="cell-sub" style="margin-top: 8px;"></p>
+            <label class="fm-btn ghost sm" style="margin-top: 10px; cursor: pointer;">
+                <i class="fas fa-image"></i>Read a photo or screenshot of the QR
+                <input id="qrImage" type="file" accept="image/*" hidden onchange="readQrImage(this.files[0])">
+            </label>
         </div>
     </section>
 
@@ -63,34 +70,97 @@
     let lastCode = null;
     let lastAt = 0;
     let busy = false;
+    let detector = null;
+    let scanTimer = null;
 
     const video = document.getElementById('camVideo');
     const canvas = document.getElementById('camCanvas');
+    const CAMERA_KEY = 'fm_counter_camera';
+
+    // Chrome's native reader when it exists (it copes with a phone screen far
+    // better than a JS decoder); jsQR otherwise.
+    if ('BarcodeDetector' in window) {
+        try { detector = new BarcodeDetector({ formats: ['qr_code'] }); } catch (e) { detector = null; }
+    }
+
+    function cameraBlockedReason() {
+        if (!window.isSecureContext) {
+            return 'The browser only opens the camera on https or localhost. Open this page as http://localhost or over https, '
+                + 'or type the code below.';
+        }
+        if (!navigator.mediaDevices?.getUserMedia) {
+            return 'This browser cannot open the camera. Type the code below or read a photo of the QR.';
+        }
+        return null;
+    }
+
+    async function listCameras() {
+        const select = document.getElementById('cameraSelect');
+        try {
+            const devices = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+            if (devices.length < 2) { select.style.display = 'none'; return; }
+            const chosen = localStorage.getItem(CAMERA_KEY) || '';
+            select.innerHTML = devices.map((d, i) => `<option value="${d.deviceId}" ${d.deviceId === chosen ? 'selected' : ''}>${d.label || 'Camera ' + (i + 1)}</option>`).join('');
+            select.style.display = 'block';
+        } catch (e) {
+            select.style.display = 'none';
+        }
+    }
+
+    async function openStream(deviceId) {
+        // A phone: prefer the back camera. A laptop: whatever it has - the
+        // "environment" wish is only a preference, never a requirement.
+        const attempts = [];
+        if (deviceId) attempts.push({ video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+        attempts.push({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+        attempts.push({ video: true, audio: false });
+
+        let lastError = null;
+        for (const constraints of attempts) {
+            try {
+                return await navigator.mediaDevices.getUserMedia(constraints);
+            } catch (error) {
+                lastError = error;
+                if (error.name === 'NotAllowedError' || error.name === 'SecurityError') break;
+            }
+        }
+        throw lastError || new Error('No camera');
+    }
 
     async function toggleCamera() {
         if (stream) { stopCamera(); return; }
 
-        if (!navigator.mediaDevices?.getUserMedia) {
-            setStatus('This browser cannot open the camera. Type the code instead.', true);
-            return;
-        }
+        const blocked = cameraBlockedReason();
+        if (blocked) { setStatus(blocked, true); return; }
 
         try {
-            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+            stream = await openStream(localStorage.getItem(CAMERA_KEY) || '');
             video.srcObject = stream;
             await video.play();
             document.getElementById('camHint').style.display = 'none';
             document.getElementById('cameraToggle').innerHTML = '<i class="fas fa-stop"></i>Stop camera';
             scanning = true;
-            setStatus('Looking for a QR code…');
-            requestAnimationFrame(scanFrame);
+            setStatus(`Looking for a QR code… (${detector ? 'native reader' : 'jsQR'}). Hold the phone still, 15 to 25 cm from the camera, screen at full brightness.`);
+            listCameras();
+            scanTimer = setInterval(scanFrame, 120);
         } catch (error) {
-            setStatus('Camera unavailable: ' + error.message + '. Type the code instead.', true);
+            const why = error.name === 'NotAllowedError' ? 'Camera permission was denied. Allow it in the browser\'s site settings and try again.'
+                : error.name === 'NotFoundError' ? 'No camera was found on this device.'
+                : error.name === 'NotReadableError' ? 'The camera is in use by another app (Zoom, Teams, the emulator). Close it and try again.'
+                : `Camera unavailable: ${error.message}`;
+            setStatus(why + ' You can type the code or read a photo of the QR instead.', true);
         }
+    }
+
+    function switchCamera(deviceId) {
+        localStorage.setItem(CAMERA_KEY, deviceId);
+        if (stream) { stopCamera(); toggleCamera(); }
     }
 
     function stopCamera() {
         scanning = false;
+        if (scanTimer) clearInterval(scanTimer);
+        scanTimer = null;
         if (stream) stream.getTracks().forEach(t => t.stop());
         stream = null;
         video.srcObject = null;
@@ -99,29 +169,77 @@
         setStatus('');
     }
 
-    function scanFrame() {
-        if (!scanning) return;
+    function drawFrame() {
+        if (video.readyState !== video.HAVE_ENOUGH_DATA || !video.videoWidth) return null;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        return context;
+    }
 
-        if (video.readyState === video.HAVE_ENOUGH_DATA && typeof jsQR === 'function') {
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const context = canvas.getContext('2d', { willReadFrequently: true });
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const image = context.getImageData(0, 0, canvas.width, canvas.height);
-            const result = jsQR(image.data, image.width, image.height, { inversionAttempts: 'dontInvert' });
+    /** Decode whatever is on the canvas: the native reader first, then jsQR on the full frame and on the centre. */
+    async function decodeCanvas() {
+        if (detector) {
+            try {
+                const codes = await detector.detect(canvas);
+                if (codes.length && codes[0].rawValue) return codes[0].rawValue;
+            } catch (e) { /* fall through to jsQR */ }
+        }
+        if (typeof jsQR !== 'function') return null;
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+        const full = context.getImageData(0, 0, canvas.width, canvas.height);
+        const hit = jsQR(full.data, full.width, full.height, { inversionAttempts: 'attemptBoth' });
+        if (hit?.data) return hit.data;
 
-            if (result && result.data) {
+        // A phone held near a webcam fills only the middle: try that region alone.
+        const side = Math.floor(Math.min(canvas.width, canvas.height) * 0.7);
+        const x = Math.floor((canvas.width - side) / 2), y = Math.floor((canvas.height - side) / 2);
+        const centre = context.getImageData(x, y, side, side);
+        const hit2 = jsQR(centre.data, centre.width, centre.height, { inversionAttempts: 'attemptBoth' });
+        return hit2?.data || null;
+    }
+
+    let decoding = false;
+
+    async function scanFrame() {
+        if (!scanning || decoding) return;
+        if (!drawFrame()) return;
+        decoding = true;
+        try {
+            const code = await decodeCanvas();
+            if (code) {
                 const now = Date.now();
                 // The same code stays in frame for a while; look it up once.
-                if (result.data !== lastCode || now - lastAt > 8000) {
-                    lastCode = result.data;
+                if (code !== lastCode || now - lastAt > 8000) {
+                    lastCode = code;
                     lastAt = now;
-                    handleCode(result.data);
+                    handleCode(code);
                 }
             }
+        } finally {
+            decoding = false;
         }
+    }
 
-        requestAnimationFrame(scanFrame);
+    /** The no-camera path: a photo or screenshot of the QR, decoded the same way. */
+    async function readQrImage(file) {
+        if (!file) return;
+        setStatus('Reading the image…');
+        try {
+            const bitmap = await createImageBitmap(file);
+            const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+            canvas.width = Math.round(bitmap.width * scale);
+            canvas.height = Math.round(bitmap.height * scale);
+            canvas.getContext('2d', { willReadFrequently: true }).drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+            const code = await decodeCanvas();
+            if (!code) throw new Error('No QR code was found in that image. Crop closer to the code and try again.');
+            handleCode(code);
+        } catch (error) {
+            setStatus(error.message, true);
+        } finally {
+            document.getElementById('qrImage').value = '';
+        }
     }
 
     function setStatus(text, isError) {
