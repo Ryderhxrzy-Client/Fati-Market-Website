@@ -4,9 +4,11 @@
 @section('subtitle', 'How the store is doing today')
 
 @section('actions')
+    {{-- COUNTER SCAN DISABLED
     <a href="{{ route('admin.counter') }}" class="fm-btn primary">
         <i class="fas fa-qrcode"></i>Counter
     </a>
+    --}}
 @endsection
 
 @section('content')
@@ -14,7 +16,7 @@
     <!-- USERS SECTION -->
     <div>
         <h3 class="fm-section-title">Students</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <a href="{{ route('admin.students') }}" class="stat-card">
                 <div class="flex items-start justify-between">
                     <div>
@@ -35,18 +37,6 @@
                     </div>
                     <div class="stat-icon" style="background: var(--success-bg); color: var(--success);">
                         <i class="fas fa-check-circle"></i>
-                    </div>
-                </div>
-            </a>
-
-            <a href="{{ route('admin.students') }}" class="stat-card">
-                <div class="flex items-start justify-between">
-                    <div>
-                        <p class="stat-label">Pending approval</p>
-                        <div class="stat-value">{{ $stats['users']['pending_students'] ?? 0 }}</div>
-                    </div>
-                    <div class="stat-icon" style="background: var(--warning-bg); color: var(--warning);">
-                        <i class="fas fa-hourglass-half"></i>
                     </div>
                 </div>
             </a>
@@ -98,50 +88,11 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         <div class="lg:col-span-2 space-y-6">
-            {{--
-                The meet-ups Ofelia has booked - sellers due at the store with an
-                item - read from the pending offers, the same way the mobile home
-                screen shows them. Receiving the item clears it from the list.
-            --}}
-            <section class="fm-card">
-                <div class="fm-card-head">
-                    <div>
-                        <h4>Meet-ups</h4>
-                        <p class="cell-sub" style="margin-top: 2px;">Sellers bringing their items to the store</p>
-                    </div>
-                    <a href="{{ route('admin.conversations') }}" class="fm-btn ghost sm">Open chat</a>
-                </div>
-                <div id="meetupsList" class="fm-divided">
-                    <div style="padding: 20px; text-align: center;"><span class="loading-spinner"></span></div>
-                </div>
-            </section>
-
             @php
                 $recentActivities = $stats['recent_activities'] ?? [];
                 $registrations = $recentActivities['recent_registrations'] ?? [];
                 $items = $recentActivities['recent_items'] ?? [];
-                $verifications = $recentActivities['pending_verifications'] ?? [];
             @endphp
-
-            @if (!empty($verifications))
-            <section class="fm-card">
-                <div class="fm-card-head">
-                    <h4>Pending verifications</h4>
-                    <a href="{{ route('admin.students') }}" class="fm-btn primary sm">Review</a>
-                </div>
-                <div class="fm-divided">
-                    @foreach($verifications as $verification)
-                        <div class="flex items-center gap-4 px-5 py-3">
-                            <div class="stat-icon" style="background: var(--warning-bg); color: var(--warning);"><i class="fas fa-certificate"></i></div>
-                            <div class="flex-1 min-w-0">
-                                <p class="cell-title">{{ $verification['student_name'] ?? 'N/A' }}</p>
-                                <p class="cell-sub truncate">{{ $verification['email'] ?? 'N/A' }}</p>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            </section>
-            @endif
 
             @if (!empty($items))
             <section class="fm-card">
@@ -189,10 +140,12 @@
             <section class="fm-card">
                 <div class="fm-card-head"><h4>Quick actions</h4></div>
                 <div class="fm-divided">
+                    {{-- COUNTER SCAN DISABLED
                     <a href="{{ route('admin.counter') }}" class="flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition">
                         <span class="flex items-center gap-3"><i class="fas fa-qrcode" style="color: var(--brand-600); width: 16px;"></i>Scan at the counter</span>
                         <i class="fas fa-chevron-right" style="color: var(--ink-400);"></i>
                     </a>
+                    --}}
                     <a href="{{ route('admin.private-offers') }}" class="flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition">
                         <span class="flex items-center gap-3"><i class="fas fa-inbox" style="color: var(--brand-600); width: 16px;"></i>Review offers</span>
                         <i class="fas fa-chevron-right" style="color: var(--ink-400);"></i>
@@ -202,7 +155,7 @@
                         <i class="fas fa-chevron-right" style="color: var(--ink-400);"></i>
                     </a>
                     <a href="{{ route('admin.students') }}" class="flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition">
-                        <span class="flex items-center gap-3"><i class="fas fa-users" style="color: var(--brand-600); width: 16px;"></i>Approve students</span>
+                        <span class="flex items-center gap-3"><i class="fas fa-users" style="color: var(--brand-600); width: 16px;"></i>Manage students</span>
                         <i class="fas fa-chevron-right" style="color: var(--ink-400);"></i>
                     </a>
                     <a href="{{ route('admin.conversations') }}" class="flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition">
@@ -237,54 +190,6 @@
             const div = document.createElement('div');
             div.textContent = text ?? '';
             return div.innerHTML;
-        }
-
-        async function loadMeetups() {
-            const host = document.getElementById('meetupsList');
-            try {
-                const response = await fetch(`${API}/admin/items?status=pending`, { headers });
-                const payload = await response.json().catch(() => ({}));
-                if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
-
-                const now = Date.now();
-                const meetups = (payload.data || [])
-                    .map(item => ({ item, at: item.meetup_schedule ? new Date(item.meetup_schedule) : null }))
-                    .filter(m => m.at && !isNaN(m.at.getTime()))
-                    .sort((a, b) => a.at - b.at);
-
-                if (!meetups.length) {
-                    host.innerHTML = '<p style="padding: 18px 20px; font-size: 13px; color: var(--ink-500); margin: 0;">No meet-ups booked. Set one from an accepted offer in its chat.</p>';
-                    return;
-                }
-
-                const today = new Date(); today.setHours(0, 0, 0, 0);
-                const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
-
-                host.innerHTML = meetups.slice(0, 8).map(({ item, at }) => {
-                    const missed = at.getTime() < now;
-                    const day = new Date(at); day.setHours(0, 0, 0, 0);
-                    const dayLabel = day.getTime() === today.getTime() ? 'Today'
-                        : day.getTime() === tomorrow.getTime() ? 'Tomorrow'
-                        : at.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
-                    const clock = at.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-
-                    return `
-                        <div class="flex items-center gap-4 px-5 py-3">
-                            <div style="width: 46px; height: 46px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: ${missed ? 'var(--danger-bg)' : 'var(--brand-100)'}; color: ${missed ? 'var(--danger)' : 'var(--brand-800)'}; flex-shrink: 0;">
-                                <span style="font-size: 10px; font-weight: 700; text-transform: uppercase;">${esc(at.toLocaleDateString([], { weekday: 'short' }))}</span>
-                                <span style="font-size: 17px; font-weight: 700; line-height: 1;">${at.getDate()}</span>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <p class="cell-title truncate">${esc(item.title || ('Item #' + item.item_id))}</p>
-                                <p style="font-size: 12.5px; margin: 0; color: ${missed ? 'var(--danger)' : 'var(--brand-700)'};">${esc(dayLabel)} &middot; ${esc(clock)}</p>
-                                <p class="cell-sub truncate">${esc(item.seller_email || '')}</p>
-                            </div>
-                            ${missed ? '<span class="fm-badge danger">Missed</span>' : ''}
-                        </div>`;
-                }).join('');
-            } catch (error) {
-                host.innerHTML = `<p style="padding: 18px 20px; font-size: 13px; color: var(--danger); margin: 0;">Could not load meet-ups: ${esc(error.message)}</p>`;
-            }
         }
 
         async function loadStoreToday() {
@@ -324,7 +229,6 @@
             }
         }
 
-        loadMeetups();
         loadStoreToday();
     })();
 </script>
