@@ -222,8 +222,8 @@
             'Photos',
             photosFrozen ? 'A sold or rejected item keeps its photos.' : 'Add or remove the pictures buyers will see. The first one is the cover.',
             `<div id="wfPhotos" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;"><span style="font-size: 12px; color: #6b7280;">Loading photos…</span></div>
-             ${photosFrozen ? '' : `<input id="wfPhotoFiles" type="file" accept="image/*" multiple style="${inputStyle}">
-             <button style="${buttonStyle}" onclick="wfUploadPhotos()">Upload photos</button>`}`
+             ${photosFrozen ? '' : `<input id="wfPhotoFiles" type="file" accept="image/*" multiple style="${inputStyle}" onchange="wfUploadPhotos()">
+             <p id="wfPhotoNote" style="margin: 0; font-size: 12px; color: #6b7280;">Choosing a photo adds it straight away.</p>`}`
         );
 
         document.getElementById('workflowBody').innerHTML = html;
@@ -431,12 +431,21 @@
         }
     };
 
+    /**
+     * Choosing the files is the whole action.
+     *
+     * The panel used to carry an Upload photos button beside the picker, so a
+     * photo could sit chosen but never added - and the list below went on
+     * showing the old pictures as though nothing had been picked.
+     */
     window.wfUploadPhotos = async function () {
         const input = document.getElementById('wfPhotoFiles');
+        const note = document.getElementById('wfPhotoNote');
         const files = input ? Array.from(input.files || []) : [];
-        if (!files.length) return wfNotify('Choose one or more photos first.', 'error');
+        if (!files.length) return;
         if (workflowBusy) return;
         workflowBusy = true;
+        if (note) note.textContent = files.length === 1 ? 'Adding the photo…' : `Adding ${files.length} photos…`;
 
         const body = new FormData();
         files.forEach(file => body.append('photos[]', file, file.name));
@@ -455,8 +464,10 @@
             wfNotify(files.length === 1 ? 'Photo added' : `${files.length} photos added`, 'success');
             wfLoadPhotos();
         } catch (error) {
+            input.value = '';
             wfNotify(error.message, 'error');
         } finally {
+            if (note) note.textContent = 'Choosing a photo adds it straight away.';
             workflowBusy = false;
         }
     };
