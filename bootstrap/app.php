@@ -17,6 +17,14 @@ return Application::configure(basePath: dirname(__DIR__))
         // and the browser re-sends it as a GET.
         $middleware->trustProxies(at: '*');
 
+        // The phone turnover page proves itself with the one-item key from
+        // the QR it was opened with, not with a session - and a phone that
+        // sat in a pocket between the scan and the photographs would
+        // otherwise post with a session cookie the browser had dropped.
+        $middleware->validateCsrfTokens(except: [
+            'turnover/*',
+        ]);
+
         $middleware->alias([
             'admin.auth' => \App\Http\Middleware\AdminAuthMiddleware::class,
         ]);
