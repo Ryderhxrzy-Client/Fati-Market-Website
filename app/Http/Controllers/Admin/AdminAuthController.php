@@ -924,6 +924,10 @@ class AdminAuthController extends Controller
 
     /**
      * The counter: scan a turnover or pickup QR, or type its code.
+     *
+     * COUNTER SCAN DISABLED - the route to this page is commented out in
+     * routes/web.php, so nothing reaches it. Receiving an item now starts
+     * from the chat, which hands the counter off to a phone.
      */
     public function counter(Request $request)
     {
@@ -987,6 +991,99 @@ class AdminAuthController extends Controller
         }
     }
 
+
+    /**
+     * Change the name on the signed-in admin's own account.
+     *
+     * The console showed the name and could do nothing about it, so a name
+     * typed wrong at registration followed the admin onto every screen. The
+     * session's copies are updated too, because the sidebar and the header
+     * read them rather than asking the API on every page.
+     */
+    public function updateProfileName(Request $request)
+    {
+        $validated = $request->validate([
+            'first_name' => ['required', 'string', 'max:100'],
+            'last_name' => ['required', 'string', 'max:100'],
+        ]);
+
+        try {
+            $response = Http::withToken(session('admin_token'))
+                ->acceptJson()
+                ->timeout(30)
+                ->put('https://fati-api.alertaraqc.com/api/profile', $validated);
+
+            if (!$response->successful()) {
+                return back()->withInput()->withErrors(
+                    $response->json('errors') ?: ['first_name' => [$response->json('message') ?? 'The name could not be saved. Please try again.']]
+                );
+            }
+
+            $data = $response->json('data') ?? [];
+            $first = $data['first_name'] ?? $validated['first_name'];
+            $last = $data['last_name'] ?? $validated['last_name'];
+
+            session()->put('admin_first_name', $first);
+            session()->put('admin_last_name', $last);
+
+            $adminData = session('admin_data', []);
+            $adminData['first_name'] = $first;
+            $adminData['last_name'] = $last;
+            session()->put('admin_data', $adminData);
+
+            return redirect()->route('admin.profile')->with('profile_success', 'Your name has been updated.');
+        } catch (\Exception $e) {
+            \Log::error('Profile name update error: ' . $e->getMessage());
+
+            return back()->withInput()->withErrors(['first_name' => 'Could not reach the server. Please try again.']);
+        }
+    }
+
+    /**
+     * Change the signed-in admin's own password.
+     *
+     * The console had no way to do this at all: the only routes to a new
+     * password were the forgotten-password email and a students-only dialog
+     * in the app. The API is the one that checks the current password and
+     * ends the other sessions; this hands it the form and reports back.
+     */
+    public function updatePassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => ['required', 'string'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ], [
+            'password.confirmed' => 'The two new passwords do not match.',
+        ]);
+
+        try {
+            $response = Http::withToken(session('admin_token'))
+                ->acceptJson()
+                ->timeout(30)
+                ->post('https://fati-api.alertaraqc.com/api/account/password', [
+                    'current_password' => $request->input('current_password'),
+                    'password' => $request->input('password'),
+                    'password_confirmation' => $request->input('password_confirmation'),
+                ]);
+
+            if (!$response->successful()) {
+                $errors = $response->json('errors') ?: [
+                    'password' => [$response->json('message') ?? 'The password could not be changed. Please try again.'],
+                ];
+
+                return back()->withErrors($errors)->with('password_open', true);
+            }
+
+            return redirect()->route('admin.profile')
+                ->with('profile_success', $response->json('message') ?? 'Your password has been changed.');
+        } catch (\Exception $e) {
+            \Log::error('Password change error: ' . $e->getMessage());
+
+            return back()
+                ->withErrors(['password' => 'Could not reach the server. Please try again.'])
+                ->with('password_open', true);
+        }
+    }
 
     /**
      * Show settings page.
