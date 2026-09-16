@@ -14,6 +14,12 @@ return [
     |
     */
 
+    // The Fati Market API. Every admin screen reads and writes through it;
+    // this is the one place its address is written down.
+    'fati' => [
+        'url' => env('FATI_API_URL', 'https://fati-api.alertaraqc.com/api'),
+    ],
+
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
     ],
