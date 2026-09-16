@@ -59,15 +59,44 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         <div class="lg:col-span-2 space-y-6">
             <section class="fm-card">
-                <div class="fm-card-head"><h4>Account</h4></div>
-                <div class="fm-divided">
-                    <div class="flex items-center gap-4 px-5 py-3">
-                        <div class="stat-icon" style="background: var(--brand-100); color: var(--brand-700);"><i class="fas fa-user"></i></div>
-                        <div class="min-w-0">
-                            <p class="cell-sub">Full name</p>
-                            <p class="cell-title">{{ $fullName }}</p>
-                        </div>
+                <div class="fm-card-head">
+                    <div>
+                        <h4>Account</h4>
+                        <p class="cell-sub" style="margin-top: 2px;">Your name is what students see in chat and what the activity log records</p>
                     </div>
+                </div>
+
+                {{--
+                    The name was printed here and nothing more, so one typed
+                    wrong at registration followed the admin onto every screen.
+                --}}
+                <div class="fm-card-body" style="border-bottom: 1px solid var(--line);">
+                    @error('first_name')
+                        <p role="alert" class="fm-badge danger" style="margin-bottom: 12px;">{{ $message }}</p>
+                    @enderror
+                    @error('last_name')
+                        <p role="alert" class="fm-badge danger" style="margin-bottom: 12px;">{{ $message }}</p>
+                    @enderror
+
+                    <form method="POST" action="{{ route('admin.profile.update') }}" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        @csrf
+                        <div>
+                            <label class="fm-label" for="firstName">First name</label>
+                            <input id="firstName" name="first_name" class="fm-input" maxlength="100" required
+                                   value="{{ old('first_name', $firstName) }}">
+                        </div>
+                        <div>
+                            <label class="fm-label" for="lastName">Last name</label>
+                            <input id="lastName" name="last_name" class="fm-input" maxlength="100" required
+                                   value="{{ old('last_name', $lastName) }}">
+                        </div>
+                        <div class="md:col-span-2">
+                            <button type="submit" class="fm-btn primary"><i class="fas fa-save"></i>Save name</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="fm-divided">
                     <div class="flex items-center gap-4 px-5 py-3">
                         <div class="stat-icon" style="background: var(--brand-100); color: var(--brand-700);"><i class="fas fa-envelope"></i></div>
                         <div class="min-w-0">
@@ -82,6 +111,67 @@
                             <p class="cell-title">Administrator{{ !empty($adminData['user_id']) ? ' · user #' . $adminData['user_id'] : '' }}</p>
                         </div>
                     </div>
+                </div>
+            </section>
+
+            {{--
+                Changing the password of the account signed in here.
+
+                There was no way to do this from the console at all: the only
+                routes to a new password were the forgotten-password email and
+                a dialog in the app that only students could reach. The API
+                checks the old password and ends every other session.
+            --}}
+            <section class="fm-card" id="security">
+                <div class="fm-card-head">
+                    <div>
+                        <h4>Password</h4>
+                        <p class="cell-sub" style="margin-top: 2px;">Changing it signs your other devices out</p>
+                    </div>
+                </div>
+
+                <div class="fm-card-body">
+                    @error('password')
+                        <p role="alert" class="fm-badge danger" style="margin-bottom: 12px;">{{ $message }}</p>
+                    @enderror
+                    @error('current_password')
+                        <p role="alert" class="fm-badge danger" style="margin-bottom: 12px;">{{ $message }}</p>
+                    @enderror
+
+                    <form method="POST" action="{{ route('admin.profile.password') }}" id="passwordForm" class="space-y-3">
+                        @csrf
+
+                        <div>
+                            <label class="fm-label" for="currentPassword">Current password</label>
+                            <input id="currentPassword" name="current_password" type="password" class="fm-input"
+                                   autocomplete="current-password" required>
+                        </div>
+
+                        <div>
+                            <label class="fm-label" for="newPassword">New password</label>
+                            <input id="newPassword" name="password" type="password" class="fm-input"
+                                   autocomplete="new-password" required oninput="checkPassword()">
+                        </div>
+
+                        <div>
+                            <label class="fm-label" for="confirmPassword">Repeat the new password</label>
+                            <input id="confirmPassword" name="password_confirmation" type="password" class="fm-input"
+                                   autocomplete="new-password" required oninput="checkPassword()">
+                        </div>
+
+                        <ul id="passwordRules" style="list-style: none; padding: 0; margin: 4px 0 0; font-size: 12.5px; color: var(--ink-500);">
+                            <li data-rule="length"><i class="fas fa-circle" style="font-size: 6px; vertical-align: middle;"></i> At least 8 characters</li>
+                            <li data-rule="upper"><i class="fas fa-circle" style="font-size: 6px; vertical-align: middle;"></i> One uppercase letter</li>
+                            <li data-rule="lower"><i class="fas fa-circle" style="font-size: 6px; vertical-align: middle;"></i> One lowercase letter</li>
+                            <li data-rule="digit"><i class="fas fa-circle" style="font-size: 6px; vertical-align: middle;"></i> One number</li>
+                            <li data-rule="special"><i class="fas fa-circle" style="font-size: 6px; vertical-align: middle;"></i> One special character (&#64;$!%*?&amp;)</li>
+                            <li data-rule="match"><i class="fas fa-circle" style="font-size: 6px; vertical-align: middle;"></i> Both new passwords match</li>
+                        </ul>
+
+                        <button type="submit" class="fm-btn primary" id="passwordButton" disabled style="margin-top: 6px;">
+                            <i class="fas fa-key"></i>Change password
+                        </button>
+                    </form>
                 </div>
             </section>
 
@@ -160,6 +250,33 @@
 
 @push('scripts')
 <script>
+    /**
+     * The same rules the API applies, checked as they are typed, so a refused
+     * password is refused before the round trip rather than after it.
+     */
+    function checkPassword() {
+        const password = document.getElementById('newPassword').value;
+        const confirmation = document.getElementById('confirmPassword').value;
+
+        const met = {
+            length: password.length >= 8,
+            upper: /[A-Z]/.test(password),
+            lower: /[a-z]/.test(password),
+            digit: /\d/.test(password),
+            special: /[@$!%*?&]/.test(password),
+            match: password !== '' && password === confirmation,
+        };
+
+        document.querySelectorAll('#passwordRules li').forEach((item) => {
+            const ok = met[item.dataset.rule];
+            item.style.color = ok ? 'var(--success)' : 'var(--ink-500)';
+            item.querySelector('i').className = ok ? 'fas fa-circle-check' : 'fas fa-circle';
+            item.querySelector('i').style.fontSize = ok ? '11px' : '6px';
+        });
+
+        document.getElementById('passwordButton').disabled = Object.values(met).some((ok) => !ok);
+    }
+
     function submitPhoto() {
         const input = document.getElementById('photoInput');
         if (!input.files.length) return;
