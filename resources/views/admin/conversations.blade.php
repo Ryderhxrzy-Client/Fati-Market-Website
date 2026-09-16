@@ -86,7 +86,7 @@
         </div>
 
         <!-- Receipt lightbox / item panel -->
-        <div id="chatOverlay" onclick="if (event.target === this) closeOverlay()" class="chat-overlay" style="z-index: 60;">
+        <div id="chatOverlay" onclick="if (event.target === this) closeOverlay()" class="chat-overlay" style="z-index: 70;">
             <div id="chatOverlayBody" style="background: white; border-radius: 12px; max-width: 640px; width: 100%; max-height: 88vh; overflow-y: auto; padding: 24px;"></div>
         </div>
     </section>
@@ -96,6 +96,7 @@
 <div id="ctxMenu" class="ctx-menu" hidden></div>
 
 @include('admin.partials.meetup-picker')
+@include('admin.partials.turnover')
 @endsection
 
 @push('styles')
@@ -234,6 +235,10 @@ let token = null;
 let selectedConversation = null;
 let allConversations = [];
 let currentMessages = [];
+// The lines the thread keeps about itself - a rename so far - as the server
+// hands them over. They used to live in this browser's storage, so renaming
+// on the phone showed nothing here and renaming here showed nothing there.
+let currentEvents = [];
 let busyAction = false;
 let listFilter = 'all';
 let replyTarget = null;
@@ -326,9 +331,17 @@ document.addEventListener('DOMContentLoaded', async function() {
     window.addEventListener('scroll', hideCtxMenu, true);
 
     await loadConversations();
-    // Reopen the thread named in the address, so a reload lands where it was.
+    // Reopen the thread named in the address, so a reload lands where it was
+    // and so the offers page can send someone straight to a seller.
     const wanted = threadFromUrl();
-    if (wanted && findConversation(wanted)) openConversation(wanted);
+    if (wanted) {
+        if (findConversation(wanted)) {
+            openConversation(wanted);
+        } else {
+            // Better than opening the inbox in silence and looking broken.
+            showToast('That conversation is not in your list. It may have been deleted for you.', 'error');
+        }
+    }
     // The list refreshes on its own, like the app's; the open thread too.
     listPoll = setInterval(() => loadConversations(true), 15000);
 });
@@ -488,11 +501,10 @@ async function conversationAction(key, action) {
         if (name === null) return;
         const cleaned = name.trim().slice(0, 80);
         if (cleaned === (conv.custom_name || '')) return;
-        const lastMessage = selectedConversation && convKey(selectedConversation) === key && currentMessages.length
-            ? currentMessages[currentMessages.length - 1].message_id : 0;
-        recordThreadEvent(conv, { name: cleaned, after: lastMessage, at: new Date().toISOString() });
         const result = await patchConversation(conv, { custom_name: cleaned });
-        if (selectedConversation && convKey(selectedConversation) === key) renderMessages(currentMessages);
+        // The line is written by the server, so the open thread is re-read
+        // rather than guessed at.
+        if (selectedConversation && convKey(selectedConversation) === key) await loadThread();
         return result;
     }
 
@@ -569,6 +581,7 @@ function closeThread() {
     writeThreadUrl(null);
     renderPinnedOrder(null);
     currentMessages = [];
+    currentEvents = [];
     clearReply();
     if (threadPoll) clearInterval(threadPoll);
     document.getElementById('composer').hidden = true;
@@ -640,12 +653,15 @@ async function loadThread(quiet) {
 
         const data = await response.json();
         const messages = Array.isArray(data) ? data : (data.data || data.messages || []);
+        const events = Array.isArray(data) ? [] : (data.events || []);
         if (selectedConversation !== conv) return;
 
         const changed = JSON.stringify(messages.map(m => [m.message_id, m.order?.status, m.order?.payment_status, m.item_card?.status]))
             !== JSON.stringify(currentMessages.map(m => [m.message_id, m.order?.status, m.order?.payment_status, m.item_card?.status]));
+        const eventsChanged = JSON.stringify(events) !== JSON.stringify(currentEvents);
         currentMessages = messages;
-        if (!quiet || changed) renderMessages(messages);
+        currentEvents = events;
+        if (!quiet || changed || eventsChanged) renderMessages(messages);
     } catch (error) {
         if (quiet) return;
         document.getElementById('messagesArea').innerHTML = `
@@ -691,16 +707,22 @@ function renderMessages(messages) {
     const pickupCards = messages.filter(m => m.kind && m.kind !== 'text' && m.order && pickupStageOf(m));
     latestPickupMessageId = pickupCards.length ? pickupCards[pickupCards.length - 1].message_id : null;
 
-    // Renames are this person's own, so the thread keeps them itself: each
-    // sits after the line that was last when it happened.
-    const events = threadEvents(selectedConversation);
-    const lastId = messages.length ? Number(messages[messages.length - 1].message_id) : 0;
-    const eventsAfter = (id) => events.filter(e => Number(e.after) === Number(id)).map(systemLineHtml).join('');
-    const orphaned = events.filter(e => !messages.some(m => Number(m.message_id) === Number(e.after))).map(systemLineHtml).join('');
+    // Renames are this person's own, and the server keeps them for the
+    // account rather than for the browser, so they show up on every device
+    // this admin signs in on. Each sits at the moment it happened.
+    const stampOf = (value) => {
+        const at = new Date(String(value || '').replace(' ', 'T')).getTime();
+        return isNaN(at) ? Number.MAX_SAFE_INTEGER : at;
+    };
+
+    const rows = [
+        ...messages.map(msg => ({ at: stampOf(msg.sent_at), render: () => renderOne(msg) })),
+        ...threadEvents().map(event => ({ at: stampOf(event.at), render: () => systemLineHtml(event) })),
+    ].sort((a, b) => a.at - b.at);
 
     let lastDay = '';
     let lastSender = null;
-    area.innerHTML = orphaned + messages.map(msg => renderOne(msg) + eventsAfter(msg.message_id)).join('');
+    area.innerHTML = rows.map(row => row.render()).join('');
 
     if (stuckToBottom || !area.dataset.scrolled) {
         area.scrollTop = area.scrollHeight;
@@ -763,7 +785,8 @@ function renderPinnedOrder(order) {
 }
 
 function systemLineHtml(event) {
-    const when = new Date(event.at);
+    // The API sends "2026-09-16 18:11:00"; Safari refuses that without the T.
+    const when = new Date(String(event.at || '').replace(' ', 'T'));
     const stamp = isNaN(when.getTime()) ? '' : ' · ' + when.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
     const text = event.name
         ? `You renamed the conversation to <b>${escapeHtml(event.name)}</b>`
@@ -771,15 +794,8 @@ function systemLineHtml(event) {
     return `<div class="system-line"><i class="fas fa-pen"></i><span>${text}${escapeHtml(stamp)}</span></div>`;
 }
 
-function threadEvents(conv) {
-    if (!conv) return [];
-    try { return JSON.parse(localStorage.getItem('fm_thread_events_' + convKey(conv)) || '[]'); } catch (e) { return []; }
-}
-
-function recordThreadEvent(conv, event) {
-    const events = threadEvents(conv);
-    events.push(event);
-    try { localStorage.setItem('fm_thread_events_' + convKey(conv), JSON.stringify(events.slice(-30))); } catch (e) {}
+function threadEvents() {
+    return currentEvents || [];
 }
 
 function dayLabel(date) {
@@ -1350,7 +1366,7 @@ async function itemPost(itemId, path, body, failLabel) {
 async function acceptOffer(itemId, askingPrice) {
     const price = await askModal({
         title: 'Accept this offer',
-        body: 'Set the acquisition price - what the store pays the seller. The QR code and the meet-up come after this.',
+        body: 'Set the acquisition price - what the store pays the seller. Receiving the item at the counter comes after this.',
         field: { label: 'Acquisition price (₱)', type: 'number', value: askingPrice, placeholder: 'e.g. 300.00' },
         confirmLabel: 'Accept offer',
     });
@@ -1372,18 +1388,18 @@ async function acceptOffer(itemId, askingPrice) {
 //     if (await itemPost(itemId, 'meetup', { meetup_schedule: when }, 'Could not save the schedule')) await loadThread();
 // }
 
-/** The manual twin of the QR turnover: item received and seller paid, without the counter photographs. */
-async function acquireItem(itemId) {
-    const confirmed = await askModal({
-        title: 'Mark as acquired',
-        body: 'Confirm the item is physically in the store and the seller was handed their cash. Scanning their QR at the counter does the same with photos attached.',
-        confirmLabel: 'Mark acquired',
-    });
-    if (confirmed === null) return;
-    if (await itemPost(itemId, 'verify-turnover', {}, 'Could not mark the item acquired')) {
-        await itemPost(itemId, 'seller-payout', {}, 'Could not record the payout');
-        await loadThread();
-    }
+/**
+ * Receiving the item, at the counter.
+ *
+ * This used to be a yes/no box that quietly called verify-turnover with
+ * nothing attached, so a turnover recorded from the chat had neither of the
+ * two photographs the counter exists to take. It now opens the turnover panel
+ * instead: carry on with the phone by scanning its QR, or do it here with the
+ * proof picked from this computer. Either way the seller's payout, the
+ * selling price and the status are part of the same step.
+ */
+function acquireItem(itemId) {
+    openTurnover(itemId, () => loadThread());
 }
 
 async function rejectOffer(itemId) {
