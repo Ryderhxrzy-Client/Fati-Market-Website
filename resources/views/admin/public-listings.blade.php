@@ -92,19 +92,6 @@
 </div>
 
 <!-- View Item Modal -->
-<div id="viewModal" class="modal-overlay">
-    <div class="modal">
-        <div class="flex items-center justify-between mb-4">
-            <h3>Item Details</h3>
-            <button onclick="closeViewModal()" class="text-gray-500 hover:text-gray-700">
-                <i class="fas fa-times text-xl"></i>
-            </button>
-        </div>
-        <div id="viewContent" class="space-y-4">
-            <!-- Content will be populated by JavaScript -->
-        </div>
-    </div>
-</div>
 
 <!-- Edit Item Modal -->
 <div id="editModal" class="modal-overlay">
@@ -176,7 +163,7 @@
     document.querySelectorAll('.view-item-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const itemData = JSON.parse(atob(this.getAttribute('data-item-data')));
-            showViewModal(itemData);
+            openItemView(itemData);
         });
     });
 
@@ -187,45 +174,7 @@
         });
     });
 
-    function showViewModal(item) {
-        const content = document.getElementById('viewContent');
-        const imageUrl = !Array.isArray(item.photos) || item.photos.length === 0 ? null : item.photos[0];
 
-        content.innerHTML = `
-            <div class="space-y-4">
-                ${imageUrl ? `<img src="${imageUrl}" alt="${item.title}" class="w-full h-64 rounded object-cover">` : ''}
-                <div>
-                    <p>Title</p>
-                    <p class="text-lg font-semibold text-gray-900">${item.title || 'N/A'}</p>
-                </div>
-                <div>
-                    <p>Seller Email</p>
-                    <p class="text-gray-900">${item.seller_email || 'N/A'}</p>
-                </div>
-                <div>
-                    <p>Price Points</p>
-                    <p class="cell-title money">${fmPeso(item.seller_asking_price)}</p>
-                </div>
-                <div>
-                    <p>Status</p>
-                    <p class="text-gray-900 capitalize">${item.status || 'N/A'}</p>
-                </div>
-                <div>
-                    <p>Description</p>
-                    <p class="text-gray-900">${item.description || 'N/A'}</p>
-                </div>
-                <div>
-                    <p>Created</p>
-                    <p class="text-gray-900">${item.created_at ? new Date(item.created_at).toLocaleDateString() : 'N/A'}</p>
-                </div>
-            </div>
-        `;
-        document.getElementById('viewModal').classList.add('active');
-    }
-
-    function closeViewModal() {
-        document.getElementById('viewModal').classList.remove('active');
-    }
 
     function showEditModal(item) {
         const imageUrl = !Array.isArray(item.photos) || item.photos.length === 0 ? null : item.photos[0];
@@ -301,15 +250,12 @@
         }
     });
 
-    document.getElementById('viewModal').addEventListener('click', function(e) {
-        if (e.target === this) closeViewModal();
-    });
-
     document.getElementById('editModal').addEventListener('click', function(e) {
         if (e.target === this) closeEditModal();
     });
 </script>
 @endpush
 
+@include('admin.partials.item-view')
 @include('admin.partials.item-edit')
 @endsection
