@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\AdminAuthController;
+use App\Http\Controllers\PickupController;
 use App\Http\Controllers\TurnoverController;
 
 // Public pages. These URLs are used on the Google OAuth consent screen and
@@ -15,6 +16,11 @@ Route::view('/terms-of-service', 'terms-of-service')->name('terms-of-service');
 // because the phone that scans it has never signed in here.
 Route::get('/turnover/{ref}', [TurnoverController::class, 'show'])->name('turnover.show');
 Route::post('/turnover/{ref}', [TurnoverController::class, 'complete'])->name('turnover.complete');
+
+// The other half of the counter: handing an order over, photographed on the
+// phone that scanned its QR.
+Route::get('/pickup/{ref}', [PickupController::class, 'show'])->name('pickup.show');
+Route::post('/pickup/{ref}', [PickupController::class, 'complete'])->name('pickup.complete');
 
 // Keep the admin console separate from the public website.
 Route::get('/admin/login', [AdminAuthController::class, 'showLoginForm'])->name('admin.login');
@@ -33,6 +39,7 @@ Route::middleware('admin.auth')->group(function () {
     // with a camera. Both end up in TurnoverService.
     Route::post('/counter/handoff', [TurnoverController::class, 'handoff'])->name('admin.turnover.handoff');
     Route::post('/counter/turnover/{item_id}', [TurnoverController::class, 'consoleComplete'])->name('admin.turnover.complete');
+    Route::post('/counter/pickup-handoff', [PickupController::class, 'handoff'])->name('admin.pickup.handoff');
 
     // Inventory Management
     Route::get('/inventory/private-offers', [AdminAuthController::class, 'privateOffers'])->name('admin.private-offers');

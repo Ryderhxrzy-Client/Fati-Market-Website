@@ -269,19 +269,7 @@ window.FMOrders = (function () {
             if (reason === null) return;
             if (!String(reason).trim()) { showToast('A reason is required.', 'error'); return; }
             body = JSON.stringify({ reason: String(reason).trim() });
-        } else if (endpoint === 'complete') {
-            const photo = await ask({
-                title: 'Complete the handover?',
-                body: 'This credits the buyer\'s reward points, once. Attach the photo taken at the counter if you have one.',
-                field: { label: 'Handover photo (optional)', type: 'file' },
-                confirmLabel: 'Complete',
-            });
-            if (photo === null) return;
-            if (photo) {
-                body = new FormData();
-                body.append('handover_photo', photo, photo.name);
-                isForm = true;
-            } else {
+        } else {
                 body = '{}';
             }
         } else {
@@ -333,7 +321,29 @@ window.FMOrders = (function () {
         current = null;
     }
 
-    return { open, close, run, askDone, peso, methodLabel, paymentBadge, statusBadge, when, esc, attr };
+    /**
+     * Handing the item over is a counter moment, not a yes/no box: the buyer
+     * is photographed receiving it. The panel carries the QR that moves the
+     * job to a phone with a camera, and the same thing done here.
+     */
+    function handover() {
+        if (!current) return;
+
+        if (typeof window.openPickup !== 'function') {
+            // A page that did not include the panel still completes, the way
+            // it always did.
+            run('complete', 'Complete handover');
+            return;
+        }
+
+        openPickup(current, (completed) => {
+            current = completed || current;
+            render();
+            if (typeof onChange === 'function') onChange(current);
+        });
+    }
+
+    return { open, close, run, handover, askDone, peso, methodLabel, paymentBadge, statusBadge, when, esc, attr };
 })();
 </script>
 @endpush

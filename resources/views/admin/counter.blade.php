@@ -57,6 +57,7 @@
 
 @include('admin.partials.item-workflow')
 @include('admin.partials.order-actions')
+@include('admin.partials.pickup')
 
 @push('scripts')
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>

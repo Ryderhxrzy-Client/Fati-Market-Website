@@ -54,6 +54,7 @@
 </div>
 
 @include('admin.partials.order-actions')
+@include('admin.partials.pickup')
 
 @push('styles')
 <style>
