@@ -97,6 +97,7 @@
 
 @include('admin.partials.meetup-picker')
 @include('admin.partials.turnover')
+@include('admin.partials.pickup')
 @endsection
 
 @push('styles')
@@ -1181,7 +1182,11 @@ function orderActionsHtml(order) {
 
     if (actions.includes('verify_payment')) buttons.push(actionButton(id, 'verify-payment', 'Approve', 'primary'));
     if (actions.includes('approve_order')) buttons.push(actionButton(id, 'approve-order', 'Approve', 'primary'));
-    if (actions.includes('complete')) buttons.push(actionButton(id, 'complete', 'Complete', 'primary'));
+    // Handing the item over is photographed, so it opens the counter panel -
+    // the QR that moves it to a phone, or the same thing done here.
+    if (actions.includes('complete')) {
+        buttons.push(`<button class="fm-btn primary sm" onclick="completeHandover(${id})">Complete</button>`);
+    }
     if (actions.includes('mark_ready_for_pickup')) buttons.push(actionButton(id, 'ready-for-pickup', 'Ready for pickup', 'ghost'));
     if (actions.includes('reject_payment')) buttons.push(actionButton(id, 'reject-payment', 'Decline', 'danger'));
     else if (actions.includes('cancel')) buttons.push(actionButton(id, 'cancel', 'Cancel order', 'danger'));
@@ -1193,6 +1198,16 @@ function actionButton(id, endpoint, label, tone) {
     // Endpoint and label are both fixed strings chosen just above, so single
     // quotes inside the attribute are safe here.
     return `<button class="fm-btn ${tone} sm" onclick="runOrderAction(${id}, '${endpoint}', '${label}')">${escapeHtml(label)}</button>`;
+}
+
+/** The order behind a Complete button, opened in the counter panel. */
+function completeHandover(transactionId) {
+    const message = [...currentMessages].reverse().find(m => m.order && Number(m.order.transaction_id) === Number(transactionId));
+    const order = message?.order;
+
+    if (!order) { showToast('Could not find that order in this thread.', 'error'); return; }
+
+    openPickup(order, () => loadThread());
 }
 
 async function runOrderAction(transactionId, endpoint, label) {
