@@ -729,7 +729,9 @@ function renderItemOfferCard(msg, isAdmin, senderName, timestamp) {
                     <div style="border-top: 1px solid var(--surface-sunk); padding-top: 8px;">
                         ${summaryRow('Asking price', peso(item.seller_asking_price), true)}
                         ${item.acquisition_price ? summaryRow('Store offer', peso(item.acquisition_price)) : ''}
+                        ${'' /* BOOKING/SCHEDULE DISABLED - no longer required
                         ${item.meetup_schedule ? summaryRow('Meet-up', new Date(item.meetup_schedule).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })) : ''}
+                        */}
                     </div>
 
                     <div style="margin-top: 10px;">${badge(item.status || 'pending', '#374151', '#f3f4f6')}</div>
@@ -740,10 +742,12 @@ function renderItemOfferCard(msg, isAdmin, senderName, timestamp) {
 
                     ${accepted ? `
                         <div style="display: flex; gap: 8px; margin-top: 12px; border-top: 1px solid var(--surface-sunk); padding-top: 12px;">
+                            ${'' /* BOOKING/SCHEDULE DISABLED - no longer required
                             <button onclick="scheduleMeetup(${item.item_id})"
                                     style="background: white; color: var(--brand-700); border: 1px solid var(--brand-600); font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 6px; cursor: pointer;">
                                 ${item.meetup_schedule ? 'Change schedule' : 'Set schedule'}
                             </button>
+                            */}
                             <button onclick="acquireItem(${item.item_id})"
                                     style="background: #16a34a; color: white; border: 1px solid #16a34a; font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 6px; cursor: pointer;">Mark acquired</button>
                         </div>
@@ -788,8 +792,8 @@ function renderPinnedOffer(item) {
                        font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 6px; cursor: pointer;">${label}</button>`;
 
     bar.innerHTML = item.acquisition_price
-        ? pinnedButton(`scheduleMeetup(${item.item_id})`, item.meetup_schedule ? 'Change schedule' : 'Set schedule', false, false)
-            + pinnedButton(`acquireItem(${item.item_id})`, 'Mark acquired', true, false)
+        ? /* BOOKING/SCHEDULE DISABLED - no longer required: pinnedButton(`scheduleMeetup(${item.item_id})`, item.meetup_schedule ? 'Change schedule' : 'Set schedule', false, false) + */
+            pinnedButton(`acquireItem(${item.item_id})`, 'Mark acquired', true, false)
         : pinnedButton(`acceptOffer(${item.item_id}, '${escapeAttr(item.seller_asking_price || '')}')`, 'Accept offer', true, false)
             + pinnedButton(`rejectOffer(${item.item_id})`, 'Reject', false, true);
 
@@ -839,56 +843,57 @@ async function acceptOffer(itemId, askingPrice) {
     }
 }
 
-/**
- * When the seller comes in. Sent to the same endpoint the mobile card and the
- * inventory workflow use; the 6h/1h/30m reminders count down from it.
- */
-async function scheduleMeetup(itemId) {
-    if (busyAction) return;
+// BOOKING/SCHEDULE DISABLED - no longer required
+// /**
+ // * When the seller comes in. Sent to the same endpoint the mobile card and the
+ // * inventory workflow use; the 6h/1h/30m reminders count down from it.
+ // */
+// async function scheduleMeetup(itemId) {
+    // if (busyAction) return;
 
-    // Tomorrow at 10:00, as a starting point the picker can adjust.
-    const suggested = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    suggested.setHours(10, 0, 0, 0);
-    const pad = (n) => String(n).padStart(2, '0');
-    const suggestedValue = `${suggested.getFullYear()}-${pad(suggested.getMonth() + 1)}-${pad(suggested.getDate())}T10:00`;
+    // // Tomorrow at 10:00, as a starting point the picker can adjust.
+    // const suggested = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    // suggested.setHours(10, 0, 0, 0);
+    // const pad = (n) => String(n).padStart(2, '0');
+    // const suggestedValue = `${suggested.getFullYear()}-${pad(suggested.getMonth() + 1)}-${pad(suggested.getDate())}T10:00`;
 
-    const raw = await askModal({
-        title: 'Meet-up schedule',
-        body: 'When the seller brings the item in. They are told in chat, and reminded 6 hours, 1 hour and 30 minutes before.',
-        field: { label: 'Date and time', type: 'datetime-local', value: suggestedValue },
-        confirmLabel: 'Save schedule',
-    });
-    if (raw === null) return;
+    // const raw = await askModal({
+        // title: 'Meet-up schedule',
+        // body: 'When the seller brings the item in. They are told in chat, and reminded 6 hours, 1 hour and 30 minutes before.',
+        // field: { label: 'Date and time', type: 'datetime-local', value: suggestedValue },
+        // confirmLabel: 'Save schedule',
+    // });
+    // if (raw === null) return;
 
-    const when = new Date(raw.trim());
-    if (isNaN(when.getTime())) {
-        showToast('Pick a valid date and time.', 'error');
-        return;
-    }
+    // const when = new Date(raw.trim());
+    // if (isNaN(when.getTime())) {
+        // showToast('Pick a valid date and time.', 'error');
+        // return;
+    // }
 
-    busyAction = true;
+    // busyAction = true;
 
-    try {
-        const response = await fetch(`${API}/admin/items/${itemId}/meetup`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ meetup_schedule: raw.trim().replace('T', ' ') }),
-        });
-        const payload = await response.json().catch(() => ({}));
+    // try {
+        // const response = await fetch(`${API}/admin/items/${itemId}/meetup`, {
+            // method: 'POST',
+            // headers: {
+                // 'Authorization': `Bearer ${token}`,
+                // 'Accept': 'application/json',
+                // 'Content-Type': 'application/json',
+            // },
+            // body: JSON.stringify({ meetup_schedule: raw.trim().replace('T', ' ') }),
+        // });
+        // const payload = await response.json().catch(() => ({}));
 
-        if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
+        // if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
 
-        await refreshThread();
-    } catch (error) {
-        alert(`Could not save the schedule: ${error.message}`);
-    } finally {
-        busyAction = false;
-    }
-}
+        // await refreshThread();
+    // } catch (error) {
+        // alert(`Could not save the schedule: ${error.message}`);
+    // } finally {
+        // busyAction = false;
+    // }
+// }
 
 /**
  * The manual twin of the QR turnover: marks the item received and the seller

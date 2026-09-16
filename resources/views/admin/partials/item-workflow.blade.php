@@ -129,7 +129,9 @@
                 ${wfRow('Markup', wfPeso(item.markup))}
                 ${wfRow('Turnover verified', item.is_turnover_verified ? 'Yes' : 'Not yet')}
                 ${wfRow('Seller paid', paid ? wfPeso(item.seller_payout_amount) : 'Not yet')}
+                ${'' /* BOOKING/SCHEDULE DISABLED - no longer required
                 ${item.meetup_schedule ? wfRow('Meet-up', item.meetup_schedule) : ''}
+                */}
             </div>
         `;
 
@@ -143,12 +145,13 @@
                  <button style="${buttonStyle}" onclick="wfSetAcquisitionPrice()">Save price</button>`
             );
 
-            html += wfStep(
-                'Meet-up schedule',
-                'When the seller brings the item in.',
-                `<input id="wfMeetup" type="datetime-local" value="${wfAttr(wfToLocalInput(item.meetup_schedule))}" style="${inputStyle}">
-                 <button style="${buttonStyle}" onclick="wfSetMeetup()">Save schedule</button>`
-            );
+            // BOOKING/SCHEDULE DISABLED - no longer required
+            // html += wfStep(
+                // 'Meet-up schedule',
+                // 'When the seller brings the item in.',
+                // `<input id="wfMeetup" type="datetime-local" value="${wfAttr(wfToLocalInput(item.meetup_schedule))}" style="${inputStyle}">
+                 // <button style="${buttonStyle}" onclick="wfSetMeetup()">Save schedule</button>`
+            // );
         }
 
         // ── Physically receiving it ──────────────────────────────────────
@@ -210,14 +213,15 @@
         document.getElementById('workflowBody').innerHTML = html;
     }
 
-    /** The API sends ISO timestamps; the datetime-local input wants no zone. */
-    function wfToLocalInput(value) {
-        if (!value) return '';
-        const date = new Date(value);
-        if (isNaN(date.getTime())) return '';
-        const pad = (n) => String(n).padStart(2, '0');
-        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-    }
+    // BOOKING/SCHEDULE DISABLED - no longer required
+    // /** The API sends ISO timestamps; the datetime-local input wants no zone. */
+    // function wfToLocalInput(value) {
+        // if (!value) return '';
+        // const date = new Date(value);
+        // if (isNaN(date.getTime())) return '';
+        // const pad = (n) => String(n).padStart(2, '0');
+        // return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    // }
 
     /**
      * Every workflow call goes through here so a success always leaves the
@@ -273,10 +277,11 @@
         wfPost('acquisition-price', { acquisition_price: price }, 'Acquisition price saved');
     };
 
-    window.wfSetMeetup = function () {
-        const schedule = wfValue('wfMeetup');
-        wfPost('meetup', { meetup_schedule: schedule || null }, 'Meet-up schedule saved');
-    };
+    // BOOKING/SCHEDULE DISABLED - no longer required
+    // window.wfSetMeetup = function () {
+        // const schedule = wfValue('wfMeetup');
+        // wfPost('meetup', { meetup_schedule: schedule || null }, 'Meet-up schedule saved');
+    // };
 
     window.wfVerifyTurnover = async function () {
         if (workflowBusy) return;
