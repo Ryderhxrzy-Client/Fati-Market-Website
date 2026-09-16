@@ -1,6 +1,6 @@
 @extends('layouts.admin-dashboard')
 
-@section('title', 'Trade Transactions')
+@section('title', 'Points-only orders')
 @section('subtitle', 'View all trade transactions')
 
 @section('content')

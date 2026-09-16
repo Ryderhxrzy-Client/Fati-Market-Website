@@ -24,8 +24,8 @@ class GcashSettingsTest extends TestCase
 
     public function test_settings_require_an_admin_session(): void
     {
-        $this->get('/settings')->assertRedirect('/');
-        $this->post('/settings/gcash')->assertRedirect('/');
+        $this->get('/settings')->assertRedirect('/admin/login');
+        $this->post('/settings/gcash')->assertRedirect('/admin/login');
         Http::assertNothingSent();
     }
 
@@ -58,7 +58,7 @@ class GcashSettingsTest extends TestCase
         }]);
         $this->withSession($this->adminSession())->post('/settings/gcash', [
             'account_name' => 'New Owner', 'account_number' => '+639171234567',
-            'qr_image' => UploadedFile::fake()->image('gcash.png'),
+            'qr_image' => UploadedFile::fake()->createWithContent('gcash.png', base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')),
         ])->assertRedirect('/settings')->assertSessionHas('gcash_success');
         Http::assertSent(fn ($request) => $request->url() === self::ENDPOINT
             && $request->hasHeader('Authorization', 'Bearer test-admin-token')

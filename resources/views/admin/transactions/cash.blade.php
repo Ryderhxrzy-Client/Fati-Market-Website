@@ -1,6 +1,6 @@
 @extends('layouts.admin-dashboard')
 
-@section('title', 'Cash Transactions')
+@section('title', 'Cash transactions')
 @section('subtitle', 'View all cash transactions')
 
 @section('content')

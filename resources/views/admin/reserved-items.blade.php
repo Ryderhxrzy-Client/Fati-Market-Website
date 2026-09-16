@@ -1,6 +1,6 @@
 @extends('layouts.admin-dashboard')
 
-@section('title', 'Reserved Items')
+@section('title', 'Reserved items')
 @section('subtitle', 'Items that have been reserved by buyers')
 
 @section('content')
@@ -180,7 +180,7 @@
     document.querySelectorAll('.edit-item-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const itemData = JSON.parse(atob(this.getAttribute('data-item-data')));
-            showEditModal(itemData);
+            openItemEdit(itemData);
         });
     });
 
@@ -307,4 +307,6 @@
     });
 </script>
 @endpush
+
+@include('admin.partials.item-edit')
 @endsection

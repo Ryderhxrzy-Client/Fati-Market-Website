@@ -1,6 +1,6 @@
 @extends('layouts.admin-dashboard')
 
-@section('title', 'Users Report')
+@section('title', 'Active users')
 @section('subtitle', 'View active users, students, and top buyers/sellers')
 
 @section('content')

@@ -3,17 +3,24 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\AdminAuthController;
 
-// Admin login as index
-Route::get('/', [AdminAuthController::class, 'showLoginForm'])->name('admin.login');
-Route::post('/', [AdminAuthController::class, 'login'])->name('admin.login.post');
-
-// Public. Google Play requires a privacy policy URL that anyone can open
-// without signing in, so this deliberately sits outside the admin.auth group.
+// Public pages. These URLs are used on the Google OAuth consent screen and
+// must be reachable without signing in.
+Route::view('/', 'home')->name('home');
 Route::view('/privacy-policy', 'privacy-policy')->name('privacy-policy');
+Route::view('/terms-of-service', 'terms-of-service')->name('terms-of-service');
+
+// Keep the admin console separate from the public website.
+Route::get('/admin/login', [AdminAuthController::class, 'showLoginForm'])->name('admin.login');
+Route::post('/admin/login', [AdminAuthController::class, 'login'])->name('admin.login.post');
+
 
 // Admin dashboard and pages (protected)
 Route::middleware('admin.auth')->group(function () {
     Route::get('/dashboard', [AdminAuthController::class, 'dashboard'])->name('admin.dashboard');
+
+    // The counter: scan a seller's turnover QR or a buyer's pickup QR, the
+    // way the mobile app's Scan tab does.
+    Route::get('/counter', [AdminAuthController::class, 'counter'])->name('admin.counter');
 
     // Inventory Management
     Route::get('/inventory/private-offers', [AdminAuthController::class, 'privateOffers'])->name('admin.private-offers');
@@ -23,6 +30,9 @@ Route::middleware('admin.auth')->group(function () {
     Route::get('/inventory/sold-items', [AdminAuthController::class, 'soldItems'])->name('admin.sold-items');
 
     // Transactions
+    // The same list twice, as on the mobile app: "Manage orders" carries the
+    // decisions, "Transaction history" is the read-only record.
+    Route::get('/transactions/manage', [AdminAuthController::class, 'manageOrders'])->name('admin.transactions.manage');
     Route::get('/transactions/history', [AdminAuthController::class, 'transactionHistory'])->name('admin.transactions.history');
     Route::get('/transactions/points-given', [AdminAuthController::class, 'pointsGiven'])->name('admin.transactions.points-given');
     Route::get('/transactions/points-received', [AdminAuthController::class, 'pointsReceived'])->name('admin.transactions.points-received');
@@ -45,8 +55,6 @@ Route::middleware('admin.auth')->group(function () {
     // Home reports route (optional): keep it, but do not mark it as the same as acquired/sold.
     Route::get('/reports', [AdminAuthController::class, 'itemsAcquiredReport'])->name('admin.reports');
 
-
-
     // Categories
     Route::get('/categories', [AdminAuthController::class, 'categories'])->name('admin.categories');
 
@@ -61,7 +69,11 @@ Route::middleware('admin.auth')->group(function () {
 
     // Profile & Settings
     Route::get('/profile', [AdminAuthController::class, 'profile'])->name('admin.profile');
+    Route::post('/profile/picture', [AdminAuthController::class, 'updateProfilePicture'])->name('admin.profile.picture');
     Route::get('/settings', [\App\Http\Controllers\Admin\GcashSettingsController::class, 'show'])->name('admin.settings');
     Route::post('/settings/gcash', [\App\Http\Controllers\Admin\GcashSettingsController::class, 'update'])->name('admin.settings.gcash.update');
-    Route::post('/logout', [AdminAuthController::class, 'logout'])->name('admin.logout');
+    // Signing out is a POST from the sidebar form, but a proxy that redirects
+    // http to https turns that into a GET, which used to be a 405 page. Both
+    // verbs end the session.
+    Route::match(['get', 'post'], '/logout', [AdminAuthController::class, 'logout'])->name('admin.logout');
 });

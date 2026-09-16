@@ -22,15 +22,15 @@ class AdminAuthMiddleware
         $adminData = session()->get('admin_data');
 
         if (empty($token) || empty($adminData)) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         // Check if session is expired (24 hours)
         $loginTimestamp = session()->get('login_timestamp');
         if ($loginTimestamp && (time() - $loginTimestamp) > 86400) {
             session()->forget(['admin_token', 'admin_data', 'login_timestamp', 'admin_profile_picture', 'admin_first_name', 'admin_last_name']);
-            return redirect('/')
-                ->with('error', 'Session expired. Please login again.');
+            return redirect()->route('admin.login')
+                ->with('error', 'Your session expired. Please sign in again.');
         }
 
         return $next($request);

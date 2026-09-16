@@ -147,12 +147,12 @@ class AdminAuthController extends Controller
      */
     public function logout(Request $request)
     {
-        Session::forget(['admin_token', 'admin_data', 'login_timestamp']);
+        Session::forget(['admin_token', 'admin_data', 'login_timestamp', 'admin_profile_picture', 'admin_first_name', 'admin_last_name']);
         Session::invalidate();
         Session::regenerateToken();
 
-        return redirect('/')
-            ->with('success', 'Logged out successfully.');
+        return redirect()->route('admin.login')
+            ->with('success', 'You have been signed out.');
     }
     
     /**
@@ -164,7 +164,7 @@ class AdminAuthController extends Controller
         $adminData = session()->get('admin_data');
 
         if (empty($token) || empty($adminData)) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         try {
@@ -183,7 +183,7 @@ class AdminAuthController extends Controller
     public function privateOffers(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -221,7 +221,7 @@ class AdminAuthController extends Controller
     public function acquiredItems(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -250,7 +250,7 @@ class AdminAuthController extends Controller
     public function publicListings(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -279,7 +279,7 @@ class AdminAuthController extends Controller
     public function reservedItems(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -308,7 +308,7 @@ class AdminAuthController extends Controller
     public function soldItems(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -337,7 +337,7 @@ class AdminAuthController extends Controller
     public function students(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -364,7 +364,7 @@ class AdminAuthController extends Controller
     public function conversations(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         return view('admin.conversations');
@@ -376,46 +376,24 @@ class AdminAuthController extends Controller
     public function transactionHistory(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
-        $token = Session::get('admin_token');
-        $transactions = [];
+        // The page loads its rows itself; this one is the read-only record.
+        return view('admin.transactions.history', ['mode' => 'history']);
+    }
 
-        try {
-            $response = Http::timeout(30)
-                ->withHeaders([
-                    'Accept' => 'application/json',
-                    'Authorization' => 'Bearer ' . $token,
-                ])
-                ->get('https://fati-api.alertaraqc.com/api/admin/transactions');
-
-            if ($response->successful()) {
-                $apiTransactions = $response->json()['data'] ?? [];
-                
-                // Transform API data to match view expectations
-                $transactions = array_map(function ($txn) {
-                    return [
-                        'transaction_id' => $txn['transaction_id'] ?? null,
-                        'item_title' => $txn['item']['title'] ?? 'N/A',
-                        'buyer_email' => $txn['buyer']['email'] ?? 'N/A',
-                        // The store sells what it owns; the student it came
-                        // from is provenance, shown separately.
-                        'seller_email' => $txn['seller']['name'] ?? ($txn['seller']['email'] ?? 'N/A'),
-                        'consigned_by' => $txn['consigned_by'] ?? null,
-                        'payment_method' => $txn['payment_method'] ?? 'N/A',
-                        'status' => $txn['status'] ?? 'pending',
-                        'points_used' => $txn['points_used'] ?? 0,
-                        'transaction_date' => $txn['transaction_date'] ?? null,
-                    ];
-                }, $apiTransactions);
-            }
-        } catch (\Exception $e) {
-            \Log::error('Transaction history fetch error: ' . $e->getMessage());
-            $transactions = [];
+    /**
+     * Every order with its open decisions - the counterpart of the mobile
+     * app's "Manage orders".
+     */
+    public function manageOrders(Request $request)
+    {
+        if (!Session::has('admin_token')) {
+            return redirect()->route('admin.login');
         }
 
-        return view('admin.transactions.history', compact('transactions'));
+        return view('admin.transactions.history', ['mode' => 'manage']);
     }
 
     /**
@@ -424,7 +402,7 @@ class AdminAuthController extends Controller
     public function pointsGiven(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -453,7 +431,7 @@ class AdminAuthController extends Controller
     public function pointsReceived(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -482,7 +460,7 @@ class AdminAuthController extends Controller
     public function cashTransactions(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -511,7 +489,7 @@ class AdminAuthController extends Controller
     public function tradeTransactions(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -540,7 +518,7 @@ class AdminAuthController extends Controller
     public function profitSummary(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -584,7 +562,7 @@ class AdminAuthController extends Controller
     public function itemsAcquiredReport(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -636,7 +614,7 @@ class AdminAuthController extends Controller
     public function itemsSoldReport(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -675,7 +653,7 @@ class AdminAuthController extends Controller
     public function totalProfitReport(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -723,61 +701,40 @@ class AdminAuthController extends Controller
     public function profitReport(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
-        $reportData = ['total_markup' => 0, 'monthly_profit' => [], 'top_items' => []];
+        $reportData = ['total_profit' => null, 'profit_by_month' => [], 'top_items' => []];
 
         try {
-            // Fetch profit summary
-            $profitResponse = Http::timeout(30)
+            // The same report the mobile app draws: markup on every sold item,
+            // by month, and the items ranked by it. Pesos, not points.
+            $response = Http::timeout(30)
                 ->withHeaders([
                     'Accept' => 'application/json',
                     'Authorization' => 'Bearer ' . $token,
                 ])
-                ->get('https://fati-api.alertaraqc.com/api/admin/transactions/profit-summary');
+                ->get('https://fati-api.alertaraqc.com/api/admin/reports/profit');
 
-            if ($profitResponse->successful()) {
-                $profitData = $profitResponse->json()['data'] ?? [];
-                $reportData['total_markup'] = (int)($profitData['total_profit_points'] ?? 0);
-            }
+            if ($response->successful()) {
+                $data = $response->json()['data'] ?? [];
 
-            // Fetch sales report for monthly profit
-            $salesResponse = Http::timeout(30)
-                ->withHeaders([
-                    'Accept' => 'application/json',
-                    'Authorization' => 'Bearer ' . $token,
-                ])
-                ->get('https://fati-api.alertaraqc.com/api/admin/reports/sales');
-
-            if ($salesResponse->successful()) {
-                $salesData = $salesResponse->json()['data'] ?? [];
-                
-                // Map monthly sales data
-                $reportData['monthly_profit'] = array_map(function ($sale) {
-                    return [
-                        'month' => $sale['month'] ?? 'N/A',
-                        'count' => $sale['count'] ?? 0,
-                    ];
-                }, $salesData['sales_by_month'] ?? []);
-
-                // Map recent sales as top profitable items
-                $recentSales = $salesData['recent_sales'] ?? [];
-                $reportData['top_items'] = array_map(function ($sale) {
-                    return [
-                        'item_name' => $sale['item']['title'] ?? 'N/A',
-                        'markup_points' => $sale['item']['markup_points'] ?? 0,
-                        // The sale was the store's; the student it came from
-                        // is provenance, not the seller of record.
-                        'seller_email' => $sale['consigned_by']
-                            ?? ($sale['seller']['name'] ?? 'Ofelia Store'),
-                    ];
-                }, $recentSales);
+                $reportData['total_profit'] = $data['total_profit'] ?? null;
+                $reportData['profit_by_month'] = array_map(fn ($row) => [
+                    'month' => $row['month'] ?? 'N/A',
+                    'profit' => $row['profit'] ?? null,
+                ], $data['profit_by_month'] ?? []);
+                $reportData['top_items'] = array_map(fn ($item) => [
+                    'title' => $item['title'] ?? 'N/A',
+                    'seller_email' => $item['seller_email'] ?? 'N/A',
+                    'acquisition_price' => $item['acquisition_price'] ?? null,
+                    'public_price' => $item['public_price'] ?? null,
+                    'markup' => $item['markup'] ?? null,
+                ], $data['top_profitable_items'] ?? []);
             }
         } catch (\Exception $e) {
             \Log::error('Profit report fetch error: ' . $e->getMessage());
-            $reportData = ['total_markup' => 0, 'monthly_profit' => [], 'top_items' => []];
         }
 
         return view('admin.reports.profit', compact('reportData'));
@@ -789,7 +746,7 @@ class AdminAuthController extends Controller
     public function categoriesReport(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -838,7 +795,7 @@ class AdminAuthController extends Controller
     public function usersReport(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -902,7 +859,7 @@ class AdminAuthController extends Controller
     public function categories(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -930,7 +887,7 @@ class AdminAuthController extends Controller
     public function activity(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $token = Session::get('admin_token');
@@ -957,7 +914,7 @@ class AdminAuthController extends Controller
     public function profile(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         $adminData = Session::get('admin_data');
@@ -966,12 +923,78 @@ class AdminAuthController extends Controller
     }
 
     /**
+     * The counter: scan a turnover or pickup QR, or type its code.
+     */
+    public function counter(Request $request)
+    {
+        if (!Session::has('admin_token')) {
+            return redirect()->route('admin.login');
+        }
+
+        return view('admin.counter');
+    }
+
+    /**
+     * Upload the admin's own profile photo, through the same API endpoint
+     * the mobile app uses, and keep the session's copy of the URL current.
+     */
+    public function updateProfilePicture(Request $request)
+    {
+        $request->validate([
+            'profile_picture' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+        ]);
+
+        $file = $request->file('profile_picture');
+        $stream = fopen($file->getRealPath(), 'rb');
+
+        try {
+            $response = Http::withToken(session('admin_token'))
+                ->acceptJson()
+                ->timeout(60)
+                ->attach('profile_picture', $stream, $file->getClientOriginalName())
+                ->post('https://fati-api.alertaraqc.com/api/profile/picture');
+
+            if (!$response->successful()) {
+                return back()->withErrors([
+                    'profile_picture' => $response->json('message') ?? 'The photo could not be uploaded. Please try again.',
+                ]);
+            }
+
+            $json = $response->json() ?? [];
+            $url = $json['profile_picture']
+                ?? $json['picture_url']
+                ?? $json['url']
+                ?? ($json['data']['profile_picture'] ?? null)
+                ?? ($json['data']['picture_url'] ?? null)
+                ?? ($json['user']['profile_picture'] ?? null);
+
+            if (!empty($url)) {
+                session()->put('admin_profile_picture', $url);
+                $adminData = session('admin_data', []);
+                $adminData['profile_picture'] = $url;
+                session()->put('admin_data', $adminData);
+            }
+
+            return redirect()->route('admin.profile')->with('profile_success', 'Profile photo updated.');
+        } catch (\Exception $e) {
+            \Log::error('Profile picture upload error: ' . $e->getMessage());
+
+            return back()->withErrors(['profile_picture' => 'Could not reach the server. Please try again.']);
+        } finally {
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+        }
+    }
+
+
+    /**
      * Show settings page.
      */
     public function settings(Request $request)
     {
         if (!Session::has('admin_token')) {
-            return redirect('/');
+            return redirect()->route('admin.login');
         }
 
         return view('admin.settings');

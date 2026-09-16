@@ -1,6 +1,6 @@
 @extends('layouts.admin-dashboard')
 
-@section('title', 'Public Listings')
+@section('title', 'Public listings')
 @section('subtitle', 'Items currently available for public purchase')
 
 @section('content')
@@ -183,7 +183,7 @@
     document.querySelectorAll('.edit-item-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const itemData = JSON.parse(atob(this.getAttribute('data-item-data')));
-            showEditModal(itemData);
+            openItemEdit(itemData);
         });
     });
 
@@ -310,4 +310,6 @@
     });
 </script>
 @endpush
+
+@include('admin.partials.item-edit')
 @endsection

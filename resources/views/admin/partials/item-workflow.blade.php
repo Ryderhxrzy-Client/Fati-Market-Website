@@ -11,6 +11,8 @@
     Include this once per page and call openItemWorkflow(itemId).
 --}}
 
+@include('admin.partials.meetup-picker')
+
 <div id="workflowModal"
      onclick="if (event.target === this) closeItemWorkflow()"
      style="display: none; position: fixed; inset: 0; background: rgba(17,24,39,0.82); z-index: 70; align-items: center; justify-content: center; padding: 32px;">
@@ -146,12 +148,13 @@
             );
 
             // BOOKING/SCHEDULE DISABLED - no longer required
-            // html += wfStep(
-                // 'Meet-up schedule',
-                // 'When the seller brings the item in.',
-                // `<input id="wfMeetup" type="datetime-local" value="${wfAttr(wfToLocalInput(item.meetup_schedule))}" style="${inputStyle}">
-                 // <button style="${buttonStyle}" onclick="wfSetMeetup()">Save schedule</button>`
-            // );
+//             html += wfStep(
+//                 'Meet-up schedule',
+//                 'When the seller brings the item in: a day this month, in store hours, like the app.',
+//                 `<p style="margin: 0 0 8px; font-size: 13px; color: #1f2937;">${item.meetup_schedule ? 'Booked: <b>' + wfEscape(wfMeetupLabel(item.meetup_schedule)) + '</b>' : 'No meet-up booked yet.'}</p>
+//                  <button style="${buttonStyle}" onclick="wfPickMeetup()">${item.meetup_schedule ? 'Change schedule' : 'Pick a day and time'}</button>
+//                  ${item.meetup_schedule ? `<button style="${dangerStyle} margin-left: 6px;" onclick="wfClearMeetup()">Clear</button>` : ''}`
+//             );
         }
 
         // ── Physically receiving it ──────────────────────────────────────
@@ -210,7 +213,21 @@
             );
         }
 
+        // ── Photos ───────────────────────────────────────────────────────
+        // The listing's pictures, as the mobile photo editor manages them.
+        // Editable until the item is sold or rejected; the server refuses to
+        // remove the last one and says so.
+        const photosFrozen = status === 'sold' || status === 'rejected';
+        html += wfStep(
+            'Photos',
+            photosFrozen ? 'A sold or rejected item keeps its photos.' : 'Add or remove the pictures buyers will see. The first one is the cover.',
+            `<div id="wfPhotos" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;"><span style="font-size: 12px; color: #6b7280;">Loading photos…</span></div>
+             ${photosFrozen ? '' : `<input id="wfPhotoFiles" type="file" accept="image/*" multiple style="${inputStyle}">
+             <button style="${buttonStyle}" onclick="wfUploadPhotos()">Upload photos</button>`}`
+        );
+
         document.getElementById('workflowBody').innerHTML = html;
+        wfLoadPhotos();
     }
 
     // BOOKING/SCHEDULE DISABLED - no longer required
@@ -278,10 +295,22 @@
     };
 
     // BOOKING/SCHEDULE DISABLED - no longer required
-    // window.wfSetMeetup = function () {
-        // const schedule = wfValue('wfMeetup');
-        // wfPost('meetup', { meetup_schedule: schedule || null }, 'Meet-up schedule saved');
-    // };
+//     window.wfPickMeetup = async function () {
+//         const when = await FMMeetup.pick({ current: workflowItem?.meetup_schedule || null });
+//         if (when === null) return;
+//         wfPost('meetup', { meetup_schedule: when }, 'Meet-up schedule saved');
+//     };
+
+    window.wfClearMeetup = function () {
+        if (!confirm('Clear the meet-up schedule?')) return;
+        wfPost('meetup', { meetup_schedule: null }, 'Meet-up schedule cleared');
+    };
+
+    /** "Sep 16, 10:00 AM" from what the API sends. */
+    function wfMeetupLabel(value) {
+        const date = new Date(value);
+        return isNaN(date.getTime()) ? String(value) : date.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    }
 
     window.wfVerifyTurnover = async function () {
         if (workflowBusy) return;
@@ -373,6 +402,88 @@
 
         wfPost('unpublish', {}, 'Item removed from the catalog');
     };
+
+    window.wfLoadPhotos = async function () {
+        const host = document.getElementById('wfPhotos');
+        if (!host || !workflowItem) return;
+
+        try {
+            const response = await fetch(`${WF_API}/admin/items/${workflowItem.item_id}/photos`, {
+                headers: { 'Authorization': `Bearer ${wfToken()}`, 'Accept': 'application/json' },
+            });
+            const payload = await response.json().catch(() => ({}));
+
+            if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
+
+            const photos = payload.data || [];
+            const frozenStatus = (workflowItem.status || '').toLowerCase();
+            const photosFrozen = frozenStatus === 'sold' || frozenStatus === 'rejected';
+
+            host.innerHTML = photos.length ? photos.map(photo => `
+                <div style="position: relative; width: 96px; height: 96px;">
+                    <img src="${wfAttr(photo.photo_url)}" alt="" style="width: 96px; height: 96px; object-fit: cover; border-radius: 8px; border: 1px solid #e5e7eb;">
+                    ${photosFrozen ? '' : `<button title="Remove photo" onclick="wfDeletePhoto(${Number(photo.photo_id)})"
+                        style="position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%; border: none; background: rgba(17,24,39,0.75); color: white; cursor: pointer; font-size: 12px;">&times;</button>`}
+                </div>
+            `).join('') : '<span style="font-size: 12px; color: #6b7280;">No photos yet.</span>';
+        } catch (error) {
+            host.innerHTML = `<span style="font-size: 12px; color: #b91c1c;">${wfEscape(error.message)}</span>`;
+        }
+    };
+
+    window.wfUploadPhotos = async function () {
+        const input = document.getElementById('wfPhotoFiles');
+        const files = input ? Array.from(input.files || []) : [];
+        if (!files.length) return wfNotify('Choose one or more photos first.', 'error');
+        if (workflowBusy) return;
+        workflowBusy = true;
+
+        const body = new FormData();
+        files.forEach(file => body.append('photos[]', file, file.name));
+
+        try {
+            const response = await fetch(`${WF_API}/admin/items/${workflowItem.item_id}/photos`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${wfToken()}`, 'Accept': 'application/json' },
+                body,
+            });
+            const payload = await response.json().catch(() => ({}));
+
+            if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
+
+            input.value = '';
+            wfNotify(files.length === 1 ? 'Photo added' : `${files.length} photos added`, 'success');
+            wfLoadPhotos();
+        } catch (error) {
+            wfNotify(error.message, 'error');
+        } finally {
+            workflowBusy = false;
+        }
+    };
+
+    window.wfDeletePhoto = async function (photoId) {
+        if (!confirm('Remove this photo from the listing?')) return;
+        if (workflowBusy) return;
+        workflowBusy = true;
+
+        try {
+            const response = await fetch(`${WF_API}/admin/items/${workflowItem.item_id}/photos/${photoId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${wfToken()}`, 'Accept': 'application/json' },
+            });
+            const payload = await response.json().catch(() => ({}));
+
+            if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
+
+            wfNotify('Photo removed', 'success');
+            wfLoadPhotos();
+        } catch (error) {
+            wfNotify(error.message, 'error');
+        } finally {
+            workflowBusy = false;
+        }
+    };
+
 
     window.wfReject = function () {
         const reason = wfValue('wfRejectReason');

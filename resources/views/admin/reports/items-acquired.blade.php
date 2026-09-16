@@ -1,6 +1,6 @@
 @extends('layouts.admin-dashboard')
 
-@section('title', 'Items Acquired')
+@section('title', 'Items acquired')
 @section('subtitle', 'Every item the store has taken in and what it agreed to pay')
 
 @section('content')
