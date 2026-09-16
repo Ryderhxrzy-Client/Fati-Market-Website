@@ -23,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // otherwise post with a session cookie the browser had dropped.
         $middleware->validateCsrfTokens(except: [
             'turnover/*',
+            'pickup/*',
         ]);
 
         $middleware->alias([
