@@ -5,9 +5,11 @@
 @section('subtitle', $manage ? 'Approve, decline, stage and complete every order' : 'Every order on record - pending, reserved, unpaid, completed')
 
 @section('actions')
+    {{-- COUNTER SCAN DISABLED
     <a href="{{ route('admin.counter') }}" class="fm-btn ghost">
         <i class="fas fa-qrcode"></i>Counter
     </a>
+    --}}
 @endsection
 
 @section('content')
