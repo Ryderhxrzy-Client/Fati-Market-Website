@@ -2,12 +2,19 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\AdminAuthController;
+use App\Http\Controllers\TurnoverController;
 
 // Public pages. These URLs are used on the Google OAuth consent screen and
 // must be reachable without signing in.
 Route::view('/', 'home')->name('home');
 Route::view('/privacy-policy', 'privacy-policy')->name('privacy-policy');
 Route::view('/terms-of-service', 'terms-of-service')->name('terms-of-service');
+
+// The counter turnover page a phone lands on after scanning the QR the
+// console shows. It carries its own short-lived key rather than a session,
+// because the phone that scans it has never signed in here.
+Route::get('/turnover/{ref}', [TurnoverController::class, 'show'])->name('turnover.show');
+Route::post('/turnover/{ref}', [TurnoverController::class, 'complete'])->name('turnover.complete');
 
 // Keep the admin console separate from the public website.
 Route::get('/admin/login', [AdminAuthController::class, 'showLoginForm'])->name('admin.login');
@@ -18,9 +25,14 @@ Route::post('/admin/login', [AdminAuthController::class, 'login'])->name('admin.
 Route::middleware('admin.auth')->group(function () {
     Route::get('/dashboard', [AdminAuthController::class, 'dashboard'])->name('admin.dashboard');
 
-    // The counter: scan a seller's turnover QR or a buyer's pickup QR, the
-    // way the mobile app's Scan tab does.
-    Route::get('/counter', [AdminAuthController::class, 'counter'])->name('admin.counter');
+    // COUNTER SCAN DISABLED - the scanning page is off for now. The two
+    // routes below are the turnover itself, not the scanner, and stay on.
+    // Route::get('/counter', [AdminAuthController::class, 'counter'])->name('admin.counter');
+
+    // Receiving an item: here on this computer, or handed off to a phone
+    // with a camera. Both end up in TurnoverService.
+    Route::post('/counter/handoff', [TurnoverController::class, 'handoff'])->name('admin.turnover.handoff');
+    Route::post('/counter/turnover/{item_id}', [TurnoverController::class, 'consoleComplete'])->name('admin.turnover.complete');
 
     // Inventory Management
     Route::get('/inventory/private-offers', [AdminAuthController::class, 'privateOffers'])->name('admin.private-offers');
@@ -69,7 +81,9 @@ Route::middleware('admin.auth')->group(function () {
 
     // Profile & Settings
     Route::get('/profile', [AdminAuthController::class, 'profile'])->name('admin.profile');
+    Route::post('/profile', [AdminAuthController::class, 'updateProfileName'])->name('admin.profile.update');
     Route::post('/profile/picture', [AdminAuthController::class, 'updateProfilePicture'])->name('admin.profile.picture');
+    Route::post('/profile/password', [AdminAuthController::class, 'updatePassword'])->name('admin.profile.password');
     Route::get('/settings', [\App\Http\Controllers\Admin\GcashSettingsController::class, 'show'])->name('admin.settings');
     Route::post('/settings/gcash', [\App\Http\Controllers\Admin\GcashSettingsController::class, 'update'])->name('admin.settings.gcash.update');
     // Signing out is a POST from the sidebar form, but a proxy that redirects

@@ -53,12 +53,27 @@ class AdminPagesRenderTest extends TestCase
             ]]),
             'fati-api.alertaraqc.com/api/admin/items*' => Http::response(['data' => [[
                 'item_id' => 7, 'seller_id' => 2, 'seller_email' => 'juan@student.fatima.edu.ph', 'title' => 'Calculator',
-                'description' => 'Works', 'status' => 'acquired', 'photos' => [], 'created_at' => '2026-09-01T10:00:00Z',
+                'description' => 'Works', 'status' => 'acquired', 'created_at' => '2026-09-01T10:00:00Z',
+                'photos' => ['https://cdn.test/one.jpg', 'https://cdn.test/two.jpg', 'https://cdn.test/three.jpg'],
                 'seller_asking_price' => '150.00', 'acquisition_price' => '150.00', 'seller_payout_status' => 'unpaid',
             ]]]),
             'fati-api.alertaraqc.com/api/admin/transactions/profit-summary' => Http::response(['data' => [
                 'total_profit_points' => 10, 'monthly_profit_points' => 5, 'completed_transactions' => 2, 'average_profit_per_transaction' => 5,
             ]]),
+            'fati-api.alertaraqc.com/api/admin/activity*' => Http::response(['data' => [[
+                'action' => 'purchase',
+                'user' => 'Ofelia Store',
+                'user_id' => 1,
+                'user_photo' => 'https://cdn.test/ofelia.jpg',
+                'user_role' => 'admin',
+                'user_email' => 'ofelia@fatima.edu.ph',
+                'description' => 'Handed "Living in the IT Era" over to Sheryl Cris Carigma',
+                'resource_type' => 'order',
+                'resource_id' => 15,
+                'timestamp' => '2026-09-16 18:11:00',
+                'subject' => ['user_id' => 2, 'name' => 'Sheryl Cris Carigma', 'photo' => 'https://cdn.test/sheryl.jpg', 'role' => 'student', 'email' => 's@student.fatima.edu.ph'],
+                'details' => [['label' => 'Buyer', 'value' => 'Sheryl Cris Carigma'], ['label' => 'Amount due', 'value' => '250.00']],
+            ]]]),
             'fati-api.alertaraqc.com/api/*' => Http::response(['data' => []]),
         ]);
     }
@@ -67,7 +82,6 @@ class AdminPagesRenderTest extends TestCase
     {
         return [
             ['/dashboard'],
-            ['/counter'],
             ['/inventory/private-offers'],
             ['/inventory/acquired-items'],
             ['/inventory/public-listings'],
@@ -114,28 +128,145 @@ class AdminPagesRenderTest extends TestCase
         $response->assertDontSee('Delete Admin Account', false);
     }
 
-    public function test_counter_page_includes_workflow_and_order_actions(): void
+    /** COUNTER SCAN DISABLED - the page is off, so the console must not link to it. */
+    public function test_the_counter_scan_page_is_switched_off(): void
     {
-        $response = $this->withSession($this->session)->get('/counter');
+        $this->withSession($this->session)->get('/counter')->assertNotFound();
 
-        $response->assertOk();
-        $response->assertSee('openItemWorkflow', false);
-        $response->assertSee('window.FMOrders', false);
-        $response->assertSee('jsQR', false);
+        $dashboard = $this->withSession($this->session)->get('/dashboard');
+        $dashboard->assertOk();
+        $dashboard->assertDontSee('Scan at the counter');
+        $dashboard->assertDontSee('Counter &middot; scan', false);
     }
 
-    public function test_layout_carries_counter_link_and_notification_bell(): void
+    /**
+     * The dashboard is a summary of the store, not a queue of approvals.
+     *
+     * Meet-ups went with the booking flow, and student verification is not
+     * something the console decides any more, so neither is advertised here -
+     * even when the API still sends the numbers behind them.
+     */
+    public function test_dashboard_has_no_meetups_or_approval_queues(): void
     {
         $response = $this->withSession($this->session)->get('/dashboard');
 
         $response->assertOk();
-        $response->assertSee(route('admin.counter'), false);
+        $response->assertDontSee('Meet-ups');
+        $response->assertDontSee('Pending verifications');
+        $response->assertDontSee('Pending approval');
+        $response->assertDontSee('loadMeetups', false);
+
+        // What it does still carry.
+        $response->assertSee('Recent items');
+        $response->assertSee('Store today');
+    }
+
+    public function test_chat_carries_the_turnover_panel(): void
+    {
+        $response = $this->withSession($this->session)->get('/conversations');
+
+        $response->assertOk();
+        $response->assertSee('openTurnover', false);
+        $response->assertSee('Continue on phone');
+        $response->assertSee('Do it here');
+    }
+
+    /**
+     * The feed is about people, so it has to carry their faces and open on
+     * the facts. It used to draw one gradient circle for every row.
+     */
+    public function test_activity_rows_carry_faces_and_their_details(): void
+    {
+        $response = $this->withSession($this->session)->get('/activity');
+
+        $response->assertOk();
+        $response->assertSee('https://cdn.test/ofelia.jpg', false);
+        $response->assertSee('https://cdn.test/sheryl.jpg', false);
+        $response->assertSee('Sheryl Cris Carigma');
+        $response->assertSee('openActivity', false);
+        $response->assertSee('Amount due');
+
+        // The old anonymous circle is gone.
+        $response->assertDontSee('from-green-400 to-blue-500', false);
+    }
+
+    /**
+     * A picker with an upload button beside it leaves a photo chosen but not
+     * added, and the list below goes on showing the old pictures.
+     */
+    public function test_the_workflow_panel_adds_photos_as_they_are_chosen(): void
+    {
+        $response = $this->withSession($this->session)->get('/inventory/acquired-items');
+
+        $response->assertOk();
+        $response->assertSee('onchange="wfUploadPhotos()"', false);
+        $response->assertDontSee('>Upload photos<', false);
+    }
+
+    /**
+     * Every inventory page used to carry its own copy of this window, and
+     * every copy showed the first photo and stopped: a listing with five
+     * pictures looked exactly like one with a single picture.
+     *
+     * @param  string  $path
+     */
+    #[DataProvider('inventoryPages')]
+    public function test_viewing_an_item_shows_all_of_its_photos(string $path): void
+    {
+        $response = $this->withSession($this->session)->get($path);
+
+        $response->assertOk();
+        $response->assertSee('openItemView', false);
+        $response->assertSee('itemViewStep', false);
+        $response->assertSee('id="itemViewModal"', false);
+
+        // The per-page copies are gone.
+        $response->assertDontSee('function showViewModal', false);
+    }
+
+    public static function inventoryPages(): array
+    {
+        return [
+            ['/inventory/private-offers'],
+            ['/inventory/acquired-items'],
+            ['/inventory/public-listings'],
+            ['/inventory/reserved-items'],
+            ['/inventory/sold-items'],
+        ];
+    }
+
+    public function test_the_sidebar_has_a_profile_entry(): void
+    {
+        $response = $this->withSession($this->session)->get('/dashboard');
+
+        $response->assertOk();
+        $response->assertSee('data-route="admin.profile"', false);
+    }
+
+    /**
+     * The header blurs what is behind it, which makes it its own stacking
+     * context: without a z-index of its own, the page painted over its menus
+     * and the Google map on Settings swallowed the account menu whole.
+     */
+    public function test_the_header_is_lifted_above_the_page(): void
+    {
+        $response = $this->withSession($this->session)->get('/settings');
+
+        $response->assertOk();
+        $response->assertSee('z-index: 60;', false);
+    }
+
+    public function test_layout_carries_the_notification_bell(): void
+    {
+        $response = $this->withSession($this->session)->get('/dashboard');
+
+        $response->assertOk();
         $response->assertSee('id="notifBadge"', false);
         $response->assertSee('notifications/chat', false);
     }
 
     public function test_guest_is_redirected_from_admin_pages(): void
     {
-        $this->get('/counter')->assertRedirect('/admin/login');
+        $this->get('/dashboard')->assertRedirect('/admin/login');
     }
 }

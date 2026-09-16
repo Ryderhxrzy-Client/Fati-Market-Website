@@ -250,6 +250,14 @@
             backdrop-filter: saturate(180%) blur(8px);
             border-bottom: 1px solid var(--line);
             flex-shrink: 0;
+
+            /* The blur above makes this bar its own stacking context, so the
+               z-index on the menus inside it only ever counted against each
+               other. The page below then painted over them: on Settings, the
+               Google map swallowed the account menu whole. Lifting the bar
+               itself puts everything it contains above the page. */
+            position: relative;
+            z-index: 60;
         }
 
         .topbar h2 { font-size: 19px; font-weight: 650; margin: 0; }
@@ -533,7 +541,10 @@
             backdrop-filter: blur(3px);
             display: none;
             align-items: center; justify-content: center;
-            z-index: 50;
+            /* Above the header, which is lifted to 60 so its own menus clear
+               the page. A dimmed window that left the header bright looked
+               like the header had come loose from the page behind it. */
+            z-index: 70;
             padding: 24px;
         }
         .modal-overlay.active { display: flex; animation: fadeIn 0.16s ease; }
@@ -722,14 +733,19 @@
                     <i class="fas fa-comments"></i><span>Chat</span>
                     <span class="nav-count" id="unreadCount" style="display: none;">0</span>
                 </a>
+                {{-- COUNTER SCAN DISABLED
                 <a href="{{ route('admin.counter') }}" class="sidebar-link" data-route="admin.counter">
                     <i class="fas fa-qrcode"></i><span>Counter &middot; scan</span>
                 </a>
+                --}}
                 <a href="{{ route('admin.students') }}" class="sidebar-link" data-route="admin.students">
                     <i class="fas fa-users"></i><span>Students</span>
                 </a>
                 <a href="{{ route('admin.categories') }}" class="sidebar-link" data-route="admin.categories">
                     <i class="fas fa-tags"></i><span>Categories</span>
+                </a>
+                <a href="{{ route('admin.profile') }}" class="sidebar-link" data-route="admin.profile">
+                    <i class="fas fa-id-badge"></i><span>Profile</span>
                 </a>
                 <a href="{{ route('admin.settings') }}" class="sidebar-link" data-route="admin.settings">
                     <i class="fas fa-gear"></i><span>Settings</span>

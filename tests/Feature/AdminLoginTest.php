@@ -111,7 +111,7 @@ class AdminLoginTest extends TestCase
     {
         $this->get('/dashboard')->assertRedirect('/admin/login');
         $this->get('/settings')->assertRedirect('/admin/login');
-        $this->get('/counter')->assertRedirect('/admin/login');
+        $this->get('/conversations')->assertRedirect('/admin/login');
     }
 
     public function test_an_expired_session_is_sent_to_the_login_page(): void
