@@ -11,6 +11,19 @@ Route::view('/', 'home')->name('home');
 Route::view('/privacy-policy', 'privacy-policy')->name('privacy-policy');
 Route::view('/terms-of-service', 'terms-of-service')->name('terms-of-service');
 
+// PayMongo payment success & cancel/error redirect pages
+Route::get('/payment/success', function (Illuminate\Http\Request $request) {
+    return view('payment.success', [
+        'transaction_id' => $request->query('transaction_id'),
+    ]);
+})->name('payment.success');
+
+Route::get('/payment/cancel', function (Illuminate\Http\Request $request) {
+    return view('payment.cancel', [
+        'transaction_id' => $request->query('transaction_id'),
+    ]);
+})->name('payment.cancel');
+
 // The counter turnover page a phone lands on after scanning the QR the
 // console shows. It carries its own short-lived key rather than a session,
 // because the phone that scans it has never signed in here.
