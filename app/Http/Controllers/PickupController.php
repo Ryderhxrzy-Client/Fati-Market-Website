@@ -118,7 +118,7 @@ class PickupController extends Controller
             ], 410);
         }
 
-        $request->validate(['handover_photo' => ['required', 'image', 'max:8192']]);
+        $request->validate(['handover_photo' => ['required', 'image', 'max:20480']]);
 
         $token = (string) $handoff['token'];
         $orderId = (int) $handoff['transaction_id'];

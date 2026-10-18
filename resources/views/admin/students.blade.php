@@ -1,7 +1,7 @@
 @extends('layouts.admin-dashboard')
 
 @section('title', 'User Management')
-@section('subtitle', 'Manage users and verify their profiles')
+@section('subtitle', 'Manage registered users and account status')
 
 @section('content')
 <div class="space-y-6">
@@ -9,14 +9,18 @@
     <div class="fm-toolbar">
         <select id="statusFilter" class="fm-input">
             <option value="">All Statuses</option>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
+            <option value="active">Active</option>
             <option value="blocked">Blocked</option>
         </select>
-        <span class="fm-search"><i class="fas fa-magnifying-glass"></i><input type="search" placeholder="Search users..." id="searchInput" class="fm-input"></span>
+        <select id="methodFilter" class="fm-input">
+            <option value="">All Registration Methods</option>
+            <option value="Google">Google</option>
+            <option value="Email & Password">Email & Password</option>
+        </select>
+        <span class="fm-search"><i class="fas fa-magnifying-glass"></i><input type="search" placeholder="Search users by name, email or ID..." id="searchInput" class="fm-input"></span>
     </div>
 
-    <!-- Students List -->
+    <!-- Users List -->
     <div class="fm-card">
         <div class="fm-table-wrap">
             <table class="fm-table">
@@ -24,7 +28,7 @@
                     <tr>
                         <th>User</th>
                         <th>Email</th>
-                        <th>Verification</th>
+                        <th>Registered Via</th>
                         <th>Status</th>
                         <th>Joined</th>
                         <th>Points</th>
@@ -35,7 +39,7 @@
                     <tr>
                         <td colspan="7" class="px-6 py-12 text-center">
                             <i class="fas fa-spinner fa-spin text-2xl text-gray-400 mb-3 block"></i>
-                            <p class="text-gray-500">Loading students...</p>
+                            <p class="text-gray-500">Loading users...</p>
                         </td>
                     </tr>
                 </tbody>
@@ -44,27 +48,7 @@
     </div>
 </div>
 
-<!-- View Verification Modal -->
-<div id="verificationModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-    <div class="modal modal-lg">
-        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-            <h3>Verification Document</h3>
-            <button onclick="closeVerificationModal()" class="text-gray-500 hover:text-gray-700">
-                <i class="fas fa-times text-xl"></i>
-            </button>
-        </div>
-        <div class="p-6">
-            <img id="verificationImage" src="" alt="Verification" class="w-full rounded-lg">
-            <div class="mt-4 space-y-2">
-                <p><span class="font-semibold">User:</span> <span id="modalUserName"></span></p>
-                <p><span class="font-semibold">Email:</span> <span id="modalUserEmail"></span></p>
-                <p><span class="font-semibold">Type:</span> <span id="modalVerificationType"></span></p>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Approve/Decline/Block Modal -->
+<!-- Block / Unblock Modal -->
 <div id="verificationActionModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
     <div class="modal modal-lg">
         <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
@@ -78,25 +62,25 @@
             <div class="grid grid-cols-1 gap-2">
                 <p><span class="font-semibold">User:</span> <span id="actionModalUserName"></span></p>
                 <p><span class="font-semibold">Email:</span> <span id="actionModalUserEmail"></span></p>
-                <p><span class="font-semibold">Status:</span> <span id="actionModalUserStatus"></span></p>
+                <p><span class="font-semibold">Current Status:</span> <span id="actionModalUserStatus"></span></p>
                 <p class="cell-sub">User ID: <span id="actionModalStudentId"></span></p>
-                <p class="text-xs text-gray-500 break-all">API: <span id="actionModalEndpoint"></span></p>
-
             </div>
 
-
-
-            <div id="actionReasonWrapper" class="hidden">
-                <label class="fm-label">Reason</label>
-                <textarea id="actionReasonInput" class="fm-input" placeholder="Enter reason..." rows="4"></textarea>
-                <p id="actionReasonError" class="hidden text-sm text-red-600 mt-1">Reason is required.</p>
+            <div id="actionReasonWrapper">
+                <label class="fm-label">Reason for blocking</label>
+                <textarea id="actionReasonInput" class="fm-input" placeholder="Enter reason for blocking this user..." rows="3"></textarea>
+                <p id="actionReasonError" class="hidden text-sm text-red-600 mt-1">Reason is required to block an account.</p>
             </div>
+
+            <p id="actionUnblockMessage" class="hidden text-sm text-gray-600">
+                Are you sure you want to unblock this user? Their account will be reactivated and they will be able to sign in again.
+            </p>
 
             <div class="flex gap-3 justify-end pt-2">
                 <button type="button" onclick="closeVerificationActionModal()" class="fm-btn ghost">
                     Cancel
                 </button>
-                <button type="button" onclick="submitVerificationAction()" class="fm-btn primary">
+                <button type="button" id="actionConfirmBtn" onclick="submitVerificationAction()" class="fm-btn primary">
                     Confirm
                 </button>
             </div>
@@ -119,6 +103,7 @@ function getToken() {
 document.addEventListener('DOMContentLoaded', async function() {
     token = getToken();
     await loadStudents();
+    attachEventListeners();
 });
 
 async function loadStudents() {
@@ -134,14 +119,14 @@ async function loadStudents() {
 
         const data = await response.json();
         allStudents = Array.isArray(data) ? data : (data.data || []);
-        renderStudents(allStudents);
+        filterAndRender();
     } catch (error) {
-        console.error('Error loading students:', error);
+        console.error('Error loading users:', error);
         document.getElementById('studentsList').innerHTML = `
             <tr>
                 <td colspan="7" class="px-6 py-12 text-center">
                     <i class="fas fa-exclamation-circle text-4xl text-red-300 mb-3 block"></i>
-                    <p class="text-red-500 font-medium">Error loading students</p>
+                    <p class="text-red-500 font-medium">Error loading users</p>
                     <p class="text-red-400 text-sm">${error.message}</p>
                 </td>
             </tr>
@@ -156,138 +141,118 @@ function renderStudents(students) {
         list.innerHTML = `
             <tr>
                 <td colspan="7">
-                                <div class="fm-empty">
-                                    <i class="fas fa-inbox"></i>
-                                    <p>No students found</p>
-                                    <span>Nothing to show here yet.</span>
-                                </div>
-                            </td>
+                    <div class="fm-empty">
+                        <i class="fas fa-users-slash"></i>
+                        <p>No users found</p>
+                        <span>No registered users match your criteria.</span>
+                    </div>
+                </td>
             </tr>
         `;
         return;
     }
 
     list.innerHTML = students.map(student => {
-        const fullName = `${student.first_name} ${student.last_name}`;
-        const status = student.status || 'pending';
-        const statusColors = {
-            'pending': 'bg-yellow-100 text-yellow-800',
-            'approved': 'bg-green-100 text-green-800',
-            'blocked': 'bg-red-100 text-red-800'
-        };
-        const verificationStatus = student.is_verified ? 'Verified' : 'Unverified';
-        const verificationStatusColor = student.is_verified ? 'text-green-600' : 'text-orange-600';
+        const fullName = `${student.first_name || ''} ${student.last_name || ''}`.trim() || ('User #' + student.user_id);
+        const isBlocked = student.status === 'blocked';
+        const method = student.registration_method || (student.email && student.email.endsWith('@fatima.edu.ph') ? 'Google' : 'Email & Password');
+        const initials = ((student.first_name?.[0] || 'U') + (student.last_name?.[0] || '')).toUpperCase();
+
+        const methodBadge = method === 'Google'
+            ? `<span class="fm-badge brand" style="display:inline-flex;align-items:center;gap:6px;"><i class="fab fa-google"></i> Google</span>`
+            : `<span class="fm-badge" style="display:inline-flex;align-items:center;gap:6px;"><i class="fas fa-envelope"></i> Email &amp; Password</span>`;
+
+        const statusBadge = isBlocked
+            ? `<span class="fm-badge danger" style="display:inline-flex;align-items:center;gap:4px;"><i class="fas fa-ban"></i> Blocked</span>`
+            : `<span class="fm-badge success" style="display:inline-flex;align-items:center;gap:4px;"><i class="fas fa-check-circle"></i> Active</span>`;
+
+        const actionButton = isBlocked
+            ? `<button class="fm-btn ghost text-green-600 hover:text-green-700 font-medium" style="color:var(--success, #16a34a);border-color:currentColor;" onclick="openActionModal('${student.user_id}', 'unblock')">
+                <i class="fas fa-unlock"></i> Unblock
+               </button>`
+            : `<button class="fm-btn ghost text-red-600 hover:text-red-700 font-medium" style="color:var(--danger, #dc2626);border-color:currentColor;" onclick="openActionModal('${student.user_id}', 'block')">
+                <i class="fas fa-ban"></i> Block
+               </button>`;
+
+        const registeredDate = student.registered_date ? new Date(student.registered_date).toLocaleDateString() : '—';
 
         return `
-            <tr class="hover:bg-gray-50 transition" data-status="${status}" data-student-id="${student.student_verification_id}">
+            <tr class="hover:bg-gray-50 transition" data-status="${student.status}" data-user-id="${student.user_id}">
                 <td>
                     <div class="flex items-center gap-3">
                         ${student.profile_picture ?
                             `<img src="${student.profile_picture}" alt="${fullName}" class="w-10 h-10 rounded-full object-cover">` :
-                            `<div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white font-bold text-sm">${student.first_name[0]}${student.last_name[0]}</div>`
+                            `<div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center text-white font-bold text-sm">${initials}</div>`
                         }
                         <div>
-                            <p class="cell-title">${fullName}</p>
-                            <p class="cell-sub">Verification ID: ${student.student_verification_id}</p>
+                            <p class="cell-title font-semibold">${fullName}</p>
+                            <p class="cell-sub">ID: #${student.user_id}</p>
                         </div>
                     </div>
                 </td>
                 <td>
-                    <p>${student.email}</p>
+                    <p class="text-sm text-gray-700">${student.email}</p>
                 </td>
                 <td>
-                    <div>
-                        <p class="text-sm font-medium ${verificationStatusColor}">${verificationStatus}</p>
-                        <button onclick="showVerificationModal('${student.student_verification_id}')" class="text-xs text-blue-600 hover:text-blue-800 mt-1">
-                            View Document
-                        </button>
-                    </div>
+                    ${methodBadge}
                 </td>
                 <td>
-                    <span class="px-3 py-1 rounded-full text-xs font-semibold ${statusColors[status] || 'bg-gray-100 text-gray-800'}">
-                        ${status.charAt(0).toUpperCase() + status.slice(1)}
-                    </span>
+                    ${statusBadge}
                 </td>
                 <td>
-                    <p>${new Date(student.registered_date).toLocaleDateString()}</p>
+                    <p class="text-sm text-gray-600">${registeredDate}</p>
                 </td>
                 <td>
-                    <p class="text-sm font-medium text-green-600">${student.wallet_points} pts</p>
+                    <p class="text-sm font-medium text-green-700">${student.wallet_points ?? 0} pts</p>
                 </td>
                 <td>
                     <div class="flex gap-2">
-                        ${status === 'pending' ? `
-                            <button class="px-3 py-1 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded transition approve-btn" title="Approve" onclick="openActionModal('${student.student_verification_id}', 'approve')">
-                                <i class="fas fa-check"></i> Approve
-                            </button>
-                            <button class="px-3 py-1 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded transition decline-btn" title="Decline" onclick="openActionModal('${student.student_verification_id}', 'decline')">
-                                <i class="fas fa-times"></i> Decline
-                            </button>
-                        ` : ''}
-                        ${status !== 'blocked' ? `
-                            <button class="px-3 py-1 text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 rounded transition block-btn" title="Block" onclick="openActionModal('${student.student_verification_id}', 'block')">
-                                <i class="fas fa-ban"></i> Block
-                            </button>
-                        ` : ''}
+                        ${actionButton}
                     </div>
                 </td>
             </tr>
         `;
     }).join('');
-
-    attachEventListeners();
-}
-
-function showVerificationModal(studentId) {
-    const student = allStudents.find(s => String(s.student_verification_id) === String(studentId));
-    if (!student) return;
-
-
-    document.getElementById('verificationImage').src = student.verification_document;
-    document.getElementById('modalUserName').textContent = `${student.first_name} ${student.last_name}`;
-    document.getElementById('modalUserEmail').textContent = student.email;
-    document.getElementById('modalVerificationType').textContent = student.verification_type === 'student_id' ? 'Student ID' : 'ID';
-    document.getElementById('verificationModal').classList.remove('hidden');
-}
-
-function closeVerificationModal() {
-    document.getElementById('verificationModal').classList.add('hidden');
 }
 
 let currentAction = null;
 
-function openActionModal(studentId, action) {
-    const student = allStudents.find(s => String(s.student_verification_id) === String(studentId));
+function openActionModal(userId, action) {
+    const student = allStudents.find(s => String(s.user_id) === String(userId));
     if (!student) return;
-
 
     currentAction = action;
 
-    document.getElementById('actionModalUserName').textContent = `${student.first_name} ${student.last_name}`;
+    const fullName = `${student.first_name || ''} ${student.last_name || ''}`.trim() || ('User #' + student.user_id);
+    document.getElementById('actionModalUserName').textContent = fullName;
     document.getElementById('actionModalUserEmail').textContent = student.email;
-    document.getElementById('actionModalUserStatus').textContent = student.status || 'pending';
+    document.getElementById('actionModalUserStatus').textContent = student.status === 'blocked' ? 'Blocked' : 'Active';
     document.getElementById('actionModalStudentId').textContent = student.user_id;
-    document.getElementById('actionModalEndpoint').textContent = `https://fati-api.alertaraqc.com/api/admin/students/${student.student_verification_id}/${action}`;
-
-
 
     document.getElementById('actionReasonError').classList.add('hidden');
-
     document.getElementById('actionReasonInput').value = '';
 
     const titleMap = {
-        approve: 'Approve Student',
-        decline: 'Decline Student',
-        block: 'Block Student'
+        block: 'Block User Account',
+        unblock: 'Unblock User Account'
     };
 
     document.getElementById('verificationActionModalTitle').textContent = titleMap[action] || 'Action';
 
     const reasonWrapper = document.getElementById('actionReasonWrapper');
-    if (action === 'decline' || action === 'block') {
+    const unblockMessage = document.getElementById('actionUnblockMessage');
+    const confirmBtn = document.getElementById('actionConfirmBtn');
+
+    if (action === 'block') {
         reasonWrapper.classList.remove('hidden');
+        unblockMessage.classList.add('hidden');
+        confirmBtn.className = 'fm-btn danger';
+        confirmBtn.innerHTML = '<i class="fas fa-ban"></i> Block Account';
     } else {
         reasonWrapper.classList.add('hidden');
+        unblockMessage.classList.remove('hidden');
+        confirmBtn.className = 'fm-btn primary';
+        confirmBtn.innerHTML = '<i class="fas fa-unlock"></i> Unblock Account';
     }
 
     document.getElementById('verificationActionModal').classList.remove('hidden');
@@ -299,22 +264,17 @@ function closeVerificationActionModal() {
 
 async function submitVerificationAction() {
     const action = currentAction;
-    const studentId = document.getElementById('actionModalStudentId').textContent;
-
+    const userId = document.getElementById('actionModalStudentId').textContent;
     const reason = document.getElementById('actionReasonInput').value?.trim() || '';
 
-    if ((action === 'decline' || action === 'block') && !reason) {
+    if (action === 'block' && !reason) {
         document.getElementById('actionReasonError').classList.remove('hidden');
         return;
     }
 
     try {
-        let endpoint = `https://fati-api.alertaraqc.com/api/admin/students/${studentId}/${action}`;
-        let body = undefined;
-
-        if (action === 'decline' || action === 'block') {
-            body = JSON.stringify({ reason });
-        }
+        const endpoint = `https://fati-api.alertaraqc.com/api/admin/students/${userId}/${action}`;
+        const body = (action === 'block') ? JSON.stringify({ reason }) : undefined;
 
         const response = await fetch(endpoint, {
             method: 'PUT',
@@ -334,26 +294,11 @@ async function submitVerificationAction() {
             throw new Error(apiMsg);
         }
 
-        if (action === 'approve') showToast('Student approved successfully', 'success');
-        if (action === 'decline') showToast('Student declined', 'info');
-        if (action === 'block') showToast('Student blocked', 'error');
-
-// Optimistically update local list so UI updates immediately
-        if (payload?.status) {
-            const idx = allStudents.findIndex(s => String(s.student_verification_id) === String(studentId));
-            if (idx !== -1) {
-                allStudents[idx].status = payload.status;
-                if (typeof payload.is_verified !== 'undefined') {
-                    allStudents[idx].is_verified = payload.is_verified;
-                }
-            }
-        }
+        if (action === 'block') showToast('User blocked successfully', 'error');
+        if (action === 'unblock') showToast('User unblocked successfully', 'success');
 
         closeVerificationActionModal();
         await loadStudents();
-
-        // Debug/log the latest state
-        console.log('Action success payload:', payload);
 
     } catch (error) {
         console.error('Error submitting action:', error);
@@ -361,30 +306,48 @@ async function submitVerificationAction() {
     }
 }
 
-function attachEventListeners() {
-    document.getElementById('searchInput').addEventListener('keyup', function(e) {
-        const searchTerm = e.target.value.toLowerCase();
-        const filtered = allStudents.filter(student => {
-            const fullName = `${student.first_name} ${student.last_name}`.toLowerCase();
-            const email = student.email.toLowerCase();
-            return fullName.includes(searchTerm) || email.includes(searchTerm);
+function filterAndRender() {
+    const searchTerm = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
+    const statusVal = document.getElementById('statusFilter')?.value || '';
+    const methodVal = document.getElementById('methodFilter')?.value || '';
+
+    let filtered = allStudents;
+
+    if (statusVal) {
+        if (statusVal === 'blocked') {
+            filtered = filtered.filter(s => s.status === 'blocked');
+        } else if (statusVal === 'active') {
+            filtered = filtered.filter(s => s.status !== 'blocked');
+        } else {
+            filtered = filtered.filter(s => s.status === statusVal);
+        }
+    }
+
+    if (methodVal) {
+        filtered = filtered.filter(s => s.registration_method === methodVal);
+    }
+
+    if (searchTerm) {
+        filtered = filtered.filter(s => {
+            const fullName = `${s.first_name || ''} ${s.last_name || ''}`.toLowerCase();
+            const email = (s.email || '').toLowerCase();
+            return fullName.includes(searchTerm) || email.includes(searchTerm) || String(s.user_id).includes(searchTerm);
         });
-        renderStudents(filtered);
-    });
+    }
+
+    renderStudents(filtered);
 }
 
-document.getElementById('statusFilter').addEventListener('change', function(e) {
-    const selectedStatus = e.target.value;
-    const filtered = selectedStatus ?
-        allStudents.filter(s => s.status === selectedStatus) :
-        allStudents;
-    renderStudents(filtered);
-});
+function attachEventListeners() {
+    document.getElementById('searchInput')?.addEventListener('input', filterAndRender);
+    document.getElementById('statusFilter')?.addEventListener('change', filterAndRender);
+    document.getElementById('methodFilter')?.addEventListener('change', filterAndRender);
+}
 
 function showToast(message, type) {
     const toast = document.createElement('div');
     const bgColor = type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500';
-    toast.className = `fixed bottom-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg`;
+    toast.className = `fixed bottom-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-50`;
     toast.textContent = message;
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 3000);

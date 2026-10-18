@@ -95,7 +95,7 @@
 
     function fill(data) {
         el('openTime').value = String(data.open_time || '08:00').slice(0, 5);
-        el('closeTime').value = String(data.close_time || '17:00').slice(0, 5);
+        el('closeTime').value = String(data.close_time || '18:00').slice(0, 5);
         el('slotMinutes').value = data.slot_minutes || 30;
         openDays = new Set((Array.isArray(data.open_days) && data.open_days.length ? data.open_days : [1, 2, 3, 4, 5, 6]).map(Number));
         renderDays();

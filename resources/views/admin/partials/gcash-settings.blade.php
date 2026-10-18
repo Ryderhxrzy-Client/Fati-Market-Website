@@ -33,7 +33,7 @@
                 <div>
                     <label for="gcash-qr" class="block mb-2">Upload or replace QR code</label>
                     <input id="gcash-qr" name="qr_image" type="file" accept="image/png,image/jpeg" class="fm-input">
-                    <p class="text-sm mt-2">PNG or JPG, up to 5 MB. Leave empty to keep the current QR. Confirm the QR belongs to the account above.</p>
+                    <p class="text-sm mt-2">PNG or JPG, up to 20 MB. Leave empty to keep the current QR. Confirm the QR belongs to the account above.</p>
                 </div>
                 <button type="submit" class="fm-btn primary">Save GCash settings</button>
             </form>

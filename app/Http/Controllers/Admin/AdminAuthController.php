@@ -945,7 +945,7 @@ class AdminAuthController extends Controller
     public function updateProfilePicture(Request $request)
     {
         $request->validate([
-            'profile_picture' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'profile_picture' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:20480'],
         ]);
 
         $file = $request->file('profile_picture');

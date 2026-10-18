@@ -280,8 +280,8 @@
     function submitPhoto() {
         const input = document.getElementById('photoInput');
         if (!input.files.length) return;
-        if (input.files[0].size > 5 * 1024 * 1024) {
-            showToast('Choose a photo up to 5 MB.', 'error');
+        if (input.files[0].size > 20 * 1024 * 1024) {
+            showToast('Choose a photo up to 20 MB.', 'error');
             input.value = '';
             return;
         }

@@ -58,7 +58,7 @@ window.FMOrders = (function () {
     }
 
     function methodLabel(method) {
-        return { gcash: 'GCash', points_full: 'Points only', cash: 'Cash at store' }[method] || (method || 'Unknown');
+        return { gcash: 'GCash', points_full: 'Points only', cash: 'Cash on pickup (50% DP)', paymongo: 'PayMongo (Online)' }[method] || (method || 'Unknown');
     }
 
     function badge(label, tone) {
@@ -182,6 +182,10 @@ window.FMOrders = (function () {
                     ${row('Price', peso(order.subtotal))}
                     ${Number(order.points_used) > 0 ? row(`${order.points_used} point(s) used`, '-' + peso(order.points_discount_amount)) : ''}
                     ${row('Amount due', peso(order.amount_due), true)}
+                    ${(order.payment_method === 'cash' && Number(order.downpayment_amount) > 0)
+                        ? `${row('Required downpayment (50%)', peso(order.downpayment_amount))}
+                           ${row('Due at counter pickup', peso(Number(order.amount_due) - Number(order.downpayment_amount)))}`
+                        : ''}
                     ${row('Payment', methodLabel(order.payment_method))}
                     ${order.payment_reference ? row('Reference', order.payment_reference) : ''}
                     ${order.reserved_until ? row('Reserved until', when(order.reserved_until)) : ''}

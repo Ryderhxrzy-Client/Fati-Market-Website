@@ -739,7 +739,7 @@
                 </a>
                 --}}
                 <a href="{{ route('admin.students') }}" class="sidebar-link" data-route="admin.students">
-                    <i class="fas fa-users"></i><span>Students</span>
+                    <i class="fas fa-users"></i><span>Users</span>
                 </a>
                 <a href="{{ route('admin.categories') }}" class="sidebar-link" data-route="admin.categories">
                     <i class="fas fa-tags"></i><span>Categories</span>

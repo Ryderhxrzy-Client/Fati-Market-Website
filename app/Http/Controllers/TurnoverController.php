@@ -156,8 +156,8 @@ class TurnoverController extends Controller
         }
 
         $validated = $request->validate([
-            'turnover_photo' => ['nullable', 'image', 'max:8192'],
-            'payout_photo' => ['nullable', 'image', 'max:8192'],
+            'turnover_photo' => ['nullable', 'image', 'max:20480'],
+            'payout_photo' => ['nullable', 'image', 'max:20480'],
             'acquisition_price' => ['nullable', 'numeric', 'min:0'],
             'public_price' => ['nullable', 'numeric', 'min:0'],
             'status' => ['nullable', 'string', 'in:' . implode(',', TurnoverService::STATUSES)],
