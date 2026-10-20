@@ -537,10 +537,10 @@ class AdminAuthController extends Controller
                 
                 // Map API data to view field names
                 $transactions = [
-                    'total_profit' => (int)($data['total_profit_points'] ?? 0),
-                    'monthly_profit' => (int)($data['monthly_profit_points'] ?? 0),
+                    'total_profit' => '₱' . number_format((float)($data['total_profit'] ?? $data['total_profit_points'] ?? 0), 2),
+                    'monthly_profit' => '₱' . number_format((float)($data['monthly_profit'] ?? $data['monthly_profit_points'] ?? 0), 2),
                     'completed_transactions' => (int)($data['completed_transactions'] ?? 0),
-                    'avg_per_transaction' => (float)($data['average_profit_per_transaction'] ?? 0),
+                    'avg_per_transaction' => '₱' . number_format((float)($data['average_profit_per_transaction'] ?? 0), 2),
                 ];
             }
         } catch (\Exception $e) {

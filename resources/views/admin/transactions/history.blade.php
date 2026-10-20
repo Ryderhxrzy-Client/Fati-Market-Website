@@ -77,7 +77,10 @@
 @push('scripts')
 <script>
     const API = 'https://fati-api.alertaraqc.com/api';
-    const token = document.querySelector('meta[name="api-token"]')?.getAttribute('content') || '';
+    const token = document.querySelector('meta[name="api-token"]')?.getAttribute('content')
+        || sessionStorage.getItem('admin_token')
+        || localStorage.getItem('admin_token')
+        || '';
     // "Manage orders" offers the decisions; "Transaction history" only shows them.
     const MANAGE = @json($manage);
 
@@ -113,7 +116,7 @@
                     <div class="fm-empty">
                         <i class="fas fa-cloud-slash"></i>
                         <p>Could not load orders</p>
-                        <span>${FMOrders.esc(error.message)}</span>
+                        <span>${window.FMOrders && typeof FMOrders.esc === 'function' ? FMOrders.esc(error.message) : (error.message || 'An error occurred.')}</span>
                         <div class="mt-4"><button class="fm-btn primary" onclick="loadOrders()">Try again</button></div>
                     </div>
                 </td></tr>`;

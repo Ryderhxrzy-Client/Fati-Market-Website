@@ -27,8 +27,10 @@
                     @forelse($transactions as $transaction)
                         @php
                             $pointsChange = $transaction['points_change'] ?? 0;
-                            $userEmail = is_array($transaction['user']) ? ($transaction['user']['email'] ?? 'Unknown') : ($transaction['user_email'] ?? 'Unknown');
-                            $itemTitle = is_array($transaction['related_item']) ? ($transaction['related_item']['title'] ?? 'N/A') : ($transaction['related_item_title'] ?? 'N/A');
+                            $user = $transaction['user'] ?? [];
+                            $userEmail = is_array($user) ? ($user['email'] ?? 'Unknown') : ($transaction['user_email'] ?? 'Unknown');
+                            $relatedItem = $transaction['related_item'] ?? $transaction['relatedItem'] ?? [];
+                            $itemTitle = is_array($relatedItem) ? ($relatedItem['title'] ?? 'N/A') : ($transaction['related_item_title'] ?? 'N/A');
                         @endphp
                         <tr>
                             <td>

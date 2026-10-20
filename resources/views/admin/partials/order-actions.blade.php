@@ -122,7 +122,7 @@ window.FMOrders = (function () {
         if (actions.includes('verify_payment')) buttons.push(`<button class="${solid}" onclick="FMOrders.run('verify-payment', 'Approve payment')"><i class="fas fa-check"></i>Approve payment</button>`);
         if (actions.includes('approve_order')) buttons.push(`<button class="${solid}" onclick="FMOrders.run('approve-order', 'Approve order')"><i class="fas fa-check"></i>Approve order</button>`);
         if (actions.includes('mark_ready_for_pickup')) buttons.push(`<button class="${ghost}" onclick="FMOrders.run('ready-for-pickup', 'Ready for pickup')"><i class="fas fa-box-open"></i>Ready for pickup</button>`);
-        if (actions.includes('complete')) buttons.push(`<button class="${solid}" onclick="FMOrders.run('complete', 'Complete handover')"><i class="fas fa-handshake"></i>Complete handover</button>`);
+        if (actions.includes('complete')) buttons.push(`<button class="${solid}" onclick="FMOrders.handover()"><i class="fas fa-handshake"></i>Complete handover</button>`);
         if (actions.includes('reject_payment')) buttons.push(`<button class="${danger}" onclick="FMOrders.run('reject-payment', 'Decline payment')"><i class="fas fa-xmark"></i>Decline payment</button>`);
         else if (actions.includes('cancel')) buttons.push(`<button class="${danger}" onclick="FMOrders.run('cancel', 'Cancel order')"><i class="fas fa-ban"></i>Cancel order</button>`);
 
@@ -273,9 +273,6 @@ window.FMOrders = (function () {
             if (reason === null) return;
             if (!String(reason).trim()) { showToast('A reason is required.', 'error'); return; }
             body = JSON.stringify({ reason: String(reason).trim() });
-        } else {
-                body = '{}';
-            }
         } else {
             const confirmed = await ask({
                 title: `${label}?`,

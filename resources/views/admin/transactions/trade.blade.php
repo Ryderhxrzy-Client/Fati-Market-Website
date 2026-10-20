@@ -19,53 +19,90 @@
                         <th>Transaction ID</th>
                         <th>Item</th>
                         <th>Buyer / Seller</th>
+                        <th>Points Used</th>
                         <th>Payment Method</th>
                         <th>Status</th>
+                        <th>Date</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($transactions as $transaction)
+                        @php
+                            $itemTitle = $transaction['item']['title'] ?? $transaction['item_title'] ?? ('Item #' . ($transaction['item_id'] ?? 'N/A'));
+                            $itemPhotos = $transaction['item']['photos'] ?? [];
+                            $photo = !empty($itemPhotos) ? $itemPhotos[0] : null;
+                            $buyer = $transaction['buyer'] ?? [];
+                            $buyerName = is_array($buyer) ? ($buyer['name'] ?? null) : null;
+                            $buyerEmail = is_array($buyer) ? ($buyer['email'] ?? null) : ($transaction['buyer_email'] ?? null);
+                            $seller = $transaction['seller'] ?? [];
+                            $sellerEmail = is_array($seller) ? ($seller['email'] ?? null) : ($transaction['seller_email'] ?? null);
+                            $consignedBy = $transaction['consigned_by'] ?? null;
+                            $pointsUsed = $transaction['points_used'] ?? 0;
+                            $receiptNo = $transaction['receipt_no'] ?? ('#' . ($transaction['transaction_id'] ?? ''));
+                            $date = $transaction['created_at'] ?? $transaction['transaction_date'] ?? null;
+                        @endphp
                         <tr>
                             <td>
-                                <p class="text-sm font-medium text-gray-900">{{ $transaction['transaction_id'] ?? 'TXN-0000' }}</p>
+                                <p class="cell-title font-medium text-gray-900">{{ $receiptNo }}</p>
+                                <p class="cell-sub text-xs text-gray-500">#{{ $transaction['transaction_id'] ?? 'N/A' }}</p>
                             </td>
                             <td>
-                                <p class="text-sm font-medium text-gray-900">{{ $transaction['item_title'] ?? 'N/A' }}</p>
+                                <div class="flex items-center gap-3">
+                                    @if($photo)
+                                        <img src="{{ $photo }}" alt="" class="thumb" style="width: 40px; height: 40px; border-radius: 6px; object-fit: cover;" loading="lazy">
+                                    @else
+                                        <div class="thumb" style="width: 40px; height: 40px; border-radius: 6px; background: var(--surface-sunk, #f3f4f6); display: flex; align-items: center; justify-content: center;"><i class="fas fa-image text-gray-400"></i></div>
+                                    @endif
+                                    <p class="cell-title text-sm font-medium text-gray-900" style="max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ $itemTitle }}</p>
+                                </div>
                             </td>
                             <td>
                                 <div class="space-y-1">
-                                    @if($transaction['buyer_email'] ?? null)
-                                        <p class="text-xs text-gray-600">Buyer: {{ $transaction['buyer_email'] }}</p>
+                                    @if($buyerName || $buyerEmail)
+                                        <p class="text-xs text-gray-900 font-medium">Buyer: {{ $buyerName ?? $buyerEmail }}</p>
+                                        @if($buyerName && $buyerEmail)
+                                            <p class="text-xs text-gray-500">{{ $buyerEmail }}</p>
+                                        @endif
                                     @endif
-                                    @if($transaction['seller_email'] ?? null)
-                                        <p class="text-xs text-gray-600">Seller: {{ $transaction['seller_email'] }}</p>
+                                    @if($sellerEmail)
+                                        <p class="text-xs text-gray-600">Seller: {{ $sellerEmail }}</p>
                                     @endif
-                                    @if($transaction['consigned_by'] ?? null)
-                                        <p class="text-xs text-gray-500">From: {{ $transaction['consigned_by'] }}</p>
+                                    @if($consignedBy)
+                                        <p class="text-xs text-gray-500">From: {{ $consignedBy }}</p>
                                     @endif
                                 </div>
                             </td>
                             <td>
-                                <p>{{ $transaction['payment_method'] ?? 'N/A' }}</p>
+                                <p class="text-sm font-semibold text-blue-600">{{ $pointsUsed }} pts</p>
+                            </td>
+                            <td>
+                                <p class="text-xs font-medium text-gray-700">Points only</p>
                             </td>
                             <td>
                                 @php
                                     $status = $transaction['status'] ?? 'pending';
                                     $statusColors = [
                                         'completed' => 'bg-green-100 text-green-800',
+                                        'reserved' => 'bg-blue-100 text-blue-800',
+                                        'ready_for_pickup' => 'bg-emerald-100 text-emerald-800',
                                         'pending' => 'bg-orange-100 text-orange-800',
+                                        'pending_payment' => 'bg-orange-100 text-orange-800',
                                         'failed' => 'bg-red-100 text-red-800',
-                                        'success' => 'bg-green-100 text-green-800',
+                                        'cancelled' => 'bg-gray-100 text-gray-800',
+                                        'rejected' => 'bg-red-100 text-red-800',
                                     ];
                                 @endphp
-                                <span class="px-3 py-1 rounded-full text-xs font-semibold {{ $statusColors[$status] ?? 'bg-gray-100 text-gray-800' }}">
-                                    {{ ucfirst($status) }}
+                                <span class="px-2.5 py-1 rounded-full text-xs font-semibold {{ $statusColors[$status] ?? 'bg-gray-100 text-gray-800' }}">
+                                    {{ ucfirst(str_replace('_', ' ', $status)) }}
                                 </span>
+                            </td>
+                            <td>
+                                <p class="text-xs text-gray-600">{{ $date ? date('M d, Y H:i', strtotime($date)) : 'N/A' }}</p>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5">
+                            <td colspan="7">
                                 <div class="fm-empty">
                                     <i class="fas fa-inbox"></i>
                                     <p>No trade transactions found</p>
