@@ -1155,6 +1155,7 @@ function renderOrderCard(msg, isAdmin, senderName, timestamp) {
             ${summaryRow('Amount due', peso(order.amount_due), true)}
             ${summaryRow('Payment', paymentMethodLabel(order.payment_method))}
             ${order.payment_reference ? summaryRow('Reference', order.payment_reference) : ''}
+            ${order.pickup_date ? summaryRow('Pick-up schedule', `<span style="font-weight: 600; color: ${order.status === 'overdue' ? '#dc2626' : 'inherit'};"><i class="fas fa-calendar-day" style="margin-right: 4px; color: var(--brand-600);"></i>${escapeHtml(order.pickup_date_formatted || when(order.pickup_date))}</span>`) : ''}
         </div>
         <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px;">
             ${paymentStateBadge(order, msg.payment_status_at)}
