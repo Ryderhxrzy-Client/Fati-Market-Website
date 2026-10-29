@@ -140,6 +140,12 @@
                     <span style="color: var(--ink-500, #6b7280);">Total price</span>
                     <span style="font-weight: 600;">${peso(order.amount_due)}</span>
                 </div>
+                ${(order.pickup_date_formatted || order.pickup_date) ? `
+                <div style="display: flex; justify-content: space-between; gap: 12px; padding: 3px 0;">
+                    <span style="color: var(--ink-500, #6b7280);">Pick-up schedule</span>
+                    <span style="font-weight: 600; color: ${order.status === 'overdue' ? '#dc2626' : 'var(--ink)'};"><i class="fas fa-calendar-day" style="margin-right: 4px; color: var(--brand-600);"></i>${esc(order.pickup_date_formatted || order.pickup_date)}</span>
+                </div>
+                ` : ''}
                 ${dpPaid ? `
                 <div style="display: flex; justify-content: space-between; gap: 12px; padding: 3px 0;">
                     <span style="color: var(--ink-500, #6b7280);">50% Downpayment</span>
