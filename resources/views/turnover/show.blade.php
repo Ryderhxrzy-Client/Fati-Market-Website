@@ -271,9 +271,9 @@
                         </div>
 
                         <div class="proof">
-                            <img id="payoutPreview" alt="Student seller paid">
+                            <img id="payoutPreview" alt="Receipt: Admin paid">
                             <label class="capture" id="payoutCapture">
-                                <i class="fas fa-camera"></i><span>Take photo: student seller paid</span>
+                                <i class="fas fa-camera"></i><span>Take photo: Receipt: Admin paid</span>
                                 <input type="file" accept="image/*" capture="environment" data-slot="payout">
                             </label>
                         </div>
@@ -311,7 +311,7 @@
                 <div id="formError" class="banner danger" style="display: none;"></div>
 
                 <button type="submit" class="primary" id="submitButton">
-                    {{ $received ? 'Save price & status' : 'Mark acquired & student seller paid' }}
+                    {{ $received ? 'Save price & status' : 'Mark acquired & seller paid' }}
                 </button>
 
                 <p class="muted-note">This link works for this item only, and expires by itself.</p>
@@ -394,7 +394,7 @@
 
                 label.classList.add('done');
                 label.querySelector('span').textContent =
-                    slot === 'item' ? 'Retake: item received' : 'Retake: student seller paid';
+                    slot === 'item' ? 'Retake: item received' : 'Retake: Receipt: Admin paid';
 
                 refresh();
             });
@@ -445,7 +445,7 @@
                 : received ? 'Save price & status'
                 : !ready ? 'Take both photos first'
                 : statusSelect.value === 'public' ? 'Mark acquired & publish'
-                : statusSelect.value === 'acquired' ? 'Mark acquired & student seller paid'
+                : statusSelect.value === 'acquired' ? 'Mark acquired & seller paid'
                 : 'Mark acquired as ' + statusSelect.value;
         }
 
