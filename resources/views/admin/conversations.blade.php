@@ -658,8 +658,8 @@ async function loadThread(quiet) {
         const events = Array.isArray(data) ? [] : (data.events || []);
         if (selectedConversation !== conv) return;
 
-        const changed = JSON.stringify(messages.map(m => [m.message_id, m.order?.status, m.order?.payment_status, m.item_card?.status]))
-            !== JSON.stringify(currentMessages.map(m => [m.message_id, m.order?.status, m.order?.payment_status, m.item_card?.status]));
+        const changed = JSON.stringify(messages.map(m => [m.message_id, m.order?.status, m.order?.payment_status, m.order?.pickup_date, m.item_card?.status]))
+            !== JSON.stringify(currentMessages.map(m => [m.message_id, m.order?.status, m.order?.payment_status, m.order?.pickup_date, m.item_card?.status]));
         const eventsChanged = JSON.stringify(events) !== JSON.stringify(currentEvents);
         currentMessages = messages;
         currentEvents = events;
@@ -1256,7 +1256,17 @@ async function extendPickupSchedule(transactionId) {
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
         showToast('Pick-up date extended successfully', 'success');
-        await loadThread();
+
+        if (payload.data) {
+            currentMessages = currentMessages.map(m => {
+                if (m.order && Number(m.order.transaction_id) === Number(transactionId)) {
+                    return { ...m, order: payload.data };
+                }
+                return m;
+            });
+            renderMessages(currentMessages);
+        }
+        await loadThread(false);
     } catch (error) {
         showToast(`Could not extend date: ${error.message}`, 'error');
     }

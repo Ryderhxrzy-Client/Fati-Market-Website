@@ -99,11 +99,11 @@ window.FMOrders = (function () {
         return badge(label, tone);
     }
 
-    function row(label, value, strong) {
+    function row(label, value, strong, isHtml) {
         return `
-            <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 13px; padding: 4px 0;">
+            <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 13px; padding: 4px 0; align-items: center;">
                 <span style="color: var(--ink-500);">${esc(label)}</span>
-                <span style="color: var(--ink-900); ${strong ? 'font-weight: 700;' : ''} text-align: right;">${esc(value)}</span>
+                <span style="color: var(--ink-900); ${strong ? 'font-weight: 700;' : ''} text-align: right;">${isHtml ? value : esc(value)}</span>
             </div>`;
     }
 
@@ -232,9 +232,9 @@ window.FMOrders = (function () {
                     ${row('Payment', methodLabel(order.payment_method))}
                     ${order.payment_reference ? row('Reference', order.payment_reference) : ''}
                     ${order.pickup_date
-                        ? row('Pick-up schedule', (order.pickup_date_formatted || when(order.pickup_date)) + (!['completed', 'cancelled', 'rejected'].includes(order.status) ? ` <button type="button" class="fm-btn ghost sm" style="padding: 2px 8px; font-size: 11px; margin-left: 8px;" onclick="FMOrders.extendDate()"><i class="fas fa-edit"></i> Edit</button>` : ''))
+                        ? row('Pick-up schedule', `${esc(order.pickup_date_formatted || when(order.pickup_date))}${!['completed', 'cancelled', 'rejected'].includes(order.status) ? ` <button type="button" class="fm-btn ghost sm" style="padding: 2px 8px; font-size: 11px; margin-left: 8px;" onclick="FMOrders.extendDate()"><i class="fas fa-edit"></i> Edit</button>` : ''}`, false, true)
                         : (!['completed', 'cancelled', 'rejected'].includes(order.status)
-                            ? row('Pick-up schedule', `<button type="button" class="fm-btn ghost sm" style="padding: 2px 8px; font-size: 11px;" onclick="FMOrders.extendDate()"><i class="fas fa-plus"></i> Set schedule</button>`)
+                            ? row('Pick-up schedule', `<button type="button" class="fm-btn ghost sm" style="padding: 2px 8px; font-size: 11px;" onclick="FMOrders.extendDate()"><i class="fas fa-plus"></i> Set schedule</button>`, false, true)
                             : '')}
                     ${order.reserved_until ? row('Reserved until', when(order.reserved_until)) : ''}
                     ${order.reward_points_to_credit ? row('Buyer earns', `${order.reward_points_to_credit} point(s)${order.reward_points_credited ? ' (credited)' : ''}`) : ''}
