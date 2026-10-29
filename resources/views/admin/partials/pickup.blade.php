@@ -124,6 +124,12 @@
             document.getElementById(id).className = 'fm-btn sm ' + (tab === name ? 'primary' : 'ghost');
         }
 
+        const dpPaid = (order.downpayment_amount && Number(order.downpayment_amount) > 0) &&
+            (order.has_paid_downpayment || ['paid', 'verified'].includes(order.downpayment_status) || order.payment_status === 'partially_paid');
+        const remainingCash = dpPaid
+            ? (order.remaining_balance != null ? Number(order.remaining_balance) : Math.max(0, Number(order.amount_due) - Number(order.downpayment_amount)))
+            : Number(order.amount_due);
+
         const summary = `
             <div style="border: 1px solid var(--line, #e5e7eb); border-radius: 10px; padding: 12px; margin-bottom: 14px; background: var(--surface-sunk, #f9fafb); font-size: 13px;">
                 <div style="display: flex; justify-content: space-between; gap: 12px; padding: 3px 0;">
@@ -131,13 +137,24 @@
                     <span style="font-weight: 600;">${esc(order.item?.title || ('#' + order.item_id))}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; gap: 12px; padding: 3px 0;">
-                    <span style="color: var(--ink-500, #6b7280);">Amount due</span>
+                    <span style="color: var(--ink-500, #6b7280);">Total price</span>
                     <span style="font-weight: 600;">${peso(order.amount_due)}</span>
                 </div>
+                ${dpPaid ? `
+                <div style="display: flex; justify-content: space-between; gap: 12px; padding: 3px 0;">
+                    <span style="color: var(--ink-500, #6b7280);">50% Downpayment</span>
+                    <span style="font-weight: 700; color: #059669;">Paid (${peso(order.downpayment_amount)})</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; gap: 12px; padding: 6px; margin: 4px -6px; background: #ecfdf5; border-radius: 6px;">
+                    <span style="color: #065f46; font-weight: 600;">Cash to collect at handover</span>
+                    <span style="font-weight: 700; color: #065f46; font-size: 14px;">${peso(remainingCash)}</span>
+                </div>
+                ` : `
                 <div style="display: flex; justify-content: space-between; gap: 12px; padding: 3px 0;">
                     <span style="color: var(--ink-500, #6b7280);">Payment</span>
-                    <span style="font-weight: 600;">${esc(order.payment_method || '')} · ${esc(order.payment_status || '')}</span>
+                    <span style="font-weight: 600;">${order.payment_status === 'verified' ? '<span style="color: #059669;">Paid</span>' : (order.payment_method === 'cash' ? 'Cash on pickup' : esc(order.payment_method || '') + ' · ' + esc(order.payment_status || ''))}</span>
                 </div>
+                `}
             </div>`;
 
         document.getElementById('pickupBody').innerHTML = summary + (tab === 'phone' ? phoneHtml() : hereHtml());
