@@ -168,7 +168,7 @@
                  <input id="wfTurnoverNotes" type="text" placeholder="Notes (optional)" style="${inputStyle}">
                  <label style="display: block; font-size: 12px; color: #6b7280; margin-bottom: 2px;">Proof: item received</label>
                  <input id="wfProofItem" type="file" accept="image/*" style="${inputStyle}">
-                 <label style="display: block; font-size: 12px; color: #6b7280; margin-bottom: 2px;">Proof: student seller paid</label>
+                 <label style="display: block; font-size: 12px; color: #6b7280; margin-bottom: 2px;">Receipt: Admin paid</label>
                  <input id="wfProofPayout" type="file" accept="image/*" style="${inputStyle}">
                  <button style="${buttonStyle}" onclick="wfVerifyTurnover()">Confirm &amp; proof</button>`
             );
