@@ -89,6 +89,7 @@ window.FMOrders = (function () {
             payment_verified: ['Payment verified', 'info'],
             reserved: ['Reserved', 'info'],
             ready_for_pickup: ['Ready for pickup', 'brand'],
+            overdue: ['Overdue', 'danger'],
             completed: ['Completed', 'success'],
             cancelled: ['Cancelled', ''],
             rejected: ['Rejected', 'danger'],
@@ -119,10 +120,13 @@ window.FMOrders = (function () {
         const ghost = 'fm-btn ghost sm';
         const danger = 'fm-btn danger sm';
 
+        if (order.status === 'overdue' || actions.includes('extend_pickup_date')) buttons.push(`<button class="${solid}" onclick="FMOrders.extendDate()"><i class="fas fa-calendar-plus" style="margin-right: 5px;"></i>Extend pick-up date</button>`);
+        if (order.status === 'overdue' || actions.includes('forfeit_and_relist')) buttons.push(`<button class="${danger}" onclick="FMOrders.forfeitRelist()"><i class="fas fa-undo" style="margin-right: 5px;"></i>Forfeit DP & Relist</button>`);
+        if (order.status === 'overdue' || actions.includes('complete')) buttons.push(`<button class="${solid}" style="background: var(--success, #16a34a);" onclick="FMOrders.handover()"><i class="fas fa-handshake" style="margin-right: 5px;"></i>Mark as Sold</button>`);
+        else if (actions.includes('complete')) buttons.push(`<button class="${solid}" onclick="FMOrders.handover()"><i class="fas fa-handshake"></i>Complete handover</button>`);
         if (actions.includes('verify_payment')) buttons.push(`<button class="${solid}" onclick="FMOrders.run('verify-payment', 'Approve payment')"><i class="fas fa-check"></i>Approve payment</button>`);
         if (actions.includes('approve_order')) buttons.push(`<button class="${solid}" onclick="FMOrders.run('approve-order', 'Approve order')"><i class="fas fa-check"></i>Approve order</button>`);
         if (actions.includes('mark_ready_for_pickup')) buttons.push(`<button class="${ghost}" onclick="FMOrders.run('ready-for-pickup', 'Ready for pickup')"><i class="fas fa-box-open"></i>Ready for pickup</button>`);
-        if (actions.includes('complete')) buttons.push(`<button class="${solid}" onclick="FMOrders.handover()"><i class="fas fa-handshake"></i>Complete handover</button>`);
         if (actions.includes('reject_payment')) buttons.push(`<button class="${danger}" onclick="FMOrders.run('reject-payment', 'Decline payment')"><i class="fas fa-xmark"></i>Decline payment</button>`);
         else if (actions.includes('cancel')) buttons.push(`<button class="${danger}" onclick="FMOrders.run('cancel', 'Cancel order')"><i class="fas fa-ban"></i>Cancel order</button>`);
 
@@ -151,6 +155,15 @@ window.FMOrders = (function () {
             </div>
 
             <div style="padding: 16px 20px;">
+                ${order.status === 'overdue' ? `
+                    <div style="margin-bottom: 14px; padding: 12px 14px; background: rgba(220, 38, 38, 0.08); border: 1px solid rgba(220, 38, 38, 0.3); border-radius: 8px; color: var(--danger, #dc2626); font-size: 13px;">
+                        <div style="font-weight: 700; display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                            <i class="fas fa-clock"></i> Overdue Reservation
+                        </div>
+                        <div>The scheduled pick-up date has passed. Please choose an action below: Extend pick-up date, Forfeit downpayment & relist item, or Mark as Sold.</div>
+                    </div>
+                ` : ''}
+
                 <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px;">
                     ${statusBadge(order)}
                     ${paymentBadge(order)}
@@ -188,6 +201,7 @@ window.FMOrders = (function () {
                         : ''}
                     ${row('Payment', methodLabel(order.payment_method))}
                     ${order.payment_reference ? row('Reference', order.payment_reference) : ''}
+                    ${order.pickup_date ? row('Pick-up schedule', (order.pickup_date_formatted || when(order.pickup_date))) : ''}
                     ${order.reserved_until ? row('Reserved until', when(order.reserved_until)) : ''}
                     ${order.reward_points_to_credit ? row('Buyer earns', `${order.reward_points_to_credit} point(s)${order.reward_points_credited ? ' (credited)' : ''}`) : ''}
                     ${order.completed_at ? row('Completed', when(order.completed_at)) : ''}
@@ -227,6 +241,8 @@ window.FMOrders = (function () {
                 fieldHtml = `<textarea id="orderAskInput" rows="3" class="fm-input" style="margin-top: 10px;" placeholder="${attr(field.placeholder || '')}"></textarea>`;
             } else if (field?.type === 'file') {
                 fieldHtml = `<input id="orderAskInput" type="file" accept="image/*" capture="environment" class="fm-input" style="margin-top: 10px;">`;
+            } else if (field?.type === 'date') {
+                fieldHtml = `<input id="orderAskInput" type="date" class="fm-input" style="margin-top: 10px;" min="${new Date().toISOString().split('T')[0]}">`;
             }
 
             document.getElementById('orderAskBody').innerHTML = `
@@ -344,7 +360,77 @@ window.FMOrders = (function () {
         });
     }
 
-    return { open, close, run, handover, askDone, peso, methodLabel, paymentBadge, statusBadge, when, esc, attr };
+    async function extendDate() {
+        if (!current || busy) return;
+        const newDate = await ask({
+            title: 'Extend pick-up date',
+            body: 'Select a new pick-up date for this overdue reservation (Monday to Saturday):',
+            field: { label: 'New pick-up date', type: 'date' },
+            confirmLabel: 'Save new date',
+        });
+        if (!newDate) return;
+
+        busy = true;
+        try {
+            const response = await fetch(`${API}/admin/transactions/${current.transaction_id}/pickup-schedule`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token()}`,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ pickup_date: newDate }),
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
+
+            current = payload.data || current;
+            render();
+            showToast('Pick-up date extended successfully', 'success');
+            if (typeof onChange === 'function') onChange(current);
+        } catch (error) {
+            showToast(`Could not extend date: ${error.message}`, 'error');
+        } finally {
+            busy = false;
+        }
+    }
+
+    async function forfeitRelist() {
+        if (!current || busy) return;
+        const confirmed = await ask({
+            title: 'Forfeit DP & Relist Item?',
+            body: 'Are you sure? This will forfeit the downpayment, cancel this overdue transaction, and immediately return the item to the public marketplace.',
+            confirmLabel: 'Forfeit & Relist',
+            danger: true,
+        });
+        if (!confirmed) return;
+
+        busy = true;
+        try {
+            const response = await fetch(`${API}/admin/transactions/${current.transaction_id}/forfeit`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token()}`,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({}),
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
+
+            current = payload.data || current;
+            render();
+            showToast('Downpayment forfeited and item returned to marketplace', 'success');
+            if (typeof onChange === 'function') onChange(current);
+        } catch (error) {
+            showToast(`Could not forfeit and relist: ${error.message}`, 'error');
+        } finally {
+            busy = false;
+        }
+    }
+
+    return { open, close, run, handover, extendDate, forfeitRelist, askDone, peso, methodLabel, paymentBadge, statusBadge, when, esc, attr };
 })();
 </script>
 @endpush
