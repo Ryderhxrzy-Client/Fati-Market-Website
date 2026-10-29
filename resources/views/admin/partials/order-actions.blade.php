@@ -265,13 +265,13 @@ window.FMOrders = (function () {
 
     function askDone(confirmed) {
         const input = document.getElementById('orderAskInput');
-        let value = '';
+        let value = true;
         if (input) value = input.type === 'file' ? (input.files[0] || null) : input.value;
 
         document.getElementById('orderAskModal').style.display = 'none';
         const resolve = askResolve;
         askResolve = null;
-        if (resolve) resolve(confirmed ? value : null);
+        if (resolve) resolve(confirmed ? (value !== '' ? value : true) : null);
     }
 
     async function run(endpoint, label) {
