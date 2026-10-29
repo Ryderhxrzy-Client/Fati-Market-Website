@@ -1164,7 +1164,9 @@ function renderOrderCard(msg, isAdmin, senderName, timestamp) {
  * the receipt if the buyer sent one, otherwise the order itself.
  */
 function carriesActions(msg) {
-    return msg.kind === 'payment_submitted' || (msg.kind === 'order_placed' && !msg.order.payment_proof);
+    return msg.kind === 'payment_submitted' ||
+        (msg.kind === 'order_placed' && !msg.order.payment_proof) ||
+        (msg.order && msg.order.status === 'overdue');
 }
 
 /**
@@ -1175,23 +1177,81 @@ function carriesActions(msg) {
  */
 function orderActionsHtml(order) {
     const actions = order.available_actions || [];
-    if (actions.length === 0) return '';
+    if (actions.length === 0 && order.status !== 'overdue') return '';
 
     const id = order.transaction_id;
     const buttons = [];
 
-    if (actions.includes('verify_payment')) buttons.push(actionButton(id, 'verify-payment', 'Approve', 'primary'));
-    if (actions.includes('approve_order')) buttons.push(actionButton(id, 'approve-order', 'Approve', 'primary'));
-    // Handing the item over is photographed, so it opens the counter panel -
-    // the QR that moves it to a phone, or the same thing done here.
-    if (actions.includes('complete')) {
-        buttons.push(`<button class="fm-btn primary sm" onclick="completeHandover(${id})">Complete</button>`);
+    if (order.status === 'overdue' || actions.includes('extend_pickup_date')) {
+        buttons.push(`<button class="fm-btn ghost sm" onclick="extendPickupSchedule(${id})"><i class="fas fa-calendar-plus" style="margin-right: 4px;"></i>Extend pick-up date</button>`);
+        buttons.push(`<button class="fm-btn primary sm" onclick="completeHandover(${id})"><i class="fas fa-handshake" style="margin-right: 4px;"></i>Mark as Sold</button>`);
+        if (!order.has_paid_downpayment) {
+            buttons.push(`<button class="fm-btn danger sm" onclick="forfeitRelistOverdue(${id}, false)"><i class="fas fa-undo" style="margin-right: 4px;"></i>Cancel & Return to Marketplace</button>`);
+        } else {
+            buttons.push(`<button class="fm-btn danger sm" onclick="forfeitRelistOverdue(${id}, true)"><i class="fas fa-ban" style="margin-right: 4px;"></i>Forfeit DP & Relist</button>`);
+        }
+    } else {
+        if (actions.includes('verify_payment')) buttons.push(actionButton(id, 'verify-payment', 'Approve', 'primary'));
+        if (actions.includes('approve_order')) buttons.push(actionButton(id, 'approve-order', 'Approve', 'primary'));
+        if (actions.includes('complete')) {
+            buttons.push(`<button class="fm-btn primary sm" onclick="completeHandover(${id})">Complete</button>`);
+        }
+        if (actions.includes('mark_ready_for_pickup')) buttons.push(actionButton(id, 'ready-for-pickup', 'Ready for pickup', 'ghost'));
+        if (actions.includes('reject_payment')) buttons.push(actionButton(id, 'reject-payment', 'Decline', 'danger'));
+        else if (actions.includes('cancel')) buttons.push(actionButton(id, 'cancel', 'Cancel order', 'danger'));
     }
-    if (actions.includes('mark_ready_for_pickup')) buttons.push(actionButton(id, 'ready-for-pickup', 'Ready for pickup', 'ghost'));
-    if (actions.includes('reject_payment')) buttons.push(actionButton(id, 'reject-payment', 'Decline', 'danger'));
-    else if (actions.includes('cancel')) buttons.push(actionButton(id, 'cancel', 'Cancel order', 'danger'));
 
     return `<div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; border-top: 1px solid var(--surface-sunk); padding-top: 12px;">${buttons.join('')}</div>`;
+}
+
+async function extendPickupSchedule(transactionId) {
+    const newDate = await askModal({
+        title: 'Extend pick-up date',
+        body: 'Enter or choose the new pick-up date for this overdue reservation (Monday to Saturday):',
+        field: { label: 'New pick-up date', type: 'date', value: new Date().toISOString().split('T')[0] },
+        confirmLabel: 'Save new date',
+    });
+    if (!newDate) return;
+
+    try {
+        const response = await fetch(`${API}/admin/transactions/${transactionId}/pickup-schedule`, {
+            method: 'POST',
+            headers: authHeaders(true),
+            body: JSON.stringify({ pickup_date: newDate }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
+        showToast('Pick-up date extended successfully', 'success');
+        await loadThread();
+    } catch (error) {
+        showToast(`Could not extend date: ${error.message}`, 'error');
+    }
+}
+
+async function forfeitRelistOverdue(transactionId, hasDp) {
+    const confirmed = await askModal({
+        title: hasDp ? 'Forfeit DP & Relist Item?' : 'Cancel & Return to Marketplace?',
+        body: hasDp
+            ? 'Are you sure? This will forfeit the downpayment, cancel this overdue transaction, and immediately return the item to the public marketplace.'
+            : 'This overdue reservation was unpaid. Confirming will cancel this order and immediately return the item to the public marketplace.',
+        confirmLabel: hasDp ? 'Forfeit & Relist' : 'Return to Marketplace',
+        danger: true,
+    });
+    if (confirmed === null) return;
+
+    try {
+        const response = await fetch(`${API}/admin/transactions/${transactionId}/forfeit`, {
+            method: 'POST',
+            headers: authHeaders(true),
+            body: JSON.stringify({}),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
+        showToast(payload.message || (hasDp ? 'Downpayment forfeited and item returned to marketplace' : 'Order cancelled and item returned to marketplace'), 'success');
+        await loadThread();
+    } catch (error) {
+        showToast(`Could not relist item: ${error.message}`, 'error');
+    }
 }
 
 function actionButton(id, endpoint, label, tone) {
