@@ -121,22 +121,44 @@ window.FMOrders = (function () {
         const ghost = 'fm-btn ghost sm';
         const danger = 'fm-btn danger sm';
 
+        const isPaid = order.payment_status === 'verified'
+            || order.payment_status === 'partially_paid'
+            || !!order.has_paid_downpayment
+            || ['verified', 'paid'].includes(order.downpayment_status);
+
+        const isAlreadyReady = order.status === 'ready_for_pickup'
+            || order.pickup_status === 'ready';
+
         if (order.status === 'overdue' || actions.includes('extend_pickup_date')) {
             buttons.push(`<button class="${solid}" onclick="FMOrders.extendDate()"><i class="fas fa-calendar-plus" style="margin-right: 5px;"></i>Extend pick-up date</button>`);
         } else if (!['completed', 'cancelled', 'rejected'].includes(order.status)) {
             buttons.push(`<button class="${ghost}" onclick="FMOrders.extendDate()"><i class="fas fa-calendar-alt" style="margin-right: 5px;"></i>${order.pickup_date ? 'Edit pick-up date' : 'Set pick-up date'}</button>`);
         }
-        const isUnpaid = !order.has_paid_downpayment;
+
         if (order.status === 'overdue' || actions.includes('forfeit_and_relist') || actions.includes('cancel_and_relist')) {
-            buttons.push(`<button class="${danger}" onclick="FMOrders.forfeitRelist()"><i class="fas ${isUnpaid ? 'fa-ban' : 'fa-undo'}" style="margin-right: 5px;"></i>${isUnpaid ? 'Cancel & Relist Item' : 'Forfeit DP & Relist'}</button>`);
+            buttons.push(`<button class="${danger}" onclick="FMOrders.forfeitRelist()"><i class="fas ${!isPaid ? 'fa-undo' : 'fa-ban'}" style="margin-right: 5px;"></i>${!isPaid ? 'Cancel & Relist Item' : 'Forfeit DP & Relist'}</button>`);
         }
-        if (order.status === 'overdue' || actions.includes('complete')) buttons.push(`<button class="${solid}" style="background: var(--success, #16a34a);" onclick="FMOrders.handover()"><i class="fas fa-handshake" style="margin-right: 5px;"></i>Mark as Sold</button>`);
-        else if (actions.includes('complete')) buttons.push(`<button class="${solid}" onclick="FMOrders.handover()"><i class="fas fa-handshake"></i>Complete handover</button>`);
+
+        if (order.status === 'overdue') {
+            buttons.push(`<button class="${solid}" style="background: var(--success, #16a34a);" onclick="FMOrders.handover()"><i class="fas fa-handshake" style="margin-right: 5px;"></i>Mark as Sold</button>`);
+        } else if (actions.includes('complete')) {
+            buttons.push(`<button class="${solid}" onclick="FMOrders.handover()"><i class="fas fa-handshake"></i>Complete handover</button>`);
+        }
+
         if (actions.includes('verify_payment')) buttons.push(`<button class="${solid}" onclick="FMOrders.run('verify-payment', 'Approve payment')"><i class="fas fa-check"></i>Approve payment</button>`);
         if (actions.includes('approve_order')) buttons.push(`<button class="${solid}" onclick="FMOrders.run('approve-order', 'Approve order')"><i class="fas fa-check"></i>Approve order</button>`);
-        if (actions.includes('mark_ready_for_pickup')) buttons.push(`<button class="${ghost}" onclick="FMOrders.run('ready-for-pickup', 'Ready for pickup')"><i class="fas fa-box-open"></i>Ready for pickup</button>`);
-        if (actions.includes('reject_payment')) buttons.push(`<button class="${danger}" onclick="FMOrders.run('reject-payment', 'Decline payment')"><i class="fas fa-xmark"></i>Decline payment</button>`);
-        else if (actions.includes('cancel')) buttons.push(`<button class="${danger}" onclick="FMOrders.run('cancel', 'Cancel order')"><i class="fas fa-ban"></i>Cancel order</button>`);
+
+        // Never show "Ready for pickup" if already ready!
+        if (actions.includes('mark_ready_for_pickup') && !isAlreadyReady) {
+            buttons.push(`<button class="${ghost}" onclick="FMOrders.run('ready-for-pickup', 'Ready for pickup')"><i class="fas fa-box-open"></i>Ready for pickup</button>`);
+        }
+
+        if (actions.includes('reject_payment')) {
+            buttons.push(`<button class="${danger}" onclick="FMOrders.run('reject-payment', 'Decline payment')"><i class="fas fa-xmark"></i>Decline payment</button>`);
+        } else if (actions.includes('cancel') && !isPaid) {
+            // Never show "Cancel order" if already paid!
+            buttons.push(`<button class="${danger}" onclick="FMOrders.run('cancel', 'Cancel order')"><i class="fas fa-ban"></i>Cancel order</button>`);
+        }
 
         if (!buttons.length) return '';
 
