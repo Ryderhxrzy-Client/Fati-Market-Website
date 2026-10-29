@@ -86,6 +86,7 @@
 
     const FILTERS = [
         ['', 'All'],
+        ['overdue', 'Overdue'],
         ['pending_payment', 'Awaiting'],
         ['payment_proof_submitted', 'Proof submitted'],
         ['reserved', 'Reserved'],
@@ -96,7 +97,7 @@
     ];
 
     let orders = [];
-    let filter = '';
+    let filter = new URLSearchParams(window.location.search).get('status') || '';
     let query = '';
 
     async function loadOrders() {
