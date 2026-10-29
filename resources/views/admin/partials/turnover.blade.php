@@ -349,7 +349,7 @@
                 <img id="tvItemPreview" alt="" style="display: none; width: 100%; height: 150px; object-fit: cover; border-radius: 10px; margin-bottom: 6px;">
                 <input id="tvItemPhoto" class="fm-input" type="file" accept="image/*" capture="environment" style="margin-bottom: 12px;">
 
-                <label class="fm-label">Proof: student seller paid</label>
+                <label class="fm-label">Receipt: Admin paid</label>
                 <img id="tvPayoutPreview" alt="" style="display: none; width: 100%; height: 150px; object-fit: cover; border-radius: 10px; margin-bottom: 6px;">
                 <input id="tvPayoutPhoto" class="fm-input" type="file" accept="image/*" capture="environment" style="margin-bottom: 14px;">`}
 
@@ -366,7 +366,7 @@
                 <input id="tvNotes" class="fm-input" type="text" maxlength="500" placeholder="e.g. charger missing" style="margin-bottom: 14px;">`}
 
             <button class="fm-btn primary" id="tvSubmit" style="width: 100%;" onclick="turnoverSubmit()">
-                ${received ? 'Save price &amp; status' : 'Mark acquired &amp; student seller paid'}
+                ${received ? 'Save price &amp; status' : 'Mark acquired &amp; seller paid'}
             </button>`;
     }
 
@@ -469,7 +469,7 @@
             : received ? 'Save price & status'
             : !hasProof ? 'Attach both proof photos first'
             : status.value === 'public' ? 'Mark acquired & publish'
-            : status.value === 'acquired' ? 'Mark acquired & student seller paid'
+            : status.value === 'acquired' ? 'Mark acquired & seller paid'
             : 'Mark acquired as ' + status.value;
     }
 
