@@ -36,13 +36,14 @@
                         <th class="num">Amount due</th>
                         <th>Payment</th>
                         <th>Status</th>
+                        <th>Pick-up schedule</th>
                         <th>Placed</th>
                         <th></th>
                     </tr>
                 </thead>
                 <tbody id="ordersBody">
                     <tr>
-                        <td colspan="8" class="px-6 py-12 text-center">
+                        <td colspan="9" class="px-6 py-12 text-center">
                             <span class="loading-spinner"></span>
                             <p class="cell-sub" style="margin-top: 8px;">Loading orders…</p>
                         </td>
@@ -113,7 +114,7 @@
             renderRows();
         } catch (error) {
             document.getElementById('ordersBody').innerHTML = `
-                <tr><td colspan="8">
+                <tr><td colspan="9">
                     <div class="fm-empty">
                         <i class="fas fa-cloud-slash"></i>
                         <p>Could not load orders</p>
@@ -145,7 +146,7 @@
         if (!query) return true;
         const hay = [
             order.receipt_no, order.transaction_id, order.item?.title, order.buyer?.email, order.buyer?.name,
-            order.payment_method, order.status, order.payment_reference,
+            order.payment_method, order.status, order.payment_reference, order.pickup_date, order.pickup_date_formatted,
         ].map(v => String(v ?? '').toLowerCase()).join(' ');
         return hay.includes(query);
     }
@@ -156,7 +157,7 @@
 
         if (!visible.length) {
             body.innerHTML = `
-                <tr><td colspan="8">
+                <tr><td colspan="9">
                     <div class="fm-empty">
                         <i class="fas fa-receipt"></i>
                         <p>No orders here</p>
@@ -194,6 +195,11 @@
                         ${FMOrders.paymentBadge(order)}
                     </td>
                     <td>${FMOrders.statusBadge(order)}</td>
+                    <td>
+                        ${order.pickup_date
+                            ? `<p class="cell-title" style="font-size: 13px; font-weight: 600; color: ${order.status === 'overdue' ? 'var(--danger)' : 'var(--ink)'};"><i class="fas fa-calendar-day" style="margin-right: 5px; color: var(--brand-600);"></i>${FMOrders.esc(order.pickup_date_formatted || FMOrders.when(order.pickup_date))}</p>`
+                            : `<span class="cell-sub">—</span>`}
+                    </td>
                     <td><p class="cell-sub">${FMOrders.esc(FMOrders.when(order.created_at || order.transaction_date))}</p></td>
                     <td>
                         <button class="fm-btn ${open ? 'primary' : 'ghost'} sm" onclick="event.stopPropagation(); openOrder(${Number(order.transaction_id)})">
