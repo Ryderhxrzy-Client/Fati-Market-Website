@@ -1,3 +1,4 @@
+@include('admin.partials.pickup-date-modal')
 {{--
     An order, opened for a decision.
 
@@ -120,7 +121,11 @@ window.FMOrders = (function () {
         const ghost = 'fm-btn ghost sm';
         const danger = 'fm-btn danger sm';
 
-        if (order.status === 'overdue' || actions.includes('extend_pickup_date')) buttons.push(`<button class="${solid}" onclick="FMOrders.extendDate()"><i class="fas fa-calendar-plus" style="margin-right: 5px;"></i>Extend pick-up date</button>`);
+        if (order.status === 'overdue' || actions.includes('extend_pickup_date')) {
+            buttons.push(`<button class="${solid}" onclick="FMOrders.extendDate()"><i class="fas fa-calendar-plus" style="margin-right: 5px;"></i>Extend pick-up date</button>`);
+        } else if (!['completed', 'cancelled', 'rejected'].includes(order.status)) {
+            buttons.push(`<button class="${ghost}" onclick="FMOrders.extendDate()"><i class="fas fa-calendar-alt" style="margin-right: 5px;"></i>${order.pickup_date ? 'Edit pick-up date' : 'Set pick-up date'}</button>`);
+        }
         const isUnpaid = !order.has_paid_downpayment;
         if (order.status === 'overdue' || actions.includes('forfeit_and_relist') || actions.includes('cancel_and_relist')) {
             buttons.push(`<button class="${danger}" onclick="FMOrders.forfeitRelist()"><i class="fas ${isUnpaid ? 'fa-ban' : 'fa-undo'}" style="margin-right: 5px;"></i>${isUnpaid ? 'Cancel & Relist Item' : 'Forfeit DP & Relist'}</button>`);
@@ -204,7 +209,11 @@ window.FMOrders = (function () {
                         : ''}
                     ${row('Payment', methodLabel(order.payment_method))}
                     ${order.payment_reference ? row('Reference', order.payment_reference) : ''}
-                    ${order.pickup_date ? row('Pick-up schedule', (order.pickup_date_formatted || when(order.pickup_date))) : ''}
+                    ${order.pickup_date
+                        ? row('Pick-up schedule', (order.pickup_date_formatted || when(order.pickup_date)) + (!['completed', 'cancelled', 'rejected'].includes(order.status) ? ` <button type="button" class="fm-btn ghost sm" style="padding: 2px 8px; font-size: 11px; margin-left: 8px;" onclick="FMOrders.extendDate()"><i class="fas fa-edit"></i> Edit</button>` : ''))
+                        : (!['completed', 'cancelled', 'rejected'].includes(order.status)
+                            ? row('Pick-up schedule', `<button type="button" class="fm-btn ghost sm" style="padding: 2px 8px; font-size: 11px;" onclick="FMOrders.extendDate()"><i class="fas fa-plus"></i> Set schedule</button>`)
+                            : '')}
                     ${order.reserved_until ? row('Reserved until', when(order.reserved_until)) : ''}
                     ${order.reward_points_to_credit ? row('Buyer earns', `${order.reward_points_to_credit} point(s)${order.reward_points_credited ? ' (credited)' : ''}`) : ''}
                     ${order.completed_at ? row('Completed', when(order.completed_at)) : ''}
@@ -365,11 +374,9 @@ window.FMOrders = (function () {
 
     async function extendDate() {
         if (!current || busy) return;
-        const newDate = await ask({
+        const newDate = await FMPickupDate.pick({
+            current: current.pickup_date,
             title: 'Extend pick-up date',
-            body: 'Select a new pick-up date for this overdue reservation (Monday to Saturday):',
-            field: { label: 'New pick-up date', type: 'date' },
-            confirmLabel: 'Save new date',
         });
         if (!newDate) return;
 

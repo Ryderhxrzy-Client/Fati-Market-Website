@@ -89,8 +89,7 @@ window.FMMeetup = (function () {
         const jsDay = new Date(y, m - 1, d).getDay();
         const isoDay = jsDay === 0 ? 7 : jsDay;
         const openDays = Array.isArray(hours.open_days) && hours.open_days.length ? hours.open_days.map(Number) : [1, 2, 3, 4, 5, 6];
-        if (!openDays.includes(isoDay)) return false;
-        return slotsOn(y, m, d, now).length > 0;
+        return openDays.includes(isoDay);
     }
 
     function daysLabel() {
@@ -135,18 +134,18 @@ window.FMMeetup = (function () {
         html += '</div>';
 
         if (picked.date) {
-            const label = new Date(now.y, now.m - 1, picked.date).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
-            const slots = slotsOn(now.y, now.m, picked.date, now);
-            html += `<p class="mu-label">Time · ${label}</p><div class="mu-slots">`;
-            html += slots.map(t => `<button type="button" class="mu-slot ${picked.time === t ? 'on' : ''}" onclick="FMMeetup.pickTime(${t})">${clock(t)}</button>`).join('');
-            html += '</div>';
+            const label = new Date(now.y, now.m - 1, picked.date).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+            html += `<div style="margin-top: 14px; padding: 12px; border-radius: 10px; background: #ecfdf5; border: 1px solid #a7f3d0; font-size: 13px; color: #065f46;">
+                <div style="font-weight: 700; margin-bottom: 2px;">Selected date: ${label}</div>
+                <div style="font-size: 12px; color: #047857;">Drop off anytime during store hours on this day.</div>
+            </div>`;
         } else if (!anyBookable) {
-            html += `<p class="mu-note"><b>No slots left this month.</b> Every open day in ${monthName} has passed. Meet-ups can only be booked within the current month.</p>`;
+            html += `<p class="mu-note"><b>No open days left this month.</b> Every open day in ${monthName} has passed.</p>`;
         }
 
         document.getElementById('meetupHours').textContent = `Store hours: ${daysLabel()} · ${hours.hours_label || (clock(minutesOf(hours.open_time)) + ' - ' + clock(minutesOf(hours.close_time)))}`;
         document.getElementById('meetupBody').innerHTML = html;
-        document.getElementById('meetupSave').disabled = !(picked.date && picked.time !== null);
+        document.getElementById('meetupSave').disabled = !picked.date;
     }
 
     async function pick({ current } = {}) {
@@ -189,10 +188,9 @@ window.FMMeetup = (function () {
     function cancel() { finish(null); }
 
     function save() {
-        if (!picked.date || picked.time === null) return;
+        if (!picked.date) return;
         const now = nowInStore();
-        // Wall-clock time in the store's own zone, which is how the server reads it.
-        finish(`${now.y}-${pad(now.m)}-${pad(picked.date)} ${pad(Math.floor(picked.time / 60))}:${pad(picked.time % 60)}:00`);
+        finish(`${now.y}-${pad(now.m)}-${pad(picked.date)}`);
     }
 
     return { pick, cancel, save, pickDay, pickTime, retry };

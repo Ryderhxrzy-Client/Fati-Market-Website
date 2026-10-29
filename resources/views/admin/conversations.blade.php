@@ -98,6 +98,7 @@
 @include('admin.partials.meetup-picker')
 @include('admin.partials.turnover')
 @include('admin.partials.pickup')
+@include('admin.partials.pickup-date-modal')
 @endsection
 
 @push('styles')
@@ -1191,6 +1192,9 @@ function orderActionsHtml(order) {
             buttons.push(`<button class="fm-btn danger sm" onclick="forfeitRelistOverdue(${id}, true)"><i class="fas fa-ban" style="margin-right: 4px;"></i>Forfeit DP & Relist</button>`);
         }
     } else {
+        if (!['completed', 'cancelled', 'rejected'].includes(order.status)) {
+            buttons.push(`<button class="fm-btn ghost sm" onclick="extendPickupSchedule(${id})"><i class="fas fa-calendar-alt" style="margin-right: 4px;"></i>${order.pickup_date ? 'Edit pick-up date' : 'Set pick-up date'}</button>`);
+        }
         if (actions.includes('verify_payment')) buttons.push(actionButton(id, 'verify-payment', 'Approve', 'primary'));
         if (actions.includes('approve_order')) buttons.push(actionButton(id, 'approve-order', 'Approve', 'primary'));
         if (actions.includes('complete')) {
@@ -1205,11 +1209,11 @@ function orderActionsHtml(order) {
 }
 
 async function extendPickupSchedule(transactionId) {
-    const newDate = await askModal({
+    const message = [...currentMessages].reverse().find(m => m.order && Number(m.order.transaction_id) === Number(transactionId));
+    const order = message?.order;
+    const newDate = await FMPickupDate.pick({
+        current: order?.pickup_date || null,
         title: 'Extend pick-up date',
-        body: 'Enter or choose the new pick-up date for this overdue reservation (Monday to Saturday):',
-        field: { label: 'New pick-up date', type: 'date', value: new Date().toISOString().split('T')[0] },
-        confirmLabel: 'Save new date',
     });
     if (!newDate) return;
 
