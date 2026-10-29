@@ -223,6 +223,9 @@
                 <div class="row"><span>{{ $order['points_used'] }} point(s) used</span><span>-{{ \App\Support\Peso::format($order['points_discount_amount'] ?? null) }}</span></div>
             @endif
             <div class="row"><span>Payment</span><span>{{ ucfirst($method ?: 'unknown') }}</span></div>
+            @if (!empty($order['pickup_date_formatted']) || !empty($order['pickup_date']))
+                <div class="row"><span>Pick-up schedule</span><span style="color: {{ ($order['status'] ?? '') === 'overdue' ? '#dc2626' : 'inherit' }}; font-weight: 600;"><i class="fas fa-calendar-day" style="margin-right: 4px;"></i>{{ $order['pickup_date_formatted'] ?? date('M j, Y', strtotime($order['pickup_date'])) }}</span></div>
+            @endif
             <div style="height: 10px;"></div>
             <span class="pill brand">{{ ucfirst(str_replace('_', ' ', $status ?: 'unknown')) }}</span>
             <span class="pill {{ $paymentStatus === 'verified' ? 'success' : 'warning' }}">{{ ucfirst(str_replace('_', ' ', $paymentStatus ?: 'unpaid')) }}</span>
