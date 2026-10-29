@@ -702,8 +702,11 @@ function renderMessages(messages) {
         return;
     }
 
+    const activeOrderCards = messages.filter(m => m.kind && m.kind !== 'text' && m.order && !['completed', 'cancelled', 'rejected'].includes(m.order.status));
+    latestOrderMessageId = activeOrderCards.length ? activeOrderCards[activeOrderCards.length - 1].message_id : null;
+
     // The strip above the thread carries the newest order's open decisions.
-    const liveOrderMsg = [...messages].reverse().find(m => m.kind && m.kind !== 'text' && m.order && carriesActions(m));
+    const liveOrderMsg = [...messages].reverse().find(m => m.kind && m.kind !== 'text' && m.order && !['completed', 'cancelled', 'rejected'].includes(m.order.status));
     renderPinnedOrder(liveOrderMsg ? liveOrderMsg.order : null);
 
     const pickupCards = messages.filter(m => m.kind && m.kind !== 'text' && m.order && pickupStageOf(m));
@@ -770,9 +773,18 @@ function renderMessages(messages) {
 /** Buttons only, for the order the thread is about; the card tells the whole story. */
 function renderPinnedOrder(order) {
     const bar = document.getElementById('orderPinned');
-    const actions = order ? (order.available_actions || []) : [];
+    if (!order || ['completed', 'cancelled', 'rejected'].includes(order.status)) {
+        bar.style.display = 'none';
+        bar.innerHTML = '';
+        return;
+    }
 
-    if (!order || actions.length === 0) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+    const actionsHtml = orderActionsHtml(order);
+    if (!actionsHtml) {
+        bar.style.display = 'none';
+        bar.innerHTML = '';
+        return;
+    }
 
     bar.innerHTML = `
         <div class="op-line">
@@ -782,7 +794,7 @@ function renderPinnedOrder(order) {
             ${paymentStateBadge(order)}
             ${orderStatusBadge(order.status, order.payment_method)}
         </div>
-        <div class="op-actions">${orderActionsHtml(order).replace('border-top: 1px solid var(--surface-sunk); padding-top: 12px;', '').replace('margin-top: 12px;', '')}</div>`;
+        <div class="op-actions">${actionsHtml.replace('border-top: 1px solid var(--surface-sunk); padding-top: 12px;', '').replace('margin-top: 12px;', '')}</div>`;
     bar.style.display = 'block';
 }
 
@@ -1020,6 +1032,7 @@ STORE.directions = `https://www.google.com/maps/dir/?api=1&destination=${STORE.l
 const PICKUP_STAGES = ['payment_verified', 'reserved', 'ready_for_pickup'];
 
 let latestPickupMessageId = null;
+let latestOrderMessageId = null;
 
 function pickupStageOf(msg) {
     const order = msg.order || {};
@@ -1165,9 +1178,9 @@ function renderOrderCard(msg, isAdmin, senderName, timestamp) {
  * the receipt if the buyer sent one, otherwise the order itself.
  */
 function carriesActions(msg) {
-    return msg.kind === 'payment_submitted' ||
-        (msg.kind === 'order_placed' && !msg.order.payment_proof) ||
-        (msg.order && msg.order.status === 'overdue');
+    if (!msg || !msg.order) return false;
+    if (['completed', 'cancelled', 'rejected'].includes(msg.order.status)) return false;
+    return (typeof latestOrderMessageId !== 'undefined' && Number(msg.message_id) === Number(latestOrderMessageId)) || msg.order.status === 'overdue';
 }
 
 /**
@@ -1183,10 +1196,18 @@ function orderActionsHtml(order) {
     const id = order.transaction_id;
     const buttons = [];
 
+    const isPaid = order.payment_status === 'verified'
+        || order.payment_status === 'partially_paid'
+        || !!order.has_paid_downpayment
+        || ['verified', 'paid'].includes(order.downpayment_status);
+
+    const isAlreadyReady = order.status === 'ready_for_pickup'
+        || order.pickup_status === 'ready';
+
     if (order.status === 'overdue' || actions.includes('extend_pickup_date')) {
         buttons.push(`<button class="fm-btn ghost sm" onclick="extendPickupSchedule(${id})"><i class="fas fa-calendar-plus" style="margin-right: 4px;"></i>Extend pick-up date</button>`);
         buttons.push(`<button class="fm-btn primary sm" onclick="completeHandover(${id})"><i class="fas fa-handshake" style="margin-right: 4px;"></i>Mark as Sold</button>`);
-        if (!order.has_paid_downpayment) {
+        if (!isPaid) {
             buttons.push(`<button class="fm-btn danger sm" onclick="forfeitRelistOverdue(${id}, false)"><i class="fas fa-undo" style="margin-right: 4px;"></i>Cancel & Return to Marketplace</button>`);
         } else {
             buttons.push(`<button class="fm-btn danger sm" onclick="forfeitRelistOverdue(${id}, true)"><i class="fas fa-ban" style="margin-right: 4px;"></i>Forfeit DP & Relist</button>`);
@@ -1200,10 +1221,19 @@ function orderActionsHtml(order) {
         if (actions.includes('complete')) {
             buttons.push(`<button class="fm-btn primary sm" onclick="completeHandover(${id})">Complete</button>`);
         }
-        if (actions.includes('mark_ready_for_pickup')) buttons.push(actionButton(id, 'ready-for-pickup', 'Ready for pickup', 'ghost'));
-        if (actions.includes('reject_payment')) buttons.push(actionButton(id, 'reject-payment', 'Decline', 'danger'));
-        else if (actions.includes('cancel')) buttons.push(actionButton(id, 'cancel', 'Cancel order', 'danger'));
+        // Never show "Ready for pickup" if the order is already ready for pickup!
+        if (actions.includes('mark_ready_for_pickup') && !isAlreadyReady) {
+            buttons.push(actionButton(id, 'ready-for-pickup', 'Ready for pickup', 'ghost'));
+        }
+        if (actions.includes('reject_payment')) {
+            buttons.push(actionButton(id, 'reject-payment', 'Decline', 'danger'));
+        } else if (actions.includes('cancel') && !isPaid) {
+            // Never show "Cancel order" if the order is already paid or downpayment is paid!
+            buttons.push(actionButton(id, 'cancel', 'Cancel order', 'danger'));
+        }
     }
+
+    if (!buttons.length) return '';
 
     return `<div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; border-top: 1px solid var(--surface-sunk); padding-top: 12px;">${buttons.join('')}</div>`;
 }
