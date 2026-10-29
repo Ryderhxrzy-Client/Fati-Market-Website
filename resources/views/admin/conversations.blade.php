@@ -1107,11 +1107,11 @@ function badge(label, tone) {
     return `<span class="fm-badge ${tone || ''}">${escapeHtml(label)}</span>`;
 }
 
-function summaryRow(label, value, strong) {
+function summaryRow(label, value, strong, isHtml) {
     return `
         <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 13px; padding: 3px 0;">
             <span style="color: var(--ink-500);">${escapeHtml(label)}</span>
-            <span style="color: var(--ink-900); ${strong ? 'font-weight: 700;' : ''} text-align: right;">${escapeHtml(value)}</span>
+            <span style="color: var(--ink-900); ${strong ? 'font-weight: 700;' : ''} text-align: right;">${isHtml ? value : escapeHtml(value)}</span>
         </div>`;
 }
 
@@ -1155,7 +1155,7 @@ function renderOrderCard(msg, isAdmin, senderName, timestamp) {
             ${summaryRow('Amount due', peso(order.amount_due), true)}
             ${summaryRow('Payment', paymentMethodLabel(order.payment_method))}
             ${order.payment_reference ? summaryRow('Reference', order.payment_reference) : ''}
-            ${order.pickup_date ? summaryRow('Pick-up schedule', `<span style="font-weight: 600; color: ${order.status === 'overdue' ? '#dc2626' : 'inherit'};"><i class="fas fa-calendar-day" style="margin-right: 4px; color: var(--brand-600);"></i>${escapeHtml(order.pickup_date_formatted || when(order.pickup_date))}</span>`) : ''}
+            ${order.pickup_date ? summaryRow('Pick-up schedule', `<span style="font-weight: 600; color: ${order.status === 'overdue' ? '#dc2626' : 'inherit'};"><i class="fas fa-calendar-day" style="margin-right: 4px; color: var(--brand-600);"></i>${escapeHtml(order.pickup_date_formatted || when(order.pickup_date))}</span>`, false, true) : ''}
         </div>
         <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px;">
             ${paymentStateBadge(order, msg.payment_status_at)}
