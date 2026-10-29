@@ -121,7 +121,10 @@ window.FMOrders = (function () {
         const danger = 'fm-btn danger sm';
 
         if (order.status === 'overdue' || actions.includes('extend_pickup_date')) buttons.push(`<button class="${solid}" onclick="FMOrders.extendDate()"><i class="fas fa-calendar-plus" style="margin-right: 5px;"></i>Extend pick-up date</button>`);
-        if (order.status === 'overdue' || actions.includes('forfeit_and_relist')) buttons.push(`<button class="${danger}" onclick="FMOrders.forfeitRelist()"><i class="fas fa-undo" style="margin-right: 5px;"></i>Forfeit DP & Relist</button>`);
+        const isUnpaid = !order.has_paid_downpayment;
+        if (order.status === 'overdue' || actions.includes('forfeit_and_relist') || actions.includes('cancel_and_relist')) {
+            buttons.push(`<button class="${danger}" onclick="FMOrders.forfeitRelist()"><i class="fas ${isUnpaid ? 'fa-ban' : 'fa-undo'}" style="margin-right: 5px;"></i>${isUnpaid ? 'Cancel & Relist Item' : 'Forfeit DP & Relist'}</button>`);
+        }
         if (order.status === 'overdue' || actions.includes('complete')) buttons.push(`<button class="${solid}" style="background: var(--success, #16a34a);" onclick="FMOrders.handover()"><i class="fas fa-handshake" style="margin-right: 5px;"></i>Mark as Sold</button>`);
         else if (actions.includes('complete')) buttons.push(`<button class="${solid}" onclick="FMOrders.handover()"><i class="fas fa-handshake"></i>Complete handover</button>`);
         if (actions.includes('verify_payment')) buttons.push(`<button class="${solid}" onclick="FMOrders.run('verify-payment', 'Approve payment')"><i class="fas fa-check"></i>Approve payment</button>`);
@@ -397,10 +400,13 @@ window.FMOrders = (function () {
 
     async function forfeitRelist() {
         if (!current || busy) return;
+        const isUnpaid = !current.has_paid_downpayment;
         const confirmed = await ask({
-            title: 'Forfeit DP & Relist Item?',
-            body: 'Are you sure? This will forfeit the downpayment, cancel this overdue transaction, and immediately return the item to the public marketplace.',
-            confirmLabel: 'Forfeit & Relist',
+            title: isUnpaid ? 'Cancel & Return to Marketplace?' : 'Forfeit DP & Relist Item?',
+            body: isUnpaid
+                ? 'This overdue reservation was unpaid. Confirming will cancel this order and immediately return the item to the public marketplace.'
+                : 'Are you sure? This will forfeit the downpayment, cancel this overdue transaction, and immediately return the item to the public marketplace.',
+            confirmLabel: isUnpaid ? 'Return to Marketplace' : 'Forfeit & Relist',
             danger: true,
         });
         if (!confirmed) return;
