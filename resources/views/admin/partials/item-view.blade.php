@@ -182,7 +182,7 @@
                     <p class="cell-sub" style="margin: 0 0 6px;">The counter's proof</p>
                     <div style="display: flex; gap: 8px;">
                         ${item.seller_payout_photo ? `<a href="${attr(item.seller_payout_photo)}" target="_blank" rel="noopener" style="flex: 1;">
-                            <img src="${attr(item.seller_payout_photo)}" alt="Student seller paid" style="width: 100%; height: 120px; object-fit: cover; border-radius: 8px;"></a>` : ''}
+                            <img src="${attr(item.seller_payout_photo)}" alt="Receipt: Admin paid" style="width: 100%; height: 120px; object-fit: cover; border-radius: 8px;"></a>` : ''}
                         ${item.turnover_photo ? `<a href="${attr(item.turnover_photo)}" target="_blank" rel="noopener" style="flex: 1;">
                             <img src="${attr(item.turnover_photo)}" alt="Item received" style="width: 100%; height: 120px; object-fit: cover; border-radius: 8px;"></a>` : ''}
                     </div>
