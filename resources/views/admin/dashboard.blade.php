@@ -13,9 +13,24 @@
 
 @section('content')
 <div class="space-y-6">
+    @if (($stats['items']['overdue_items'] ?? 0) > 0)
+    <div class="fm-alert danger" style="display: flex; align-items: center; justify-content: space-between; padding: 16px; border-radius: 8px; background: #fee2e2; border: 1px solid #ef4444; color: #991b1b;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <i class="fas fa-exclamation-triangle" style="font-size: 1.5rem;"></i>
+            <div>
+                <strong>Overdue Reservations ({{ $stats['items']['overdue_items'] }})</strong>
+                <p style="margin: 0; font-size: 0.875rem;">Orders have passed their scheduled pick-up date without claim. Review them to extend pick-up date, forfeit DP & relist, or mark as sold.</p>
+            </div>
+        </div>
+        <a href="{{ route('admin.transactions.history') }}?status=overdue" class="fm-btn danger" style="white-space: nowrap; margin-left: 12px;">
+            <i class="fas fa-clock"></i> Review Overdue
+        </a>
+    </div>
+    @endif
+
     <!-- USERS SECTION -->
     <div>
-        <h3 class="fm-section-title">Students</h3>
+        <h3 class="fm-section-title">Users</h3>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <a href="{{ route('admin.students') }}" class="stat-card">
                 <div class="flex items-start justify-between">
