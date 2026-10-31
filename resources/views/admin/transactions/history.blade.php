@@ -94,6 +94,7 @@
         ['ready_for_pickup', 'Ready for pickup'],
         ['completed', 'Completed'],
         ['cancelled', 'Cancelled'],
+        ['refunds', 'Refunds'],
         ['rejected', 'Rejected'],
     ];
 
@@ -127,7 +128,14 @@
 
     function renderChips() {
         const counts = {};
-        orders.forEach(o => { counts[o.status] = (counts[o.status] || 0) + 1; });
+        let refundCount = 0;
+        orders.forEach(o => {
+            counts[o.status] = (counts[o.status] || 0) + 1;
+            if (o.refund_status || o.can_refund || (o.status === 'cancelled' && ['verified', 'paid', 'partially_paid'].includes(o.payment_status))) {
+                refundCount++;
+            }
+        });
+        counts['refunds'] = refundCount;
 
         document.getElementById('statusChips').innerHTML = FILTERS.map(([value, label]) => {
             const n = value ? (counts[value] || 0) : orders.length;
@@ -142,11 +150,16 @@
     }
 
     function matches(order) {
-        if (filter && order.status !== filter) return false;
+        if (filter === 'refunds') {
+            if (!order.refund_status && !order.can_refund && !(order.status === 'cancelled' && ['verified', 'paid', 'partially_paid'].includes(order.payment_status))) return false;
+        } else if (filter && order.status !== filter) {
+            return false;
+        }
         if (!query) return true;
         const hay = [
             order.receipt_no, order.transaction_id, order.item?.title, order.buyer?.email, order.buyer?.name,
             order.payment_method, order.status, order.payment_reference, order.pickup_date, order.pickup_date_formatted,
+            order.refund_status, order.refund_reference,
         ].map(v => String(v ?? '').toLowerCase()).join(' ');
         return hay.includes(query);
     }
@@ -194,7 +207,10 @@
                         <p style="margin-bottom: 4px;">${FMOrders.esc(FMOrders.methodLabel(order.payment_method))}</p>
                         ${FMOrders.paymentBadge(order)}
                     </td>
-                    <td>${FMOrders.statusBadge(order)}</td>
+                    <td>
+                        ${FMOrders.statusBadge(order)}
+                        ${order.refund_status ? `<div style="margin-top: 4px;"><span class="fm-badge ${order.refund_status === 'completed' ? 'success' : (order.refund_status === 'failed' ? 'danger' : 'warning')}" style="font-size: 11px;">Refund ${FMOrders.esc(order.refund_status)}</span></div>` : ''}
+                    </td>
                     <td>
                         ${order.pickup_date
                             ? `<p class="cell-title" style="font-size: 13px; font-weight: 600; color: ${order.status === 'overdue' ? 'var(--danger)' : 'var(--ink)'};"><i class="fas fa-calendar-day" style="margin-right: 5px; color: var(--brand-600);"></i>${FMOrders.esc(order.pickup_date_formatted || FMOrders.when(order.pickup_date))}</p>`

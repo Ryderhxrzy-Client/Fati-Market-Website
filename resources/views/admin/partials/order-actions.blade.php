@@ -137,7 +137,13 @@ window.FMOrders = (function () {
         }
 
         if (order.status === 'overdue' || actions.includes('forfeit_and_relist') || actions.includes('cancel_and_relist')) {
-            buttons.push(`<button class="${danger}" onclick="FMOrders.forfeitRelist()"><i class="fas ${!isPaid ? 'fa-undo' : 'fa-ban'}" style="margin-right: 5px;"></i>${!isPaid ? 'Cancel & Relist Item' : 'Forfeit DP & Relist'}</button>`);
+            if (isPaid) {
+                const hasRemainingBalance = Number(order.remaining_balance) > 0;
+                buttons.push(`<button class="${danger}" onclick="FMOrders.forfeitRelist(false)"><i class="fas fa-ban" style="margin-right: 5px;"></i>${hasRemainingBalance ? 'Forfeit DP & Relist' : 'Forfeit Payment & Relist'}</button>`);
+                buttons.push(`<button class="${solid}" style="background: #dc2626;" onclick="FMOrders.forfeitRelist(true)"><i class="fas fa-rotate-left" style="margin-right: 5px;"></i>Refund & Relist</button>`);
+            } else {
+                buttons.push(`<button class="${danger}" onclick="FMOrders.forfeitRelist(false)"><i class="fas fa-undo" style="margin-right: 5px;"></i>Cancel & Relist Item</button>`);
+            }
         }
 
         if (order.status === 'overdue') {
@@ -462,7 +468,7 @@ window.FMOrders = (function () {
         }
     }
 
-    async function forfeitRelist() {
+    async function forfeitRelist(refund = false) {
         if (!current || busy) return;
         const isPaid = current.payment_status === 'verified'
             || current.payment_status === 'partially_paid'
@@ -471,16 +477,28 @@ window.FMOrders = (function () {
             || ['verified', 'paid'].includes(current.downpayment_status);
         const isUnpaid = !isPaid;
         const hasRemainingBalance = Number(current.remaining_balance) > 0;
-        const confirmed = await ask({
-            title: isUnpaid ? 'Cancel & Return to Marketplace?' : (hasRemainingBalance ? 'Forfeit DP & Relist Item?' : 'Forfeit Payment & Relist Item?'),
-            body: isUnpaid
-                ? 'This overdue reservation was unpaid. Confirming will cancel this order and immediately return the item to the public marketplace.'
-                : (hasRemainingBalance
-                    ? 'Are you sure? This will forfeit the downpayment, cancel this overdue transaction, and immediately return the item to the public marketplace.'
-                    : 'Are you sure? This will forfeit the payment, cancel this overdue transaction, and immediately return the item to the public marketplace.'),
-            confirmLabel: isUnpaid ? 'Return to Marketplace' : 'Forfeit & Relist',
-            danger: true,
-        });
+
+        let confirmed;
+        if (refund && isPaid) {
+            const refundAmt = current.refund_amount_formatted || peso(current.amount_due);
+            confirmed = await ask({
+                title: 'Cancel, Refund & Relist?',
+                body: `Are you sure? This will cancel the overdue order, return the item to the public marketplace, and automatically initiate a refund of ${esc(refundAmt)} back to the buyer via PayMongo.`,
+                confirmLabel: 'Refund & Relist',
+                danger: true,
+            });
+        } else {
+            confirmed = await ask({
+                title: isUnpaid ? 'Cancel & Return to Marketplace?' : (hasRemainingBalance ? 'Forfeit DP & Relist Item?' : 'Forfeit Payment & Relist Item?'),
+                body: isUnpaid
+                    ? 'This overdue reservation was unpaid. Confirming will cancel this order and immediately return the item to the public marketplace.'
+                    : (hasRemainingBalance
+                        ? 'Are you sure? This will forfeit the downpayment, cancel this overdue transaction, and immediately return the item to the public marketplace without refund.'
+                        : 'Are you sure? This will forfeit the payment, cancel this overdue transaction, and immediately return the item to the public marketplace without refund.'),
+                confirmLabel: isUnpaid ? 'Return to Marketplace' : 'Forfeit & Relist',
+                danger: true,
+            });
+        }
         if (!confirmed) return;
 
         busy = true;
@@ -492,14 +510,14 @@ window.FMOrders = (function () {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({}),
+                body: JSON.stringify({ refund: !!refund }),
             });
             const payload = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
 
             current = payload.data || current;
             render();
-            showToast(payload.message || (isPaid ? 'Payment forfeited and item returned to marketplace' : 'Order cancelled and item returned to marketplace'), 'success');
+            showToast(payload.message || (refund ? 'Order cancelled, refund initiated, and item relisted' : (isPaid ? 'Payment forfeited and item returned to marketplace' : 'Order cancelled and item returned to marketplace')), 'success');
             if (typeof onChange === 'function') onChange(current);
         } catch (error) {
             showToast(`Could not forfeit and relist: ${error.message}`, 'error');

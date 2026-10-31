@@ -1228,7 +1228,8 @@ function orderActionsHtml(order) {
         if (!isPaid) {
             buttons.push(`<button class="fm-btn danger sm" onclick="forfeitRelistOverdue(${id}, false)"><i class="fas fa-undo" style="margin-right: 4px;"></i>Cancel & Return to Marketplace</button>`);
         } else {
-            buttons.push(`<button class="fm-btn danger sm" onclick="forfeitRelistOverdue(${id}, true, ${isFullPay ? 'true' : 'false'})"><i class="fas fa-ban" style="margin-right: 4px;"></i>${isFullPay ? 'Forfeit Payment & Relist' : 'Forfeit DP & Relist'}</button>`);
+            buttons.push(`<button class="fm-btn danger sm" onclick="forfeitRelistOverdue(${id}, true, ${isFullPay ? 'true' : 'false'}, false)"><i class="fas fa-ban" style="margin-right: 4px;"></i>${isFullPay ? 'Forfeit Payment & Relist' : 'Forfeit DP & Relist'}</button>`);
+            buttons.push(`<button class="fm-btn danger sm" style="background: #dc2626;" onclick="forfeitRelistOverdue(${id}, true, ${isFullPay ? 'true' : 'false'}, true)"><i class="fas fa-rotate-left" style="margin-right: 4px;"></i>Refund & Relist</button>`);
         }
     } else {
         if (!['completed', 'cancelled', 'rejected'].includes(order.status)) {
@@ -1297,15 +1298,26 @@ async function extendPickupSchedule(transactionId) {
     }
 }
 
-async function forfeitRelistOverdue(transactionId, hasDp, isFullPay = false) {
-    const confirmed = await askModal({
-        title: hasDp ? (isFullPay ? 'Forfeit Payment & Relist Item?' : 'Forfeit DP & Relist Item?') : 'Cancel & Return to Marketplace?',
-        body: hasDp
+async function forfeitRelistOverdue(transactionId, hasDp, isFullPay = false, refund = false) {
+    let title, body, confirmLabel;
+    if (refund && hasDp) {
+        title = 'Cancel, Refund & Relist?';
+        body = 'Are you sure? This will cancel the overdue order, initiate an automated PayMongo refund to the buyer, and return the item to the public marketplace.';
+        confirmLabel = 'Refund & Relist';
+    } else {
+        title = hasDp ? (isFullPay ? 'Forfeit Payment & Relist Item?' : 'Forfeit DP & Relist Item?') : 'Cancel & Return to Marketplace?';
+        body = hasDp
             ? (isFullPay
-                ? 'Are you sure? This will forfeit the payment, cancel this overdue transaction, and immediately return the item to the public marketplace.'
-                : 'Are you sure? This will forfeit the downpayment, cancel this overdue transaction, and immediately return the item to the public marketplace.')
-            : 'This overdue reservation was unpaid. Confirming will cancel this order and immediately return the item to the public marketplace.',
-        confirmLabel: hasDp ? 'Forfeit & Relist' : 'Return to Marketplace',
+                ? 'Are you sure? This will forfeit the payment, cancel this overdue transaction, and immediately return the item to the public marketplace without refund.'
+                : 'Are you sure? This will forfeit the downpayment, cancel this overdue transaction, and immediately return the item to the public marketplace without refund.')
+            : 'This overdue reservation was unpaid. Confirming will cancel this order and immediately return the item to the public marketplace.';
+        confirmLabel = hasDp ? 'Forfeit & Relist' : 'Return to Marketplace';
+    }
+
+    const confirmed = await askModal({
+        title,
+        body,
+        confirmLabel,
         danger: true,
     });
     if (confirmed === null) return;
@@ -1314,11 +1326,11 @@ async function forfeitRelistOverdue(transactionId, hasDp, isFullPay = false) {
         const response = await fetch(`${API}/admin/transactions/${transactionId}/forfeit`, {
             method: 'POST',
             headers: authHeaders(true),
-            body: JSON.stringify({}),
+            body: JSON.stringify({ refund: !!refund }),
         });
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
-        showToast(payload.message || (hasDp ? 'Payment/downpayment forfeited and item returned to marketplace' : 'Order cancelled and item returned to marketplace'), 'success');
+        showToast(payload.message || (refund ? 'Order cancelled, refund initiated, and item relisted' : (hasDp ? 'Payment/downpayment forfeited and item returned to marketplace' : 'Order cancelled and item returned to marketplace')), 'success');
         await loadThread();
     } catch (error) {
         showToast(`Could not relist item: ${error.message}`, 'error');
