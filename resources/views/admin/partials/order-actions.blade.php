@@ -124,6 +124,7 @@ window.FMOrders = (function () {
         const isPaid = order.payment_status === 'verified'
             || order.payment_status === 'partially_paid'
             || !!order.has_paid_downpayment
+            || !!order.has_paid
             || ['verified', 'paid'].includes(order.downpayment_status);
 
         const isAlreadyReady = order.status === 'ready_for_pickup'
@@ -155,9 +156,16 @@ window.FMOrders = (function () {
 
         if (actions.includes('reject_payment')) {
             buttons.push(`<button class="${danger}" onclick="FMOrders.run('reject-payment', 'Decline payment')"><i class="fas fa-xmark"></i>Decline payment</button>`);
-        } else if (actions.includes('cancel') && !isPaid) {
-            // Never show "Cancel order" if already paid!
-            buttons.push(`<button class="${danger}" onclick="FMOrders.run('cancel', 'Cancel order')"><i class="fas fa-ban"></i>Cancel order</button>`);
+        } else if (actions.includes('cancel')) {
+            buttons.push(`<button class="${danger}" onclick="FMOrders.run('cancel', 'Cancel order')"><i class="fas fa-ban"></i>${isPaid ? 'Cancel & Refund' : 'Cancel order'}</button>`);
+        }
+
+        if (order.can_refund || actions.includes('process_refund')) {
+            if (order.payment_method === 'paymongo') {
+                buttons.push(`<button class="${solid}" style="background: #2563eb;" onclick="FMOrders.refundPaymongo()"><i class="fas fa-rotate"></i>Process PayMongo Refund</button>`);
+            } else {
+                buttons.push(`<button class="${solid}" style="background: #059669;" onclick="FMOrders.refundManual()"><i class="fas fa-hand-holding-dollar"></i>Mark Refund as Sent</button>`);
+            }
         }
 
         if (!buttons.length) return '';
@@ -243,6 +251,23 @@ window.FMOrders = (function () {
 
                 ${order.cancel_reason ? `<p style="margin: 12px 0 0; padding: 8px 10px; background: var(--danger-bg); border-radius: 6px; font-size: 12.5px; color: var(--danger);">${esc(order.cancel_reason)}</p>` : ''}
 
+                ${order.refund_status ? `
+                    <div style="margin-top: 12px; padding: 12px 14px; background: ${order.refund_status === 'completed' ? '#ecfdf5' : '#eff6ff'}; border: 1px solid ${order.refund_status === 'completed' ? '#a7f3d0' : '#bfdbfe'}; border-radius: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <span style="font-weight: 700; font-size: 13px; color: ${order.refund_status === 'completed' ? '#065f46' : '#1e40af'};">
+                                <i class="fas ${order.refund_status === 'completed' ? 'fa-check-circle' : 'fa-spinner fa-spin'}" style="margin-right: 5px;"></i>
+                                Refund ${order.refund_status === 'completed' ? 'Completed' : (order.refund_status === 'failed' ? 'Failed' : 'Processing')}
+                            </span>
+                            <span style="font-weight: 700; color: ${order.refund_status === 'completed' ? '#059669' : '#2563eb'};">${esc(order.refund_amount_formatted || peso(order.refund_amount))}</span>
+                        </div>
+                        <p style="margin: 0; font-size: 12px; color: ${order.refund_status === 'completed' ? '#047857' : '#1e3a8a'};">
+                            ${order.refund_status === 'completed'
+                                ? `Refund was processed successfully${order.refund_reference ? ` (Ref: ${esc(order.refund_reference)})` : ''}${order.refunded_at ? ` on ${esc(order.refunded_at)}` : ''}.`
+                                : `The refund is currently processing${order.refund_reference ? ` (Ref: ${esc(order.refund_reference)})` : ''}. Status will update automatically when PayMongo webhook is received.`}
+                        </p>
+                    </div>
+                ` : ''}
+
                 ${order.payment_proof ? `
                     <p class="fm-label" style="margin: 14px 0 6px;">Payment receipt</p>
                     <a href="${attr(order.payment_proof)}" target="_blank" rel="noopener">
@@ -313,11 +338,21 @@ window.FMOrders = (function () {
         let isForm = false;
 
         if (needsReason) {
+            const isPaid = current.payment_status === 'verified'
+                || current.payment_status === 'partially_paid'
+                || !!current.has_paid_downpayment
+                || !!current.has_paid
+                || ['verified', 'paid'].includes(current.downpayment_status);
+            const cancelTitle = endpoint === 'cancel' && isPaid ? 'Cancel order & refund?' : label;
+            const cancelBody = endpoint === 'cancel' && isPaid
+                ? `This order is already paid (${peso(current.amount_due)}). Confirming will cancel the order, restore points, and initiate a refund. Please state the reason for the buyer:`
+                : 'The buyer is told in their chat. Give them the reason.';
+
             const reason = await ask({
-                title: label,
-                body: 'The buyer is told in their chat. Give them the reason.',
+                title: cancelTitle,
+                body: cancelBody,
                 field: { label: 'Reason', type: 'textarea', placeholder: 'Shown to the buyer' },
-                confirmLabel: label,
+                confirmLabel: endpoint === 'cancel' && isPaid ? 'Cancel & Refund' : label,
                 danger: true,
             });
             if (reason === null) return;
@@ -429,12 +464,20 @@ window.FMOrders = (function () {
 
     async function forfeitRelist() {
         if (!current || busy) return;
-        const isUnpaid = !current.has_paid_downpayment;
+        const isPaid = current.payment_status === 'verified'
+            || current.payment_status === 'partially_paid'
+            || !!current.has_paid_downpayment
+            || !!current.has_paid
+            || ['verified', 'paid'].includes(current.downpayment_status);
+        const isUnpaid = !isPaid;
+        const hasRemainingBalance = Number(current.remaining_balance) > 0;
         const confirmed = await ask({
-            title: isUnpaid ? 'Cancel & Return to Marketplace?' : 'Forfeit DP & Relist Item?',
+            title: isUnpaid ? 'Cancel & Return to Marketplace?' : (hasRemainingBalance ? 'Forfeit DP & Relist Item?' : 'Forfeit Payment & Relist Item?'),
             body: isUnpaid
                 ? 'This overdue reservation was unpaid. Confirming will cancel this order and immediately return the item to the public marketplace.'
-                : 'Are you sure? This will forfeit the downpayment, cancel this overdue transaction, and immediately return the item to the public marketplace.',
+                : (hasRemainingBalance
+                    ? 'Are you sure? This will forfeit the downpayment, cancel this overdue transaction, and immediately return the item to the public marketplace.'
+                    : 'Are you sure? This will forfeit the payment, cancel this overdue transaction, and immediately return the item to the public marketplace.'),
             confirmLabel: isUnpaid ? 'Return to Marketplace' : 'Forfeit & Relist',
             danger: true,
         });
@@ -456,7 +499,7 @@ window.FMOrders = (function () {
 
             current = payload.data || current;
             render();
-            showToast('Downpayment forfeited and item returned to marketplace', 'success');
+            showToast(payload.message || (isPaid ? 'Payment forfeited and item returned to marketplace' : 'Order cancelled and item returned to marketplace'), 'success');
             if (typeof onChange === 'function') onChange(current);
         } catch (error) {
             showToast(`Could not forfeit and relist: ${error.message}`, 'error');
@@ -465,7 +508,81 @@ window.FMOrders = (function () {
         }
     }
 
-    return { open, close, run, handover, extendDate, forfeitRelist, askDone, peso, methodLabel, paymentBadge, statusBadge, when, esc, attr };
+    async function refundPaymongo() {
+        if (!current || busy) return;
+        const refundAmt = current.refund_amount_formatted || peso(current.refund_amount || current.amount_due);
+        const confirmed = await ask({
+            title: 'Process PayMongo Refund?',
+            body: `This will request a refund of ${esc(refundAmt)} via the PayMongo API. Funds will be returned directly to the buyer's account.`,
+            confirmLabel: 'Process Refund',
+            danger: false,
+        });
+        if (!confirmed) return;
+
+        busy = true;
+        try {
+            const response = await fetch(`${API}/admin/transactions/${current.transaction_id}/refund`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token()}`,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ action: 'paymongo' }),
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
+
+            current = payload.data || current;
+            render();
+            showToast(payload.message || 'PayMongo refund submitted successfully', 'success');
+            if (typeof onChange === 'function') onChange(current);
+        } catch (error) {
+            showToast(`Could not process refund: ${error.message}`, 'error');
+        } finally {
+            busy = false;
+        }
+    }
+
+    async function refundManual() {
+        if (!current || busy) return;
+        const refundAmt = current.refund_amount_formatted || peso(current.refund_amount || current.amount_due);
+        const ref = await ask({
+            title: 'Mark Refund as Sent',
+            body: `Confirm that you have manually transferred ${esc(refundAmt)} back to the buyer (via GCash/Cash). Enter the transaction reference number:`,
+            field: { label: 'GCash / Payment Reference Number', type: 'textarea', placeholder: 'e.g. GCash Ref No. 1002348572' },
+            confirmLabel: 'Confirm Refund Sent',
+            danger: false,
+        });
+        if (ref === null) return;
+        if (!String(ref).trim()) { showToast('A reference number is required.', 'error'); return; }
+
+        busy = true;
+        try {
+            const response = await fetch(`${API}/admin/transactions/${current.transaction_id}/refund`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token()}`,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ action: 'manual', reference_number: String(ref).trim() }),
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
+
+            current = payload.data || current;
+            render();
+            showToast(payload.message || 'Refund marked as completed successfully', 'success');
+            if (typeof onChange === 'function') onChange(current);
+        } catch (error) {
+            showToast(`Could not mark refund: ${error.message}`, 'error');
+        } finally {
+            busy = false;
+        }
+    }
+
+    return { open, close, run, handover, extendDate, forfeitRelist, refundPaymongo, refundManual, askDone, peso, methodLabel, paymentBadge, statusBadge, when, esc, attr };
 })();
 </script>
 @endpush

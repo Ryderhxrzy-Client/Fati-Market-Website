@@ -1161,6 +1161,21 @@ function renderOrderCard(msg, isAdmin, senderName, timestamp) {
             ${paymentStateBadge(order, msg.payment_status_at)}
             ${orderStatusBadge(msg.order_status_at || order.status, order.payment_method)}
         </div>
+        ${order.refund_status ? `
+            <div style="margin-top: 10px; padding: 10px 12px; background: ${order.refund_status === 'completed' ? '#ecfdf5' : '#eff6ff'}; border: 1px solid ${order.refund_status === 'completed' ? '#a7f3d0' : '#bfdbfe'}; border-radius: 6px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <span style="font-weight: 700; font-size: 12px; color: ${order.refund_status === 'completed' ? '#065f46' : '#1e40af'};">
+                        <i class="fas ${order.refund_status === 'completed' ? 'fa-check-circle' : 'fa-spinner fa-spin'}" style="margin-right: 4px;"></i>
+                        Refund ${order.refund_status === 'completed' ? 'Completed' : (order.refund_status === 'failed' ? 'Failed' : 'Processing')}
+                    </span>
+                    <span style="font-weight: 700; font-size: 12px; color: ${order.refund_status === 'completed' ? '#059669' : '#2563eb'};">${escapeHtml(order.refund_amount_formatted || peso(order.refund_amount))}</span>
+                </div>
+                <p style="margin: 0; font-size: 11.5px; color: ${order.refund_status === 'completed' ? '#047857' : '#1e3a8a'};">
+                    ${order.refund_status === 'completed'
+                        ? `Refund completed${order.refund_reference ? ` (Ref: ${escapeHtml(order.refund_reference)})` : ''}${order.refunded_at ? ` on ${escapeHtml(order.refunded_at)}` : ''}.`
+                        : `Your refund is currently being processed via PayMongo / GCash (typically takes 3–5 business days). If you have not received it after this period, please message the store admin.`}
+                </p>
+            </div>` : ''}
         ${order.payment_proof ? `
             <img src="${escapeAttr(order.payment_proof)}" alt="Payment receipt" data-proof="${escapeAttr(order.payment_proof)}" data-reference="${escapeAttr(order.payment_reference || '')}"
                  onclick="openProof(this.dataset.proof, this.dataset.reference)" style="margin-top: 10px; width: 100%; height: 150px; object-fit: cover; border-radius: 8px; cursor: pointer;">
@@ -1200,18 +1215,20 @@ function orderActionsHtml(order) {
     const isPaid = order.payment_status === 'verified'
         || order.payment_status === 'partially_paid'
         || !!order.has_paid_downpayment
+        || !!order.has_paid
         || ['verified', 'paid'].includes(order.downpayment_status);
 
     const isAlreadyReady = order.status === 'ready_for_pickup'
         || order.pickup_status === 'ready';
 
     if (order.status === 'overdue' || actions.includes('extend_pickup_date')) {
+        const isFullPay = isPaid && (!order.downpayment_amount || Number(order.downpayment_amount) <= 0 || Number(order.remaining_balance) === 0);
         buttons.push(`<button class="fm-btn ghost sm" onclick="extendPickupSchedule(${id})"><i class="fas fa-calendar-plus" style="margin-right: 4px;"></i>Extend pick-up date</button>`);
         buttons.push(`<button class="fm-btn primary sm" onclick="completeHandover(${id})"><i class="fas fa-handshake" style="margin-right: 4px;"></i>Mark as Sold</button>`);
         if (!isPaid) {
             buttons.push(`<button class="fm-btn danger sm" onclick="forfeitRelistOverdue(${id}, false)"><i class="fas fa-undo" style="margin-right: 4px;"></i>Cancel & Return to Marketplace</button>`);
         } else {
-            buttons.push(`<button class="fm-btn danger sm" onclick="forfeitRelistOverdue(${id}, true)"><i class="fas fa-ban" style="margin-right: 4px;"></i>Forfeit DP & Relist</button>`);
+            buttons.push(`<button class="fm-btn danger sm" onclick="forfeitRelistOverdue(${id}, true, ${isFullPay ? 'true' : 'false'})"><i class="fas fa-ban" style="margin-right: 4px;"></i>${isFullPay ? 'Forfeit Payment & Relist' : 'Forfeit DP & Relist'}</button>`);
         }
     } else {
         if (!['completed', 'cancelled', 'rejected'].includes(order.status)) {
@@ -1228,9 +1245,16 @@ function orderActionsHtml(order) {
         }
         if (actions.includes('reject_payment')) {
             buttons.push(actionButton(id, 'reject-payment', 'Decline', 'danger'));
-        } else if (actions.includes('cancel') && !isPaid) {
-            // Never show "Cancel order" if the order is already paid or downpayment is paid!
-            buttons.push(actionButton(id, 'cancel', 'Cancel order', 'danger'));
+        } else if (actions.includes('cancel')) {
+            buttons.push(actionButton(id, 'cancel', isPaid ? 'Cancel & Refund' : 'Cancel order', 'danger'));
+        }
+
+        if (order.can_refund || actions.includes('process_refund')) {
+            if (order.payment_method === 'paymongo') {
+                buttons.push(`<button class="fm-btn primary sm" style="background: #2563eb;" onclick="refundOrderPaymongo(${id})"><i class="fas fa-rotate" style="margin-right: 4px;"></i>Process PayMongo Refund</button>`);
+            } else {
+                buttons.push(`<button class="fm-btn primary sm" style="background: #059669;" onclick="refundOrderManual(${id})"><i class="fas fa-hand-holding-dollar" style="margin-right: 4px;"></i>Mark Refund Sent</button>`);
+            }
         }
     }
 
@@ -1273,11 +1297,13 @@ async function extendPickupSchedule(transactionId) {
     }
 }
 
-async function forfeitRelistOverdue(transactionId, hasDp) {
+async function forfeitRelistOverdue(transactionId, hasDp, isFullPay = false) {
     const confirmed = await askModal({
-        title: hasDp ? 'Forfeit DP & Relist Item?' : 'Cancel & Return to Marketplace?',
+        title: hasDp ? (isFullPay ? 'Forfeit Payment & Relist Item?' : 'Forfeit DP & Relist Item?') : 'Cancel & Return to Marketplace?',
         body: hasDp
-            ? 'Are you sure? This will forfeit the downpayment, cancel this overdue transaction, and immediately return the item to the public marketplace.'
+            ? (isFullPay
+                ? 'Are you sure? This will forfeit the payment, cancel this overdue transaction, and immediately return the item to the public marketplace.'
+                : 'Are you sure? This will forfeit the downpayment, cancel this overdue transaction, and immediately return the item to the public marketplace.')
             : 'This overdue reservation was unpaid. Confirming will cancel this order and immediately return the item to the public marketplace.',
         confirmLabel: hasDp ? 'Forfeit & Relist' : 'Return to Marketplace',
         danger: true,
@@ -1292,10 +1318,60 @@ async function forfeitRelistOverdue(transactionId, hasDp) {
         });
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
-        showToast(payload.message || (hasDp ? 'Downpayment forfeited and item returned to marketplace' : 'Order cancelled and item returned to marketplace'), 'success');
+        showToast(payload.message || (hasDp ? 'Payment/downpayment forfeited and item returned to marketplace' : 'Order cancelled and item returned to marketplace'), 'success');
         await loadThread();
     } catch (error) {
         showToast(`Could not relist item: ${error.message}`, 'error');
+    }
+}
+
+async function refundOrderPaymongo(transactionId) {
+    const confirmed = await askModal({
+        title: 'Process PayMongo Refund?',
+        body: 'This will request a refund via the PayMongo API. The funds will be returned to the buyer.',
+        confirmLabel: 'Process Refund',
+        danger: false,
+    });
+    if (confirmed === null) return;
+
+    try {
+        const response = await fetch(`${API}/admin/transactions/${transactionId}/refund`, {
+            method: 'POST',
+            headers: authHeaders(true),
+            body: JSON.stringify({ action: 'paymongo' }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
+        showToast(payload.message || 'PayMongo refund submitted successfully', 'success');
+        await loadThread();
+    } catch (error) {
+        showToast(`Could not process refund: ${error.message}`, 'error');
+    }
+}
+
+async function refundOrderManual(transactionId) {
+    const ref = await askModal({
+        title: 'Mark Refund as Sent',
+        body: 'Enter the GCash or payment transfer reference number:',
+        field: { label: 'Reference Number', type: 'text', placeholder: 'e.g. GCash Ref No. 1002348572' },
+        confirmLabel: 'Confirm Refund Sent',
+        danger: false,
+    });
+    if (ref === null) return;
+    if (!String(ref).trim()) { showToast('Reference number is required.', 'error'); return; }
+
+    try {
+        const response = await fetch(`${API}/admin/transactions/${transactionId}/refund`, {
+            method: 'POST',
+            headers: authHeaders(true),
+            body: JSON.stringify({ action: 'manual', reference_number: String(ref).trim() }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || `HTTP ${response.status}`);
+        showToast(payload.message || 'Refund marked as completed successfully', 'success');
+        await loadThread();
+    } catch (error) {
+        showToast(`Could not mark refund: ${error.message}`, 'error');
     }
 }
 
