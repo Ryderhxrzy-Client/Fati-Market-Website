@@ -169,6 +169,7 @@ window.FMOrders = (function () {
         if (order.can_refund || actions.includes('process_refund')) {
             if (order.payment_method === 'paymongo') {
                 buttons.push(`<button class="${solid}" style="background: #2563eb;" onclick="FMOrders.refundPaymongo()"><i class="fas fa-rotate"></i>Process PayMongo Refund</button>`);
+                buttons.push(`<button class="${ghost}" style="color: #059669; border-color: #059669;" onclick="FMOrders.refundManual()"><i class="fas fa-hand-holding-dollar"></i>Mark Refund as Sent</button>`);
             } else {
                 buttons.push(`<button class="${solid}" style="background: #059669;" onclick="FMOrders.refundManual()"><i class="fas fa-hand-holding-dollar"></i>Mark Refund as Sent</button>`);
             }

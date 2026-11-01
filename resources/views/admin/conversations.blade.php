@@ -1161,7 +1161,7 @@ function renderOrderCard(msg, isAdmin, senderName, timestamp) {
             ${paymentStateBadge(order, msg.payment_status_at)}
             ${orderStatusBadge(msg.order_status_at || order.status, order.payment_method)}
         </div>
-        ${order.refund_status ? `
+        ${((typeof latestOrderMessageId !== 'undefined' && Number(msg.message_id) === Number(latestOrderMessageId)) || msg.kind === 'order_update') && order.status === 'cancelled' && order.refund_status ? `
             <div style="margin-top: 10px; padding: 10px 12px; background: ${order.refund_status === 'completed' ? '#ecfdf5' : '#eff6ff'}; border: 1px solid ${order.refund_status === 'completed' ? '#a7f3d0' : '#bfdbfe'}; border-radius: 6px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                     <span style="font-weight: 700; font-size: 12px; color: ${order.refund_status === 'completed' ? '#065f46' : '#1e40af'};">
@@ -1253,6 +1253,7 @@ function orderActionsHtml(order) {
         if (order.can_refund || actions.includes('process_refund')) {
             if (order.payment_method === 'paymongo') {
                 buttons.push(`<button class="fm-btn primary sm" style="background: #2563eb;" onclick="refundOrderPaymongo(${id})"><i class="fas fa-rotate" style="margin-right: 4px;"></i>Process PayMongo Refund</button>`);
+                buttons.push(`<button class="fm-btn ghost sm" style="color: #059669; border-color: #059669;" onclick="refundOrderManual(${id})"><i class="fas fa-hand-holding-dollar" style="margin-right: 4px;"></i>Mark Refund Sent</button>`);
             } else {
                 buttons.push(`<button class="fm-btn primary sm" style="background: #059669;" onclick="refundOrderManual(${id})"><i class="fas fa-hand-holding-dollar" style="margin-right: 4px;"></i>Mark Refund Sent</button>`);
             }
