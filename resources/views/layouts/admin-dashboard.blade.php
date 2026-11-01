@@ -1030,7 +1030,7 @@
                         icon: m.type === 'meetup_reminder' ? 'fa-calendar-check' : 'fa-receipt',
                         title: m.title || 'Order update',
                         body: m.body || m.item_title || '',
-                        href: m.type === 'item_update' || m.type === 'meetup_reminder' ? chatHref : ordersHref,
+                        href: m.type === 'item_update' || m.type === 'order_update' || m.type === 'meetup_reminder' ? chatHref : ordersHref,
                         when,
                     };
                 }

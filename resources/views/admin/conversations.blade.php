@@ -1140,9 +1140,10 @@ function renderOrderCard(msg, isAdmin, senderName, timestamp) {
 
     const statusAt = msg.order_status_at || (msg.kind === 'order_placed' ? 'pending_payment' : (msg.kind === 'payment_submitted' ? 'payment_proof_submitted' : order.status));
     const isCancelled = statusAt === 'cancelled' || statusAt === 'rejected';
-    const isCancellationMsg = isCancelled || (msg.message && msg.message.toLowerCase().includes('cancel'));
+    const isRefundMsg = Boolean(msg.message && msg.message.toLowerCase().includes('refund'));
+    const isCancellationMsg = !isRefundMsg && (isCancelled || Boolean(msg.message && msg.message.toLowerCase().includes('cancel')));
     const isLatestAndCancelled = (typeof latestOrderMessageId !== 'undefined' && Number(msg.message_id) === Number(latestOrderMessageId) && order.status === 'cancelled');
-    const showRefund = (isCancellationMsg || isLatestAndCancelled) && order.refund_status;
+    const showRefund = (isRefundMsg || (isLatestAndCancelled && order.refund_status)) && order.refund_status;
 
     const body = `
         <div onclick="openItem(${order.item_id})" style="display: flex; gap: 10px; align-items: center; cursor: pointer; margin-bottom: 12px;">
@@ -1167,7 +1168,7 @@ function renderOrderCard(msg, isAdmin, senderName, timestamp) {
             ${paymentStateBadge(order, msg.payment_status_at)}
             ${orderStatusBadge(statusAt, order.payment_method)}
         </div>
-        ${msg.kind === 'order_update' ? `
+        ${msg.kind === 'order_update' && !isRefundMsg ? `
             <div style="margin-top: 10px; padding: 10px 12px; background: var(--surface-sunk); border-radius: 8px; font-size: 13px; color: var(--ink-900); white-space: pre-line; border-left: 3px solid ${isCancelled ? '#dc2626' : 'var(--brand-600)'};">
                 ${escapeHtml(msg.message)}
             </div>` : ''}
@@ -1185,7 +1186,10 @@ function renderOrderCard(msg, isAdmin, senderName, timestamp) {
                         ? `Refund completed${order.refund_reference ? ` (Ref: ${escapeHtml(order.refund_reference)})` : ''}${order.refunded_at ? ` on ${escapeHtml(order.refunded_at)}` : ''}.`
                         : `Your refund is currently being processed via PayMongo / GCash (typically takes 3–5 business days). If you have not received it after this period, please message the store admin.`}
                 </p>
-            </div>` : ''}
+            </div>` : (isRefundMsg ? `
+            <div style="margin-top: 10px; padding: 10px 12px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 6px; font-size: 13px; color: #065f46; white-space: pre-line;">
+                ${escapeHtml(msg.message)}
+            </div>` : '')}
         ${msg.kind === 'payment_submitted' && order.payment_proof ? `
             <img src="${escapeAttr(order.payment_proof)}" alt="Payment receipt" data-proof="${escapeAttr(order.payment_proof)}" data-reference="${escapeAttr(order.payment_reference || '')}"
                  onclick="openProof(this.dataset.proof, this.dataset.reference)" style="margin-top: 10px; width: 100%; height: 150px; object-fit: cover; border-radius: 8px; cursor: pointer;">
