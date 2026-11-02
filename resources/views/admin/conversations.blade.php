@@ -786,11 +786,22 @@ function renderPinnedOrder(order) {
         return;
     }
 
+    const isCashDp = order.payment_method === 'cash' && (order.downpayment_required || Number(order.downpayment_amount) > 0);
+    const dpPaid = ['partially_paid', 'paid', 'verified'].includes(order.payment_status);
+    const isPayMongo = order.payment_method === 'paymongo' || order.payment_method === 'gcash';
+    const fullPaid = ['paid', 'verified'].includes(order.payment_status) || order.is_full_points_checkout;
+
+    const paymentSummary = isCashDp
+        ? `${peso(order.downpayment_amount)} DP (${dpPaid ? 'Paid' : 'Unpaid'}) &middot; ${peso(order.remaining_balance)} cash`
+        : (isPayMongo
+            ? `${peso(order.amount_due)} (${fullPaid ? 'Paid' : 'Unpaid via PayMongo'})`
+            : `${peso(order.amount_due)} &middot; ${escapeHtml(paymentMethodLabel(order.payment_method, order))}`);
+
     bar.innerHTML = `
         <div class="op-line">
             <i class="fas fa-receipt" style="color: var(--brand-600);"></i>
             <b>${escapeHtml(order.receipt_no || ('Order #' + order.transaction_id))}</b>
-            <span>&middot; ${peso(order.amount_due)} &middot; ${escapeHtml(paymentMethodLabel(order.payment_method))}</span>
+            <span>&middot; ${paymentSummary}</span>
             ${paymentStateBadge(order)}
             ${orderStatusBadge(order.status, order.payment_method)}
         </div>
@@ -1062,8 +1073,11 @@ function peso(amount) {
     return PESO + value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function paymentMethodLabel(method) {
-    return { gcash: 'GCash', points_full: 'Points only', cash: 'Cash at store' }[method] || (method || 'Unknown');
+function paymentMethodLabel(method, order) {
+    if (order && order.payment_method === 'cash' && (order.downpayment_required || Number(order.downpayment_amount) > 0)) {
+        return '50% PayMongo downpayment + 50% cash on pickup';
+    }
+    return { gcash: 'GCash', paymongo: 'PayMongo (GCash)', points_full: 'Points only', cash: 'Cash at store' }[method] || (method || 'Unknown');
 }
 
 /**
@@ -1074,6 +1088,10 @@ function paymentMethodLabel(method) {
  * about.
  */
 function paymentStateBadge(order, statusAt) {
+    const st = statusAt || order.status;
+    if (st === 'cancelled' || order.status === 'cancelled' || st === 'rejected' || order.status === 'rejected') {
+        return badge(st === 'rejected' || order.status === 'rejected' ? 'Rejected' : 'Order Cancelled', 'danger');
+    }
     const status = statusAt || order.payment_status;
     const map = {
         verified: [order.is_full_points_checkout ? 'Paid with points' : 'Paid', 'success'],
@@ -1138,12 +1156,26 @@ function renderOrderCard(msg, isAdmin, senderName, timestamp) {
         order_update: ['fa-bell', 'Order update'],
     }[msg.kind] || ['fa-receipt', 'Order'];
 
-    const statusAt = msg.order_status_at || (msg.kind === 'order_placed' ? 'pending_payment' : (msg.kind === 'payment_submitted' ? 'payment_proof_submitted' : order.status));
-    const isCancelled = statusAt === 'cancelled' || statusAt === 'rejected';
+    const statusAt = (order.status === 'cancelled' || order.status === 'rejected') ? order.status : (msg.order_status_at || (msg.kind === 'order_placed' ? 'pending_payment' : (msg.kind === 'payment_submitted' ? 'payment_proof_submitted' : order.status)));
+    const isCancelled = statusAt === 'cancelled' || statusAt === 'rejected' || order.status === 'cancelled' || order.status === 'rejected';
     const isRefundMsg = Boolean(msg.message && msg.message.toLowerCase().includes('refund'));
     const isCancellationMsg = !isRefundMsg && (isCancelled || Boolean(msg.message && msg.message.toLowerCase().includes('cancel')));
-    const isLatestAndCancelled = (typeof latestOrderMessageId !== 'undefined' && Number(msg.message_id) === Number(latestOrderMessageId) && order.status === 'cancelled');
+    const isLatestAndCancelled = (typeof latestOrderMessageId !== 'undefined' && Number(msg.message_id) === Number(latestOrderMessageId) && (order.status === 'cancelled' || isCancelled));
     const showRefund = (isRefundMsg || (isLatestAndCancelled && order.refund_status)) && order.refund_status;
+
+    const isCashDp = order.payment_method === 'cash' && (order.downpayment_required || Number(order.downpayment_amount) > 0);
+    const isPayMongo = order.payment_method === 'paymongo' || order.payment_method === 'gcash';
+    const dpPaid = ['partially_paid', 'paid', 'verified'].includes(order.payment_status);
+    const balancePaid = ['paid', 'verified'].includes(order.payment_status);
+    const fullPaid = ['paid', 'verified'].includes(order.payment_status) || Boolean(order.is_full_points_checkout);
+
+    const subtitle = isCancelled
+        ? 'Order Cancelled'
+        : (isCashDp
+            ? `${peso(order.downpayment_amount)} ${dpPaid ? 'paid' : 'unpaid'} &middot; ${peso(order.remaining_balance)} ${balancePaid ? 'paid' : 'cash due'}`
+            : (isPayMongo
+                ? `${peso(order.amount_due)} &middot; ${fullPaid ? 'Paid via PayMongo' : 'Unpaid via PayMongo'}`
+                : `${peso(order.amount_due)} due`));
 
     const body = `
         <div onclick="openItem(${order.item_id})" style="display: flex; gap: 10px; align-items: center; cursor: pointer; margin-bottom: 12px;">
@@ -1152,22 +1184,40 @@ function renderOrderCard(msg, isAdmin, senderName, timestamp) {
                 : `<div class="thumb" style="width: 56px; height: 56px;"><i class="fas fa-image"></i></div>`}
             <div style="min-width: 0;">
                 <p style="margin: 0; font-size: 13px; font-weight: 600; color: var(--ink-900);">${escapeHtml(item.title || ('Item #' + order.item_id))}</p>
-                <p style="margin: 2px 0 0 0; font-size: 12px; color: var(--ink-500);">${peso(order.amount_due)} due</p>
+                <p style="margin: 2px 0 0 0; font-size: 12px; color: var(--ink-500);">${subtitle}</p>
                 <p style="margin: 2px 0 0 0; font-size: 11px; color: var(--brand-600); font-weight: 600;">Click to view item</p>
             </div>
         </div>
         <div style="border-top: 1px solid var(--surface-sunk); padding-top: 8px;">
             ${summaryRow('Price', peso(order.subtotal))}
             ${order.points_used > 0 ? summaryRow(order.points_used + ' point(s) used', '-' + peso(order.points_discount_amount)) : ''}
-            ${summaryRow('Amount due', peso(order.amount_due), true)}
-            ${summaryRow('Payment', paymentMethodLabel(order.payment_method))}
+            ${summaryRow('Order total', peso(order.amount_due), true)}
+            ${summaryRow('Payment method', paymentMethodLabel(order.payment_method, order))}
+            ${isCashDp ? `
+                ${summaryRow('PayMongo downpayment', `${peso(order.downpayment_amount)} &middot; <span style="font-weight: 600; color: ${dpPaid ? '#059669' : '#dc2626'};">${dpPaid ? 'Paid' : 'Unpaid'}</span>`, false, true)}
+                ${summaryRow('Cash balance at pickup', `${peso(order.remaining_balance)} &middot; <span style="font-weight: 600; color: ${balancePaid ? '#059669' : '#dc2626'};">${balancePaid ? 'Paid' : 'Unpaid'}</span>`, false, true)}
+            ` : (isPayMongo ? `
+                ${summaryRow('PayMongo balance', `${peso(order.amount_due)} &middot; <span style="font-weight: 600; color: ${fullPaid ? '#059669' : '#dc2626'};">${fullPaid ? 'Paid' : 'Unpaid'}</span>`, false, true)}
+            ` : '')}
             ${order.payment_reference ? summaryRow('Reference', order.payment_reference) : ''}
             ${order.pickup_date ? summaryRow('Pick-up schedule', `<span style="font-weight: 600; color: ${order.status === 'overdue' ? '#dc2626' : 'inherit'};"><i class="fas fa-calendar-day" style="margin-right: 4px; color: var(--brand-600);"></i>${escapeHtml(order.pickup_date_formatted || when(order.pickup_date))}</span>`, false, true) : ''}
         </div>
         <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px;">
-            ${paymentStateBadge(order, msg.payment_status_at)}
+            ${paymentStateBadge(order, isCancelled ? 'cancelled' : msg.payment_status_at)}
             ${orderStatusBadge(statusAt, order.payment_method)}
         </div>
+        ${!isCancelled && !fullPaid ? `
+            <div style="margin-top: 10px; padding: 10px 12px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 6px; display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-size: 12px; font-weight: 600; color: #92400e;">
+                    <i class="fas fa-clock" style="margin-right: 6px;"></i>
+                    ${isCashDp && !dpPaid
+                        ? `Awaiting PayMongo downpayment: ${peso(order.downpayment_amount)} unpaid`
+                        : (isPayMongo
+                            ? `Awaiting PayMongo payment: ${peso(order.amount_due)} unpaid`
+                            : (order.payment_method === 'cash' && order.status === 'pending_payment' ? 'Awaiting admin approval' : `Cash on pickup: ${peso(order.amount_due)} due`))}
+                </span>
+                <span class="fm-badge warning">Unpaid</span>
+            </div>` : ''}
         ${msg.kind === 'order_update' && !isRefundMsg ? `
             <div style="margin-top: 10px; padding: 10px 12px; background: var(--surface-sunk); border-radius: 8px; font-size: 13px; color: var(--ink-900); white-space: pre-line; border-left: 3px solid ${isCancelled ? '#dc2626' : 'var(--brand-600)'};">
                 ${escapeHtml(msg.message)}
