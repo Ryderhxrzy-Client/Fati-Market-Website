@@ -1095,6 +1095,7 @@ function paymentStateBadge(order, statusAt) {
     const status = statusAt || order.payment_status;
     const map = {
         verified: [order.is_full_points_checkout ? 'Paid with points' : 'Paid', 'success'],
+        partially_paid: ['Partially paid', 'info'],
         proof_submitted: ['Checking payment', 'warning'],
         rejected: ['Payment declined', 'danger'],
     };
@@ -1168,6 +1169,10 @@ function renderOrderCard(msg, isAdmin, senderName, timestamp) {
     const dpPaid = ['partially_paid', 'paid', 'verified'].includes(order.payment_status);
     const balancePaid = ['paid', 'verified'].includes(order.payment_status);
     const fullPaid = ['paid', 'verified'].includes(order.payment_status) || Boolean(order.is_full_points_checkout);
+    const isUnpaidOnline = !isCancelled && !fullPaid && (
+        (isCashDp && !dpPaid) ||
+        (isPayMongo && !['paid', 'verified'].includes(order.payment_status))
+    );
 
     const subtitle = isCancelled
         ? 'Order Cancelled'
@@ -1206,15 +1211,13 @@ function renderOrderCard(msg, isAdmin, senderName, timestamp) {
             ${paymentStateBadge(order, isCancelled ? 'cancelled' : msg.payment_status_at)}
             ${orderStatusBadge(statusAt, order.payment_method)}
         </div>
-        ${!isCancelled && !fullPaid ? `
+        ${isUnpaidOnline ? `
             <div style="margin-top: 10px; padding: 10px 12px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 6px; display: flex; align-items: center; justify-content: space-between;">
                 <span style="font-size: 12px; font-weight: 600; color: #92400e;">
                     <i class="fas fa-clock" style="margin-right: 6px;"></i>
-                    ${isCashDp && !dpPaid
+                    ${isCashDp
                         ? `Awaiting PayMongo downpayment: ${peso(order.downpayment_amount)} unpaid`
-                        : (isPayMongo
-                            ? `Awaiting PayMongo payment: ${peso(order.amount_due)} unpaid`
-                            : (order.payment_method === 'cash' && order.status === 'pending_payment' ? 'Awaiting admin approval' : `Cash on pickup: ${peso(order.amount_due)} due`))}
+                        : `Awaiting PayMongo payment: ${peso(order.amount_due)} unpaid`}
                 </span>
                 <span class="fm-badge warning">Unpaid</span>
             </div>` : ''}
